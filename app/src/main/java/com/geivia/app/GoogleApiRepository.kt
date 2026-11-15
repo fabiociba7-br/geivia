@@ -63,7 +63,7 @@ object GoogleApiRepository {
 
     suspend fun listEnabledServices(accessToken: String, projectNumber: String): List<String> {
         require(projectNumber.isNotBlank()) { "O projeto selecionado não possui número disponível para a consulta." }
-        val parent = encode("projects/$projectNumber")
+        val parent = "projects/$projectNumber"
         val output = mutableListOf<String>()
         var pageToken: String? = null
         do {

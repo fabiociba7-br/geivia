@@ -1234,6 +1234,37 @@ cloudshell download geivia-projects.json"""
                 }
             }
         }
+        Spacer(Modifier.height(12.dp))
+        Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {
+            Column(Modifier.padding(15.dp)) {
+                Text("ETAPA 4B — CRIAR OU REUTILIZAR PROJETO", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text("Opcional. O Project ID é escolhido por você e não muda automaticamente.", color = Muted, fontSize = 11.sp)
+                Spacer(Modifier.height(8.dp))
+                if (pendingCreationId.isNotBlank()) {
+                    Text("Operação aguardando reconciliação: $pendingCreationId", color = Color(0xFF9A5B13), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("Não inicie outra criação. Consulte apenas este ID e importe o JSON resultante.", color = Muted, fontSize = 10.sp)
+                    Button(onClick = {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        clipboard.setPrimaryClip(ClipData.newPlainText("GEIVIA reconciliar projeto", projectReconcileCommand))
+                        Toast.makeText(context, "Consulta do mesmo ID copiada. Não cria projeto.", Toast.LENGTH_LONG).show()
+                    }, enabled = projectReconcileCommand.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Reconciliar mesmo Project ID") }
+                } else {
+                    OutlinedTextField(value = newProjectId, onValueChange = { value ->
+                        newProjectId = value.lowercase().filter { it.isLetterOrDigit() || it == '-' }.take(30)
+                        prefs.edit().putString("new_project_id", newProjectId).apply()
+                    }, label = { Text("Project ID escolhido por você") }, supportingText = { Text("5–30 caracteres; letras minúsculas, números e hífen.") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(6.dp))
+                    OutlinedTextField(value = newProjectName, onValueChange = { value ->
+                        newProjectName = value.take(30)
+                        prefs.edit().putString("new_project_name", newProjectName).apply()
+                    }, label = { Text("Nome de exibição") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    Text("O comando consulta primeiro o ID exato. Só cria se o Google confirmar que ele não existe. Erros de permissão ou conexão interrompem o processo.", color = Muted, fontSize = 10.sp, lineHeight = 14.sp)
+                    Button(onClick = { showProjectCreateDialog = true }, enabled = projectCreationCommand.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Revisar criação ou reutilização") }
+                }
+                if (projectCreationStatus.isNotBlank()) Text(projectCreationStatus, color = DeepBlue, fontSize = 11.sp, lineHeight = 15.sp)
+            }
+        }
+
         if (selectedProjectId.isNotBlank()) {
             Spacer(Modifier.height(12.dp))
             Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {

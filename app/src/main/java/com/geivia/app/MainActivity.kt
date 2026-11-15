@@ -65,29 +65,16 @@ private fun GeiviaApp() {
         }
     }
     val workspaceId = remember {
-        prefs.getString("workspace_id", null) ?: run {
-            val generated = "geivia-" + UUID.randomUUID().toString().replace("-", "").take(10)
-            prefs.edit().putString("workspace_id", generated).apply()
-            generated
-        }
-    }
-    var workspaceName by remember {
-        mutableStateOf(prefs.getString("workspace_name", null) ?: "Meu ambiente GEIVIA")
-    }
-    var cloudProjectId by remember {
-        mutableStateOf(prefs.getString("cloud_project_id", null) ?: workspaceId)
-    }
-    var page by rememberSaveable {
-        mutableStateOf(if (prefs.getBoolean("cloud_setup_completed", false)) "welcome" else "cloud_setup")
-    }
-    var index by rememberSaveable { mutableIntStateOf(0) }
-    var costMode by rememberSaveable { mutableStateOf(prefs.getString("cost_mode", "") ?: "") }
-    var workspaceName by rememberSaveable { mutableStateOf(prefs.getString("workspace_name", "") ?: "") }
-    val workspaceId = remember {
-        prefs.getString("workspace_id", null) ?: ("GEIVIA-" + UUID.randomUUID().toString().take(8).uppercase()).also {
+        prefs.getString("workspace_id", null) ?: ("GEIVIA-" + UUID.randomUUID().toString().replace("-", "").take(8).uppercase()).also {
             prefs.edit().putString("workspace_id", it).apply()
         }
     }
+    var workspaceName by rememberSaveable { mutableStateOf(prefs.getString("workspace_name", "") ?: "") }
+    var page by rememberSaveable {
+        mutableStateOf(if (prefs.getBoolean("cloud_setup_completed", false)) "welcome" else "workspace_setup")
+    }
+    var index by rememberSaveable { mutableIntStateOf(0) }
+    var costMode by rememberSaveable { mutableStateOf(prefs.getString("cost_mode", "") ?: "") }
 
     val questions = buildList {
         add(Question("platform", "Onde seu projeto vai funcionar?", "Você pode escolher mais de uma opção.", listOf("Aplicativo Android", "Site ou sistema web", "Android e web"), true))
@@ -105,20 +92,6 @@ private fun GeiviaApp() {
     MaterialTheme(colorScheme = lightColorScheme(primary = Blue, secondary = Orange, background = Color(0xFFF7FBFD), surface = Color.White, onSurface = Ink)) {
         Surface(Modifier.fillMaxSize(), color = Color(0xFFF7FBFD)) {
             when (page) {
-                "cloud_setup" -> CloudWorkspaceScreen(
-                    workspaceId = workspaceId,
-                    workspaceName = workspaceName,
-                    cloudProjectId = cloudProjectId,
-                    onProjectIdChange = { cloudProjectId = it.lowercase().filter { char -> char.isLetterOrDigit() || char == '-' } },
-                    onNameChange = {
-                        workspaceName = it
-                        prefs.edit().putString("workspace_name", it).apply()
-                    },
-                    onContinue = {
-                        prefs.edit().putBoolean("cloud_setup_completed", true).putString("cloud_project_id", cloudProjectId).apply()
-                        page = "welcome"
-                    }
-                )
                 "welcome" -> WelcomeScreen {
                     page = if (workspaceName.isBlank()) "workspace_setup" else "questions"
                     index = 0
@@ -137,7 +110,10 @@ private fun GeiviaApp() {
                     workspaceName = workspaceName,
                     workspaceId = workspaceId,
                     onBack = { page = "workspace_setup" },
-                    onContinue = { page = "questions" }
+                    onContinue = {
+                        prefs.edit().putBoolean("cloud_setup_completed", true).apply()
+                        page = "questions"
+                    }
                 )
                 "questions" -> {
                     val i = index.coerceIn(0, questions.lastIndex)
@@ -160,103 +136,13 @@ private fun GeiviaApp() {
                     onContinue = { page = "dashboard" }
                 )
                 else -> DashboardScreen(answers.toMap(), costMode, onGoogleAccess = { page = "google_access" }) {
-                    answers.clear(); prefs.edit().clear().apply(); costMode = ""; index = 0; page = "welcome"
+                    answers.clear(); prefs.edit().clear().apply(); costMode = ""; index = 0; page = "workspace_setup"
                 }
             }
         }
     }
 }
 
-
-@Composable
-private fun CloudWorkspaceScreen(
-    workspaceId: String,
-    workspaceName: String,
-    cloudProjectId: String,
-    onProjectIdChange: (String) -> Unit,
-    onNameChange: (String) -> Unit,
-    onContinue: () -> Unit
-) {
-    val context = LocalContext.current
-    var openedCloud by rememberSaveable { mutableStateOf(false) }
-    var error by remember { mutableStateOf("") }
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
-        verticalArrangement = Arrangement.Center
-    ) {
-        BrandMark()
-        Spacer(Modifier.height(14.dp))
-        Text("SEU AMBIENTE COMEÇA AQUI", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp)
-        Spacer(Modifier.height(8.dp))
-        Text("Entre no Google Cloud com sua própria conta.", color = Ink, fontSize = 25.sp, lineHeight = 31.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(9.dp))
-        Text(
-            "O GEIVIA vai orientar a preparação do seu ambiente. A conta, os projetos e os recursos na nuvem serão seus. Não informe sua senha dentro do GEIVIA.",
-            color = Muted, fontSize = 14.sp, lineHeight = 21.sp
-        )
-        Spacer(Modifier.height(18.dp))
-        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF6EF)), shape = RoundedCornerShape(15.dp)) {
-            Column(Modifier.padding(15.dp)) {
-                Text("IDENTIFICADOR GERADO AUTOMATICAMENTE", color = Color(0xFF236342), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.7.sp)
-                Spacer(Modifier.height(6.dp))
-                Text(workspaceId, color = Ink, fontSize = 19.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(5.dp))
-                Text("Use este identificador como base para o ID do projeto Google Cloud. O Google ainda precisa confirmar se ele está disponível.", color = Muted, fontSize = 12.sp, lineHeight = 18.sp)
-            }
-        }
-        Spacer(Modifier.height(15.dp))
-        Text("Nome do seu ambiente", color = Ink, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-        OutlinedTextField(
-            value = workspaceName,
-            onValueChange = onNameChange,
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            placeholder = { Text("Meu ambiente GEIVIA") }
-        )
-        Spacer(Modifier.height(14.dp))
-        Text("ID real do projeto Google Cloud", color = Ink, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-        OutlinedTextField(
-            value = cloudProjectId,
-            onValueChange = onProjectIdChange,
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            placeholder = { Text("geivia-xxxxxxxxxx") },
-            supportingText = { Text("Use o ID exibido no Google Cloud após criar o projeto. Ele pode ser diferente da sugestão.") }
-        )
-        val validProjectId = cloudProjectId.matches(Regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$"))
-        Spacer(Modifier.height(17.dp))
-        Button(
-            onClick = {
-                runCatching {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://console.cloud.google.com/projectcreate")))
-                    openedCloud = true
-                    error = ""
-                }.onFailure { error = "Não foi possível abrir o Google Cloud neste aparelho." }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) { Text("Entrar no Google Cloud e criar projeto") }
-        if (openedCloud) {
-            Spacer(Modifier.height(8.dp))
-            Text("Quando terminar no navegador, volte ao GEIVIA. O aplicativo não vê sua senha nem consegue confirmar automaticamente a sessão do navegador.", color = Muted, fontSize = 12.sp, lineHeight = 18.sp)
-        }
-        if (error.isNotBlank()) {
-            Spacer(Modifier.height(6.dp))
-            Text(error, color = Color(0xFFB3261E), fontSize = 12.sp)
-        }
-        if (cloudProjectId.isNotBlank() && !validProjectId) {
-            Spacer(Modifier.height(4.dp))
-            Text("O ID precisa ter de 6 a 30 caracteres, começar com letra minúscula e usar somente letras minúsculas, números e hífen, sem hífen no final.", color = Color(0xFFB3261E), fontSize = 11.sp, lineHeight = 16.sp)
-        }
-        Spacer(Modifier.height(13.dp))
-        OutlinedButton(
-            onClick = onContinue,
-            enabled = openedCloud && validProjectId,
-            modifier = Modifier.fillMaxWidth()
-        ) { Text("Projeto criado, continuar") }
-        Spacer(Modifier.height(8.dp))
-        Text("Você poderá continuar usando o questionário e o planejamento sem conectar nenhuma conta ao GEIVIA.", color = Muted, fontSize = 11.sp, lineHeight = 17.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-    }
-}
 
 @Composable
 private fun WelcomeScreen(onStart: () -> Unit) {

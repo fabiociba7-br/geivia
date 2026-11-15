@@ -192,6 +192,31 @@ class WorkflowProgressStoreTest {
     }
 
     @Test
+    fun backupPreservesExactPersistedDataAndIncludesIntegrityHashes() {
+        val preferences = InMemorySharedPreferences()
+        val rawRecords = "{invalid-json"
+        val rawHistory = "[also-invalid"
+        preferences.edit()
+            .putString("workflow_step_records_v1", rawRecords)
+            .putString("workflow_step_history_v1", rawHistory)
+            .apply()
+
+        val backup = org.json.JSONObject(WorkflowProgressStore(preferences).exportBackupJson())
+        assertEquals("GEIVIA_WORKFLOW_BACKUP", backup.getString("format"))
+        assertEquals(1, backup.getInt("version"))
+        assertEquals(rawRecords, backup.getString("recordsRaw"))
+        assertEquals(rawHistory, backup.getString("historyRaw"))
+        assertEquals(
+            java.security.MessageDigest.getInstance("SHA-256").digest(rawRecords.toByteArray())
+                .joinToString("") { "%02x".format(it) },
+            backup.getString("recordsSha256")
+        )
+        assertEquals(rawRecords, preferences.getString("workflow_step_records_v1", null))
+        assertEquals(rawHistory, preferences.getString("workflow_step_history_v1", null))
+        assertTrue(backup.getString("recoveryWarning").contains("não autoriza repetir"))
+    }
+
+    @Test
     fun corruptedWorkflowStoreExposesHealthErrorAndKeepsMutationsBlocked() {
         val preferences = InMemorySharedPreferences()
         preferences.edit().putString("workflow_step_records_v1", "{invalid-json").apply()

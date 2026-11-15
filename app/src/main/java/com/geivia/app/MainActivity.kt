@@ -524,7 +524,8 @@ echo
 echo 'Projetos disponíveis para esta conta:'
 gcloud projects list --format=json > geivia-projects.json
 echo
-echo 'Arquivo gerado: geivia-projects.json'"""
+echo 'Baixando arquivo para o dispositivo:'
+cloudshell download geivia-projects.json"""
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             runCatching {
@@ -607,7 +608,7 @@ echo 'Arquivo gerado: geivia-projects.json'"""
             Column(Modifier.padding(15.dp)) {
                 Text("ETAPA 3 — TESTE A CONEXÃO", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(6.dp))
-                Text("No terminal do Cloud Shell, cole o comando abaixo. Ele apenas identifica a conta ativa e lista projetos que ela já pode visualizar. Não cria recursos, não ativa APIs e não altera faturamento.", color = Ink, fontSize = 13.sp, lineHeight = 19.sp)
+                Text("No terminal do Cloud Shell, cole o comando abaixo. Ele apenas identifica a conta ativa, lista projetos que ela já pode visualizar e baixa um JSON para o aparelho. Não cria recursos, não ativa APIs e não altera faturamento.", color = Ink, fontSize = 13.sp, lineHeight = 19.sp)
                 Spacer(Modifier.height(10.dp))
                 Text(cloudShellCommand, color = Color(0xFFDAEAF4), fontSize = 10.sp, lineHeight = 15.sp, modifier = Modifier.fillMaxWidth().background(Color(0xFF102B43), RoundedCornerShape(10.dp)).padding(12.dp))
                 Spacer(Modifier.height(10.dp))
@@ -629,7 +630,7 @@ echo 'Arquivo gerado: geivia-projects.json'"""
         }
         Spacer(Modifier.height(12.dp))
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF5E6)), shape = RoundedCornerShape(14.dp)) {
-            Text("Importante: nesta etapa o GEIVIA não recebe tokens nem acessa diretamente sua sessão. O comando é executado por você no Cloud Shell, dentro da sua conta. A integração direta por OAuth só será habilitada quando o método de autenticação compatível estiver validado.", Modifier.padding(15.dp), color = Color(0xFF77501A), fontSize = 12.sp, lineHeight = 18.sp)
+            Text("Depois que o arquivo for baixado, volte ao GEIVIA e toque em Importar geivia-projects.json. O aplicativo guarda somente o identificador, nome, número e estado dos projetos. Nunca importe tokens, cookies ou chaves. O Cloud Shell oferece o comando cloudshell download para transferir arquivos ao dispositivo.", Modifier.padding(15.dp), color = Color(0xFF77501A), fontSize = 12.sp, lineHeight = 18.sp)
         }
         Spacer(Modifier.height(18.dp))
         Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) { Text("Continuar para o questionário") }

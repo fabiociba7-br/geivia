@@ -1048,6 +1048,35 @@ cloudshell download geivia-projects.json"""
                             Spacer(Modifier.height(8.dp))
                             Text(apiActionStatus, color = DeepBlue, fontSize = 11.sp, lineHeight = 16.sp)
                         }
+                        Spacer(Modifier.height(14.dp))
+                        Divider(color = Color(0xFFE1EAF0))
+                        Spacer(Modifier.height(10.dp))
+                        Text("ETAPA 8 — CLOUD FIRESTORE", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text("A criação só fica disponível depois que a API Firestore estiver ativa e um diagnóstico atualizado listar os bancos do projeto. O GEIVIA não presume que uma lista ausente significa que não existe banco.", color = Muted, fontSize = 11.sp, lineHeight = 16.sp)
+                        Spacer(Modifier.height(8.dp))
+                        when {
+                            "firestore.googleapis.com" !in enabledFirebaseApis -> Text("Primeiro habilite a API Cloud Firestore pela etapa anterior e importe um novo diagnóstico.", color = Color(0xFF9A641B), fontSize = 11.sp)
+                            firestoreDatabaseIds == null -> Text("Importe um diagnóstico recente que inclua a lista de bancos Firestore antes de continuar.", color = Color(0xFF9A641B), fontSize = 11.sp)
+                            "(default)" in firestoreDatabaseIds.orEmpty() -> Text("O banco (default) já existe neste projeto. O GEIVIA não oferecerá outra criação.", color = Color(0xFF236342), fontSize = 11.sp)
+                            prefs.getString("pending_firestore_project_id", null) == selectedProjectId -> Text("Há uma criação aguardando reconciliação. Importe um novo diagnóstico; não repita o comando.", color = Color(0xFF9A641B), fontSize = 11.sp)
+                            firestoreBillingEnabled != false -> Text(if (firestoreBillingEnabled == true) "Faturamento está habilitado neste projeto. A criação foi bloqueada para preservar o modo custo zero." else "Não foi possível confirmar que o faturamento está desabilitado. A criação fica bloqueada até essa informação ser verificada.", color = Color(0xFF9A641B), fontSize = 11.sp, lineHeight = 15.sp)
+                            else -> Text("Nenhum banco (default) foi encontrado e o diagnóstico confirmou faturamento desabilitado. Escolha uma região antes de criar.", color = Muted, fontSize = 11.sp)
+                        }
+                        if ("firestore.googleapis.com" in enabledFirebaseApis && firestoreDatabaseIds != null && "(default)" !in firestoreDatabaseIds.orEmpty() && prefs.getString("pending_firestore_project_id", null) != selectedProjectId && firestoreBillingEnabled == false) {
+                            Spacer(Modifier.height(8.dp))
+                            Text("REGIÃO DO BANCO — ESCOLHA ANTES DE CRIAR", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            listOf("southamerica-east1" to "São Paulo, Brasil", "us-central1" to "Iowa, Estados Unidos", "nam5" to "Multirregião Estados Unidos").forEach { (region, label) ->
+                                Row(Modifier.fillMaxWidth().clickable { firestoreLocation = region; prefs.edit().putString("firestore_location", region).apply() }.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    RadioButton(selected = firestoreLocation == region, onClick = { firestoreLocation = region; prefs.edit().putString("firestore_location", region).apply() })
+                                    Column {
+                                        Text(label, color = Ink, fontSize = 12.sp)
+                                        Text(region, color = Muted, fontSize = 10.sp)
+                                    }
+                                }
+                            }
+                            Button(onClick = { showFirestoreCreateDialog = true }, enabled = firestoreLocation.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Revisar criação do banco") }
+                        }
+                        if (firestoreActionStatus.isNotBlank()) Text(firestoreActionStatus, color = DeepBlue, fontSize = 11.sp, lineHeight = 16.sp)
                         if (actionHistory.isNotEmpty()) {
                             Spacer(Modifier.height(12.dp))
                             Divider(color = Color(0xFFE1EAF0))

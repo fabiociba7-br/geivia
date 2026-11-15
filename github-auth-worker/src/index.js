@@ -100,6 +100,52 @@ export default {
       return json(payload, 200);
     }
 
+    if (request.method === "POST" && url.pathname === "/refresh") {
+      if (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET || !env.GITHUB_CALLBACK_URL) {
+        return json({ error: "Serviço ainda não configurado." }, 503);
+      }
+
+      let input;
+      try {
+        const declaredLength = Number(request.headers.get("content-length") || "0");
+        if (declaredLength > 16_384) return json({ error: "Requisição muito grande." }, 413);
+        const raw = await request.text();
+        if (raw.length > 16_384) return json({ error: "Requisição muito grande." }, 413);
+        input = JSON.parse(raw);
+      } catch {
+        return json({ error: "JSON inválido." }, 400);
+      }
+
+      const { client_id, callback_url, refresh_token } = input || {};
+      if (client_id !== env.GITHUB_CLIENT_ID || callback_url !== env.GITHUB_CALLBACK_URL) {
+        return json({ error: "Configuração de aplicativo inválida." }, 400);
+      }
+      if (typeof refresh_token !== "string" || refresh_token.length < 20 || refresh_token.length > 4096) {
+        return json({ error: "Refresh token inválido." }, 400);
+      }
+
+      const tokenResponse = await fetch("https://github.com/login/oauth/access_token", {
+        method: "POST",
+        headers: {
+          "accept": "application/json",
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          client_id: env.GITHUB_CLIENT_ID,
+          client_secret: env.GITHUB_CLIENT_SECRET,
+          grant_type: "refresh_token",
+          refresh_token
+        })
+      });
+
+      const payload = await tokenResponse.json().catch(() => ({}));
+      if (!tokenResponse.ok || payload.error || !payload.access_token) {
+        return json({ error: "O GitHub recusou a renovação. Conecte novamente a conta." }, 401);
+      }
+      // GitHub rotates refresh tokens. Return the complete new response without storing it.
+      return json(payload, 200);
+    }
+
     return json({ error: "Não encontrado." }, 404);
   }
 };

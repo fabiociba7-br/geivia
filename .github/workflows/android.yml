@@ -44,7 +44,9 @@ jobs:
           sdkmanager --install "build-tools;35.0.0"
 
       - name: Validate GitHub OAuth Worker syntax
-        run: node --check github-auth-worker/src/index.js
+        run: |
+          node --check github-auth-worker/src/index.js
+          npm test --prefix github-auth-worker
 
       - name: Run unit tests
         run: gradle --no-daemon testDebugUnitTest

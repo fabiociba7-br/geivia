@@ -52,10 +52,10 @@ Se o método exato exigir outro escopo, não ampliar silenciosamente: explicar e
 ### Etapa 4 — Serviços e APIs
 Após o usuário selecionar um projeto, explicar que o GEIVIA consultará quais serviços/APIs estão habilitados para identificar o que falta.
 
-Escopo proposto:
-- `https://www.googleapis.com/auth/service.management.readonly`
+Escopo necessário para o método Service Usage `services.list`:
+- `https://www.googleapis.com/auth/cloud-platform.read-only`
 
-API: Service Usage API, somente leitura. Validar o escopo exigido pelo método REST exato antes da implementação. Nunca substituir automaticamente por `cloud-platform`.
+A documentação do método `services.list` exige `cloud-platform.read-only` ou `cloud-platform`. Esse escopo permite leitura em vários serviços Google Cloud, portanto deve ser solicitado somente quando o usuário abrir o diagnóstico de APIs. A conta também precisa da permissão IAM `serviceusage.services.list` no projeto. Não solicitar `cloud-platform` (acesso amplo de leitura e escrita) para esse diagnóstico.
 
 ### Etapa 5 — Situação de faturamento
 Somente quando o usuário pedir diagnóstico de custos, explicar que serão consultados dados de faturamento que a conta já tem permissão para visualizar.
@@ -91,11 +91,11 @@ Não pedir `https://www.googleapis.com/auth/cloud-platform` por conveniência. S
 | Identidade | Nome, e-mail e perfil básico | openid, userinfo.email, userinfo.profile | Identidade |
 | Firebase | Listar projetos Firebase | firebase.readonly | Leitura |
 | Google Cloud | Listar projetos acessíveis | cloudplatformprojects.readonly | Leitura |
-| Serviços | Consultar APIs/serviços ativos | service.management.readonly | Leitura |
+| Serviços | Consultar APIs/serviços ativos | cloud-platform.read-only | Leitura |
 | Custos | Consultar faturamento visível à conta | cloud-billing.readonly | Leitura |
 | Alterações | Criar/configurar/publicar | Escopo específico validado por operação | Escrita |
 
-A matriz é uma proposta. Confirmar na documentação oficial o escopo aceito pelo método REST exato antes de codificar cada integração. OAuth scope e papel IAM são controles diferentes; possuir um escopo não significa ter permissão no projeto.
+A matriz foi conferida com a documentação dos métodos REST consultados. Revalidar os escopos ao implementar cada endpoint, pois as exigências podem mudar. OAuth scope e papel IAM são controles diferentes; possuir um escopo não significa ter permissão no projeto.
 
 ## Dados e tokens
 

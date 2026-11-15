@@ -36,6 +36,17 @@ internal fun readUtf8Limited(input: InputStream?, maxBytes: Int): String {
     return output.toString(Charsets.UTF_8.name())
 }
 
+internal fun shouldRefreshGitHubToken(
+    expiresInSeconds: Long,
+    savedAtEpochMillis: Long,
+    nowEpochMillis: Long,
+    bufferMillis: Long = 120_000L
+): Boolean {
+    if (expiresInSeconds <= 0L) return false
+    if (savedAtEpochMillis <= 0L) return true
+    return nowEpochMillis >= savedAtEpochMillis + expiresInSeconds * 1000L - bufferMillis
+}
+
 data class GitHubRepository(
     val id: Long,
     val fullName: String,
@@ -162,11 +173,12 @@ class GitHubTokenStore(context: Context) {
     fun needsRefresh(bufferMillis: Long = 120_000L): Boolean {
         val raw = readTokenResponse() ?: return false
         val json = JSONObject(raw)
-        val expiresIn = json.optLong("expires_in", 0L)
-        if (expiresIn <= 0L) return false
-        val savedAt = json.optLong("_geivia_saved_at", 0L)
-        if (savedAt <= 0L) return true
-        return System.currentTimeMillis() >= savedAt + expiresIn * 1000L - bufferMillis
+        return shouldRefreshGitHubToken(
+            json.optLong("expires_in", 0L),
+            json.optLong("_geivia_saved_at", 0L),
+            System.currentTimeMillis(),
+            bufferMillis
+        )
     }
 
     fun refreshTokenValue(): String? = readTokenResponse()?.let {

@@ -25,6 +25,10 @@ O aplicativo está em desenvolvimento. O fluxo atual usa o navegador e o Cloud S
 
 A geração de APK e os testes automatizados são realizados pelo GitHub Actions. A validação real de serviços Firebase depende de um projeto Google Cloud/Firebase e da conta do usuário; não é simulada pelos testes locais.
 
+## Integração com GitHub
+
+A integração com GitHub está planejada como uma conexão por GitHub App, com autorização da própria conta do usuário, permissões mínimas e leitura inicial de repositórios e GitHub Actions. Não serão usados tokens pessoais compartilhados nem segredos dentro do APK. A arquitetura e as etapas de implementação estão em [docs/GITHUB_INTEGRATION_ARCHITECTURE.md](docs/GITHUB_INTEGRATION_ARCHITECTURE.md). A conexão real depende do registro da GitHub App e de um backend HTTPS para proteger o Client Secret; até isso existir, o app não deve exibir uma conexão simulada.
+
 ## Segurança
 
 - Segredos de servidor nunca serão incluídos no APK ou no repositório.

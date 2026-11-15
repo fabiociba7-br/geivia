@@ -1460,6 +1460,24 @@ cloudshell download geivia-projects.json"""
                             }, enabled = firestoreLocation.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Revisar criação do banco") }
                         }
                         Text("IMPORTANTE: criar o banco não configura regras de segurança. Antes de conectar o aplicativo, publique regras restritivas adequadas aos dados e aos usuários. Não use regras abertas de teste em produção.", color = Color(0xFF9A641B), fontSize = 10.sp, lineHeight = 14.sp)
+                        if ("(default)" in firestoreDatabaseIds.orEmpty() && selectedProjectId.isNotBlank()) {
+                            val rulesRecord = workflowProgressStore.get(selectedProjectId, "firestore_rules")
+                            Spacer(Modifier.height(8.dp))
+                            Text("ETAPA 8B — REGRAS DE SEGURANÇA FIRESTORE", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            when (rulesRecord.state) {
+                                WorkflowStepState.NOT_STARTED, WorkflowStepState.WAITING_CONFIRMATION -> Button(onClick = { showFirestoreRulesDialog = true }, enabled = firestoreRulesCommand.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Preparar regras iniciais restritivas") }
+                                WorkflowStepState.IN_PROGRESS -> Button(onClick = {
+                                    runCatching {
+                                        workflowProgressStore.confirmManualCompletion(selectedProjectId, "firestore_rules", "O usuário declarou que executou o comando e conferiu a publicação das regras deny-all.")
+                                        addActionHistory("Regras iniciais Firestore declaradas publicadas pelo usuário • $selectedProjectId")
+                                    }.onFailure { firestoreRulesStatus = it.message ?: "Não foi possível registrar a confirmação." }
+                                }, modifier = Modifier.fillMaxWidth()) { Text("Já publiquei — registrar confirmação") }
+                                WorkflowStepState.USER_CONFIRMED -> Text("Publicação declarada pelo usuário. As regras atuais negam todo acesso até serem substituídas por regras específicas e testadas.", color = Color(0xFF9A641B), fontSize = 10.sp)
+                                WorkflowStepState.COMPLETED -> Text("Regras confirmadas por diagnóstico.", color = Color(0xFF236342), fontSize = 10.sp)
+                                WorkflowStepState.UNKNOWN, WorkflowStepState.FAILED -> Text("Etapa bloqueada até reconciliar a publicação anterior. Não repita automaticamente.", color = Color(0xFF9A5B13), fontSize = 10.sp)
+                            }
+                        }
+                        if (firestoreRulesStatus.isNotBlank()) Text(firestoreRulesStatus, color = DeepBlue, fontSize = 11.sp, lineHeight = 16.sp)
                         if (firestoreActionStatus.isNotBlank()) Text(firestoreActionStatus, color = DeepBlue, fontSize = 11.sp, lineHeight = 16.sp)
                         if (answers["login"].orEmpty().isNotBlank() && !answers["login"].orEmpty().contains("Não precisa")) {
                             Spacer(Modifier.height(14.dp))

@@ -10,7 +10,7 @@ Configure:
 - Nome: GEIVIA (ou outro nome disponível).
 - Homepage URL: página do projeto GEIVIA.
 - Callback URL: URL HTTPS do Worker terminada em `/callback`.
-- Ative a autorização do usuário (OAuth) durante a instalação.
+- Configure o campo **Callback URL** com a URL HTTPS do Worker.\n- Não marque **Request user authorization (OAuth) during installation**: o GEIVIA inicia o fluxo web OAuth manualmente e informa explicitamente o `redirect_uri` para esse callback.
 - Permissões de repositório: **Metadata: Read-only**, **Contents: Read-only**, **Actions: Read-only**, **Pull requests: Read-only**.
 - Não habilite permissões de escrita, administração, secrets ou workflows.
 - Webhooks: desativados nesta primeira fase.

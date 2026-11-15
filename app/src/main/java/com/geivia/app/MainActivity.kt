@@ -555,6 +555,7 @@ private fun CloudShellSetupScreen(
     var selectedProjectNumber by remember { mutableStateOf(prefs.getString("selected_project_number", null).orEmpty()) }
     var selectedApiForConfirmation by remember { mutableStateOf<Pair<String, String>?>(null) }
     var showCancelPendingDialog by remember { mutableStateOf(false) }
+    var pendingActionToCancel by remember { mutableStateOf("api") }
     var firestoreLocation by remember { mutableStateOf(prefs.getString("firestore_location", "").orEmpty()) }
     var firestoreDatabaseIds by remember {
         mutableStateOf(
@@ -819,17 +820,41 @@ cloudshell download geivia-projects.json"""
     }
 
     if (showCancelPendingDialog) {
+        val cancellingFirestore = pendingActionToCancel == "firestore"
+        val pendingLabel = if (cancellingFirestore) "criação do Firestore (banco default)" else (prefs.getString("pending_api_service", "API") ?: "API")
         AlertDialog(
             onDismissRequest = { showCancelPendingDialog = false },
-            title = { Text("Encerrar acompanhamento desta ação?") },
-            text = { Text("Isso apenas remove a pendência local de ${prefs.getString("pending_api_service", "API")}. Não desativa a API no Google Cloud, não apaga recursos e não confirma que o comando falhou. Se você já executou o comando, faça um novo diagnóstico antes de encerrar.") },
+            title = { Text("Encerrar acompanhamento local?") },
+            text = {
+                Text("Isso remove apenas o bloqueio local de $pendingLabel. Não cancela uma operação que já esteja no Google Cloud, não apaga recursos e não confirma que o comando falhou. Depois de encerrar, será obrigatório importar um novo diagnóstico antes de preparar outra ação. Se o comando já foi executado ou ainda pode estar em andamento, não tente repeti-lo sem verificar o estado no Google Cloud.")
+            },
             confirmButton = {
                 TextButton(onClick = {
-                    val api = prefs.getString("pending_api_service", "API") ?: "API"
-                    val project = prefs.getString("pending_api_project_id", selectedProjectId) ?: selectedProjectId
-                    prefs.edit().remove("pending_api_service").remove("pending_api_project_id").remove("pending_api_created_at").apply()
-                    addActionHistory("Acompanhamento encerrado manualmente (sem confirmação de resultado) • $project • $api")
-                    apiActionStatus = "Acompanhamento encerrado neste aparelho. Nenhuma alteração foi feita no Google Cloud."
+                    if (cancellingFirestore) {
+                        val project = prefs.getString("pending_firestore_project_id", selectedProjectId) ?: selectedProjectId
+                        val location = prefs.getString("pending_firestore_location", "") ?: ""
+                        prefs.edit()
+                            .remove("pending_firestore_project_id")
+                            .remove("pending_firestore_location")
+                            .remove("pending_firestore_created_at")
+                            .apply()
+                        runCatching {
+                            val saved = org.json.JSONObject(prefs.getString("cloud_project_diagnostic_json", null) ?: "{}")
+                            saved.remove("firestoreDatabases")
+                            saved.remove("billing")
+                            prefs.edit().putString("cloud_project_diagnostic_json", saved.toString()).apply()
+                        }
+                        firestoreDatabaseIds = null
+                        firestoreBillingEnabled = null
+                        firestoreActionStatus = "Acompanhamento encerrado somente neste aparelho. Importe um novo diagnóstico antes de qualquer nova preparação."
+                        addActionHistory("Acompanhamento Firestore encerrado manualmente, sem confirmação de resultado • $project • $location")
+                    } else {
+                        val api = prefs.getString("pending_api_service", "API") ?: "API"
+                        val project = prefs.getString("pending_api_project_id", selectedProjectId) ?: selectedProjectId
+                        prefs.edit().remove("pending_api_service").remove("pending_api_project_id").remove("pending_api_created_at").apply()
+                        apiActionStatus = "Acompanhamento encerrado neste aparelho. Importe um novo diagnóstico antes de preparar outra ação. Nenhuma alteração foi feita no Google Cloud."
+                        addActionHistory("Acompanhamento de API encerrado manualmente, sem confirmação de resultado • $project • $api")
+                    }
                     showCancelPendingDialog = false
                 }) { Text("Encerrar acompanhamento") }
             },
@@ -1040,7 +1065,7 @@ cloudshell download geivia-projects.json"""
                                     Text("AÇÃO AGUARDANDO VERIFICAÇÃO", color = Color(0xFF9A5B13), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                     Text("$currentPendingApi • projeto $currentPendingProject", color = Ink, fontSize = 11.sp)
                                     Text("Importe um diagnóstico atualizado. Se a API não aparecer, a pendência permanece e nenhum comando será repetido automaticamente.", color = Muted, fontSize = 10.sp, lineHeight = 14.sp)
-                                    TextButton(onClick = { showCancelPendingDialog = true }) { Text("Encerrar somente o acompanhamento local") }
+                                    TextButton(onClick = { pendingActionToCancel = "api"; showCancelPendingDialog = true }) { Text("Encerrar somente o acompanhamento local") }
                                 }
                             }
                         }
@@ -1083,7 +1108,10 @@ cloudshell download geivia-projects.json"""
                             "firestore.googleapis.com" !in enabledFirebaseApis -> Text("Primeiro habilite a API Cloud Firestore pela etapa anterior e importe um novo diagnóstico.", color = Color(0xFF9A641B), fontSize = 11.sp)
                             firestoreDatabaseIds == null -> Text("Importe um diagnóstico recente que inclua a lista de bancos Firestore antes de continuar.", color = Color(0xFF9A641B), fontSize = 11.sp)
                             "(default)" in firestoreDatabaseIds.orEmpty() -> Text("O banco (default) já existe neste projeto. O GEIVIA não oferecerá outra criação.", color = Color(0xFF236342), fontSize = 11.sp)
-                            prefs.getString("pending_firestore_project_id", null) == selectedProjectId -> Text("Há uma criação aguardando reconciliação. Importe um novo diagnóstico; não repita o comando.", color = Color(0xFF9A641B), fontSize = 11.sp)
+                            prefs.getString("pending_firestore_project_id", null) == selectedProjectId -> Column {
+                                Text("Há uma criação aguardando reconciliação. Importe um novo diagnóstico; não repita o comando.", color = Color(0xFF9A641B), fontSize = 11.sp)
+                                TextButton(onClick = { pendingActionToCancel = "firestore"; showCancelPendingDialog = true }) { Text("Encerrar somente o acompanhamento local") }
+                            }
                             firestoreBillingEnabled != false -> Text(if (firestoreBillingEnabled == true) "Faturamento está habilitado neste projeto. A criação foi bloqueada para preservar o modo custo zero." else "Não foi possível confirmar que o faturamento está desabilitado. A criação fica bloqueada até essa informação ser verificada.", color = Color(0xFF9A641B), fontSize = 11.sp, lineHeight = 15.sp)
                             else -> Text("Nenhum banco (default) foi encontrado e o diagnóstico confirmou faturamento desabilitado. Escolha uma região antes de criar.", color = Muted, fontSize = 11.sp)
                         }

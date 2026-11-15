@@ -33,6 +33,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private val Blue = Color(0xFF087DB5)
 private val DeepBlue = Color(0xFF07528D)
@@ -48,14 +50,14 @@ class MainActivity : ComponentActivity() {
         window.statusBarColor = android.graphics.Color.rgb(247, 251, 253)
         window.navigationBarColor = android.graphics.Color.rgb(247, 251, 253)
         window.decorView.systemUiVisibility = android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-        setContent { GeiviaApp() }
+        setContent { GeiviaApp(intent?.data) }
     }
 }
 
 private data class Question(val id: String, val title: String, val help: String, val options: List<String>, val multi: Boolean = false)
 
 @Composable
-private fun GeiviaApp() {
+private fun GeiviaApp(githubCallbackUri: Uri? = null) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
     val answerKeys = setOf("platform", "purpose", "audience", "login", "data", "files", "hosting", "extras")
@@ -70,16 +72,16 @@ private fun GeiviaApp() {
         }
     }
     var workspaceName by rememberSaveable { mutableStateOf(prefs.getString("workspace_name", "GEIVIA-" + workspaceId.removePrefix("GEIVIA-")) ?: ("GEIVIA-" + workspaceId.removePrefix("GEIVIA-"))) }
-    val validWorkflowPages = setOf("workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "google_access")
+    val validWorkflowPages = setOf("workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "google_access", "github")
     val savedCheckpoint = remember {
         prefs.getString("workflow_checkpoint", null)?.takeIf { it in validWorkflowPages }
             ?: if (prefs.getBoolean("cloud_setup_completed", false)) "questions" else "workspace_setup"
     }
-    var page by rememberSaveable { mutableStateOf("welcome") }
+    var page by rememberSaveable { mutableStateOf(if (githubCallbackUri != null) "github" else "welcome") }
     var index by rememberSaveable {
         mutableIntStateOf(prefs.getInt("workflow_question_index", 0).coerceAtLeast(0))
     }
-    var costMode by rememberSaveable { mutableStateOf(prefs.getString("cost_mode", "") ?: "") }
+    var costMode by rememberSaveable { mutableStateOf(prefs.getString("cost_mode", "") ?: "") }\n    val githubTokenStore = remember { GitHubTokenStore(context) }\n    var githubConnected by remember { mutableStateOf(githubTokenStore.accessToken() != null) }\n    var githubCallbackMessage by remember { mutableStateOf<String?>(null) }\n\n    LaunchedEffect(githubCallbackUri) {\n        val callback = githubCallbackUri ?: return@LaunchedEffect\n        if (callback.scheme != "geivia" || callback.host != "github" || callback.path != "/callback") return@LaunchedEffect\n        val expectedState = prefs.getString("github_oauth_state", null)\n        val verifier = prefs.getString("github_oauth_verifier", null)\n        val receivedState = callback.getQueryParameter("state")\n        val code = callback.getQueryParameter("code")\n        val callbackError = callback.getQueryParameter("error")\n        try {\n            require(expectedState != null && receivedState == expectedState) { "A validação de segurança da autorização falhou. Inicie a conexão novamente." }\n            require(callbackError == null) { "O GitHub cancelou ou recusou a autorização." }\n            require(!code.isNullOrBlank() && !verifier.isNullOrBlank()) { "O retorno do GitHub está incompleto. Inicie a conexão novamente." }\n            val clientId = prefs.getString("github_client_id", "").orEmpty()\n            val callbackUrl = prefs.getString("github_callback_url", "").orEmpty()\n            val exchangeUrl = prefs.getString("github_exchange_url", "").orEmpty()\n            val tokenResponse = withContext(Dispatchers.IO) {\n                GitHubAuthClient.exchangeCode(exchangeUrl, clientId, callbackUrl, code, verifier)\n            }\n            githubTokenStore.save(tokenResponse)\n            githubConnected = true\n            githubCallbackMessage = "Conta GitHub conectada. Carregando seus repositórios."\n        } catch (error: Exception) {\n            githubCallbackMessage = error.message ?: "Não foi possível concluir a autorização GitHub."\n        } finally {\n            prefs.edit().remove("github_oauth_state").remove("github_oauth_verifier").remove("github_oauth_started_at").apply()\n        }\n        page = "github"\n    }
 
     // Central checkpoint: every screen transition is persisted, so force-closing
     // the app does not send the user back to the beginning of onboarding.
@@ -148,7 +150,7 @@ private fun GeiviaApp() {
                     onContinue = { page = "summary" })
                 "summary" -> SummaryScreen(answers.toMap(), costMode,
                     onBack = { page = "cost" }, onEdit = { page = "questions"; index = 0 }, onFinish = { page = "dashboard" })
-                "google_access" -> CloudShellSetupScreen(
+                "github" -> GitHubScreen(\n                    connected = githubConnected,\n                    callbackMessage = githubCallbackMessage,\n                    onBack = { page = "dashboard" },\n                    onConnectedChanged = { githubConnected = it }\n                )\n                "google_access" -> CloudShellSetupScreen(
                     workspaceName = workspaceName,
                     workspaceId = workspaceId,
                     answers = answers.toMap(),
@@ -156,7 +158,7 @@ private fun GeiviaApp() {
                     onBack = { page = "dashboard" },
                     onContinue = { page = "dashboard" }
                 )
-                else -> DashboardScreen(answers.toMap(), costMode, onGoogleAccess = { page = "google_access" }) {
+                else -> DashboardScreen(answers.toMap(), costMode, onGoogleAccess = { page = "google_access" }, onGitHub = { page = "github" }) {
                     answers.clear()
                     val editor = prefs.edit()
                     answerKeys.forEach { editor.remove(it) }
@@ -383,7 +385,7 @@ private fun SummaryScreen(answers: Map<String, String>, costMode: String, onBack
 }
 
 @Composable
-private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGoogleAccess: () -> Unit, onRestart: () -> Unit) {
+private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGoogleAccess: () -> Unit, onGitHub: () -> Unit, onRestart: () -> Unit) {
     val context = LocalContext.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp)) {
         BrandMark()
@@ -614,7 +616,7 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
             )
         }
         Spacer(Modifier.height(16.dp))
-        OutlinedButton(onClick = onGoogleAccess, modifier = Modifier.fillMaxWidth()) { Text("Acessar Google Cloud com minha conta") }
+        OutlinedButton(onClick = onGoogleAccess, modifier = Modifier.fillMaxWidth()) { Text("Acessar Google Cloud com minha conta") }\n        Spacer(Modifier.height(8.dp))\n        OutlinedButton(onClick = onGitHub, modifier = Modifier.fillMaxWidth()) { Text("Conectar e acompanhar GitHub") }
         Spacer(Modifier.height(8.dp))
         Button(onClick = { shareProjectPlan(context = context, answers = answers, costMode = costMode) }, modifier = Modifier.fillMaxWidth()) { Text("Compartilhar plano do projeto") }
         Spacer(Modifier.height(8.dp))
@@ -1765,6 +1767,170 @@ private fun shareProjectPlan(context: Context, answers: Map<String, String>, cos
         putExtra(Intent.EXTRA_TEXT, body)
     }
     context.startActivity(Intent.createChooser(sendIntent, "Compartilhar plano"))
+}
+
+
+@Composable
+private fun GitHubScreen(
+    connected: Boolean,
+    callbackMessage: String?,
+    onBack: () -> Unit,
+    onConnectedChanged: (Boolean) -> Unit
+) {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
+    val tokenStore = remember { GitHubTokenStore(context) }
+    var clientId by rememberSaveable { mutableStateOf(prefs.getString("github_client_id", "").orEmpty()) }
+    var callbackUrl by rememberSaveable { mutableStateOf(prefs.getString("github_callback_url", "").orEmpty()) }
+    var exchangeUrl by rememberSaveable { mutableStateOf(prefs.getString("github_exchange_url", "").orEmpty()) }
+    var repositories by remember { mutableStateOf<List<GitHubRepository>>(emptyList()) }
+    var loading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var localConnected by remember { mutableStateOf(connected) }
+
+    LaunchedEffect(connected) {
+        localConnected = connected
+        val token = tokenStore.accessToken()
+        if (token != null) {
+            loading = true
+            val result = withContext(Dispatchers.IO) {
+                runCatching { GitHubApiClient.listRepositories(token) }
+            }
+            result.onSuccess {
+                repositories = it
+                error = null
+            }.onFailure {
+                repositories = emptyList()
+                error = it.message ?: "Falha ao consultar o GitHub."
+                if (error.orEmpty().contains("expirou") || error.orEmpty().contains("revogada")) {
+                    tokenStore.clear()
+                    localConnected = false
+                    onConnectedChanged(false)
+                }
+            }
+            loading = false
+        } else {
+            repositories = emptyList()
+        }
+    }
+
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("GEIVIA", color = DeepBlue, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = onBack) { Text("Voltar") }
+        }
+        Spacer(Modifier.height(18.dp))
+        Text("GitHub", color = Ink, fontSize = 27.sp, fontWeight = FontWeight.Bold)
+        Text("Conecte sua própria conta para acompanhar seus repositórios e builds.", color = Muted, fontSize = 14.sp, lineHeight = 20.sp)
+        Spacer(Modifier.height(14.dp))
+        Card(colors = CardDefaults.cardColors(containerColor = if (localConnected) Color(0xFFEAF6EF) else Color(0xFFFFF5E6)), shape = RoundedCornerShape(14.dp)) {
+            Column(Modifier.padding(14.dp)) {
+                Text(if (localConnected) "GITHUB AUTORIZADO" else "CONFIGURAÇÃO NECESSÁRIA", color = if (localConnected) Color(0xFF236342) else Color(0xFF9A5B13), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(5.dp))
+                Text(if (localConnected) "A conta autorizou o acesso. O GEIVIA consulta somente os repositórios permitidos pela GitHub App." else "Antes de conectar, registre a GitHub App e publique o serviço de autorização descrito na documentação do repositório.", color = Ink, fontSize = 13.sp, lineHeight = 19.sp)
+            }
+        }
+        callbackMessage?.let {
+            Spacer(Modifier.height(8.dp))
+            Text(it, color = Muted, fontSize = 12.sp)
+        }
+        if (!localConnected) {
+            Spacer(Modifier.height(18.dp))
+            Text("CONFIGURAÇÃO DA GITHUB APP", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(value = clientId, onValueChange = { clientId = it.trim() }, label = { Text("Client ID (não é segredo)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(value = callbackUrl, onValueChange = { callbackUrl = it.trim() }, label = { Text("URL HTTPS de callback") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(value = exchangeUrl, onValueChange = { exchangeUrl = it.trim() }, label = { Text("URL HTTPS do serviço /exchange") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = {
+                    val valid = clientId.isNotBlank() && callbackUrl.startsWith("https://") && callbackUrl.endsWith("/callback") && exchangeUrl.startsWith("https://") && exchangeUrl.endsWith("/exchange")
+                    if (!valid) {
+                        error = "Informe o Client ID, a URL HTTPS terminada em /callback e a URL HTTPS terminada em /exchange."
+                    } else {
+                        prefs.edit().putString("github_client_id", clientId)
+                            .putString("github_callback_url", callbackUrl)
+                            .putString("github_exchange_url", exchangeUrl).apply()
+                        error = "Configuração salva somente neste aparelho."
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Salvar configuração") }
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = {
+                    runCatching {
+                        require(clientId.isNotBlank() && callbackUrl.startsWith("https://") && callbackUrl.endsWith("/callback") && exchangeUrl.startsWith("https://") && exchangeUrl.endsWith("/exchange")) {
+                            "Configure Client ID, callback HTTPS e serviço /exchange antes de conectar."
+                        }
+                        val verifier = GitHubOAuth.randomVerifier()
+                        val state = GitHubOAuth.randomState()
+                        val authUrl = GitHubOAuth.authorizationUrl(clientId, callbackUrl, state, verifier)
+                        prefs.edit().putString("github_client_id", clientId)
+                            .putString("github_callback_url", callbackUrl)
+                            .putString("github_exchange_url", exchangeUrl)
+                            .putString("github_oauth_verifier", verifier)
+                            .putString("github_oauth_state", state)
+                            .putLong("github_oauth_started_at", System.currentTimeMillis()).apply()
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(authUrl)))
+                    }.onFailure { error = it.message ?: "Não foi possível iniciar a conexão." }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Autorizar no GitHub") }
+            Text("O Client Secret nunca é solicitado aqui. Ele fica somente como segredo no serviço HTTPS. O token recebido é criptografado com uma chave do Android Keystore.", color = Muted, fontSize = 11.sp, lineHeight = 16.sp)
+        } else {
+            Spacer(Modifier.height(14.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("SEUS REPOSITÓRIOS", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = {
+                    val token = tokenStore.accessToken()
+                    if (token != null) {
+                        loading = true
+                        error = null
+                    }
+                }) { Text("Atualizar") }
+            }
+            if (loading) {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+                Text("Consultando GitHub…", color = Muted, fontSize = 12.sp)
+            }
+            error?.let { Text(it, color = Color(0xFF9A5B13), fontSize = 12.sp, lineHeight = 17.sp) }
+            if (!loading && repositories.isEmpty() && error == null) {
+                Text("Nenhum repositório retornado. Confira se a GitHub App foi instalada e recebeu acesso aos repositórios.", color = Muted, fontSize = 12.sp)
+            }
+            repositories.forEach { repo ->
+                Card(Modifier.fillMaxWidth().padding(vertical = 5.dp).clickable {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(repo.htmlUrl)))
+                }, colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(12.dp)) {
+                    Column(Modifier.padding(13.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(repo.fullName, color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                            Text(if (repo.isPrivate) "Privado" else "Público", color = Muted, fontSize = 10.sp)
+                        }
+                        repo.description?.let { Text(it, color = Muted, fontSize = 11.sp, lineHeight = 15.sp) }
+                        Text("Branch: ${repo.defaultBranch}", color = Muted, fontSize = 10.sp)
+                    }
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(onClick = {
+                tokenStore.clear()
+                prefs.edit().remove("github_oauth_state").remove("github_oauth_verifier").apply()
+                repositories = emptyList()
+                localConnected = false
+                onConnectedChanged(false)
+                error = null
+            }, modifier = Modifier.fillMaxWidth()) { Text("Desconectar GitHub neste aparelho") }
+            Text("Para revogar totalmente, remova também a autorização da GitHub App nas configurações da sua conta GitHub.", color = Muted, fontSize = 10.sp, lineHeight = 15.sp)
+        }
+        error?.takeIf { !localConnected }?.let { Text(it, color = Color(0xFF9A5B13), fontSize = 11.sp, lineHeight = 16.sp) }
+        Spacer(Modifier.height(16.dp))
+        Text("Permissões iniciais recomendadas: Metadata (read), Contents (read) e Actions (read). O GEIVIA não pede escrita, administração, secrets ou alteração de workflows nesta primeira fase.", color = Muted, fontSize = 11.sp, lineHeight = 16.sp)
+    }
 }
 
 @Composable

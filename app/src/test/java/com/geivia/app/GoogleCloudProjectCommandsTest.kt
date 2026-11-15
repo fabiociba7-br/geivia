@@ -10,7 +10,7 @@ class GoogleCloudProjectCommandsTest {
     fun createOrReuseOnlyCreatesAfterExactNotFoundAndOnlyOnce() {
         val command = GoogleCloudProjectCommands.createOrReuse("geivia-demo-123", "Projeto de teste")
         assertTrue(command.contains("gcloud projects describe \"\$PROJECT_ID\""))
-        assertTrue(command.contains("grep -Eq '^ERROR: \\\\(gcloud\\\\.projects\\\\.describe\\\\) NOT_FOUND:'"))
+        assertTrue(command.contains("grep -Eq '^ERROR: \\(gcloud\\.projects\\.describe\\) NOT_FOUND:'"))
         assertTrue(command.contains("if ! gcloud projects create"))
         assertTrue(command.contains("Consulta inconclusiva ou sem permissão. Nenhuma criação foi enviada."))
         assertTrue(command.contains("NÃO repita. Reconcilie o mesmo Project ID."))
@@ -35,7 +35,7 @@ class GoogleCloudProjectCommandsTest {
         val command = GoogleCloudProjectCommands.reconcile("geivia-demo-123")
         assertTrue(command.contains("gcloud projects describe 'geivia-demo-123'"))
         assertTrue(command.contains("NOT_FOUND_CONFIRMED"))
-        assertTrue(command.contains("grep -Eq '^ERROR: \\\\(gcloud\\\\.projects\\\\.describe\\\\) NOT_FOUND:'"))
+        assertTrue(command.contains("grep -Eq '^ERROR: \\(gcloud\\.projects\\.describe\\) NOT_FOUND:'"))
         assertFalse(command.contains("gcloud projects create"))
     }
 

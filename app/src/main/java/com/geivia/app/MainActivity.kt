@@ -705,7 +705,7 @@ cloudshell download geivia-projects.json"""
             "gcloud services list --enabled --project=\"\$PROJECT_ID\" --format=json > geivia-enabled-apis.json",
             "if jq -e 'any(.[]; ((.config.name // .name) == \"firestore.googleapis.com\"))' geivia-enabled-apis.json >/dev/null; then gcloud firestore databases list --project=\"\$PROJECT_ID\" --format=json > geivia-firestore-databases.json; else printf '[]\\n' > geivia-firestore-databases.json; fi",
             "if gcloud billing projects describe \"\$PROJECT_ID\" --format=json > geivia-billing.json 2>/dev/null; then :; else printf '{\"billingEnabled\":null}\\n' > geivia-billing.json; fi",
-            "jq -n --slurpfile p geivia-project-details.json --slurpfile s geivia-enabled-apis.json --slurpfile d geivia-firestore-databases.json --slurpfile b geivia-billing.json '{project:\\$p[0],enabledServices:\\$s[0],firestoreDatabases:\\$d[0],billing:\\$b[0]}' > geivia-diagnostic.json",
+            "jq -n --slurpfile p geivia-project-details.json --slurpfile s geivia-enabled-apis.json --slurpfile d geivia-firestore-databases.json --slurpfile b geivia-billing.json '{project:\$p[0],enabledServices:\$s[0],firestoreDatabases:\$d[0],billing:\$b[0]}' > geivia-diagnostic.json",
             "cloudshell download geivia-diagnostic.json"
         ).joinToString("\n")
     }

@@ -18,6 +18,7 @@ object FirebaseDeploymentCommands {
             PROJECT_ID='$projectId'
             gcloud projects describe "§PROJECT_ID" --format=json >/dev/null
             gcloud services list --enabled --project="§PROJECT_ID" --format=json | jq -e 'any(.[]; ((.config.name // .name) == "firestore.googleapis.com"))' >/dev/null
+            gcloud services list --enabled --project="§PROJECT_ID" --format=json | jq -e 'any(.[]; ((.config.name // .name) == "firebaserules.googleapis.com"))' >/dev/null
             gcloud services list --enabled --project="§PROJECT_ID" --format=json | jq -e 'any(.[]; ((.config.name // .name) == "firebase.googleapis.com"))' >/dev/null
             command -v firebase >/dev/null
             if ! firebase projects:list >/dev/null 2>&1; then

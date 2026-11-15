@@ -380,6 +380,47 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
                 if (chosenProjectId.isNotBlank()) Text("Project ID: $chosenProjectId", color = Muted, fontSize = 12.sp)
             }
         }
+        val planItems = buildList {
+            add("Conferir o projeto Google Cloud selecionado")
+            add("Importar um diagnóstico atualizado do mesmo Project ID")
+            if (answers["login"].orEmpty().let { it.isNotBlank() && !it.contains("Não precisa") }) add("Avaliar Firebase Authentication")
+            if (answers["data"].orEmpty().let { it.isNotBlank() && !it.contains("Não vai guardar") }) add("Avaliar Cloud Firestore")
+            if (answers["files"].orEmpty().let { it.isNotBlank() && !it.startsWith("Não terá") }) add("Avaliar Cloud Storage para arquivos")
+            if (answers["platform"].orEmpty().let { it.contains("web") || it.contains("Site") || it.contains("Android e web") }) add("Avaliar Firebase Hosting")
+            if (answers["extras"].orEmpty().let { it.contains("Processamentos automáticos") || it.contains("programadas") }) add("Verificar necessidade de Cloud Build e processamento no servidor")
+            add("Revisar limites gratuitos e possíveis custos de cada serviço")
+            add("Autorizar individualmente cada alteração antes de executá-la")
+        }
+        val diagnosticMatches = runCatching {
+            val report = org.json.JSONObject(projectPrefs.getString("cloud_project_diagnostic_json", null) ?: return@runCatching false)
+            report.optJSONObject("project")?.optString("projectId") == chosenProjectId && chosenProjectId.isNotBlank()
+        }.getOrDefault(false)
+        Spacer(Modifier.height(16.dp))
+        Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(15.dp)) {
+            Column(Modifier.padding(16.dp)) {
+                Text("PLANO DE EXECUÇÃO", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Spacer(Modifier.height(5.dp))
+                Text("Etapas organizadas pelas respostas do questionário", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
+                Text(when {
+                    chosenProjectId.isBlank() -> "Primeiro selecione um projeto existente. Nenhum projeto será criado automaticamente."
+                    diagnosticMatches -> "O diagnóstico importado corresponde ao projeto selecionado. Revise os serviços antes de qualquer mudança."
+                    else -> "O projeto está selecionado, mas falta importar um diagnóstico atualizado vinculado a ele."
+                }, color = Muted, fontSize = 12.sp, lineHeight = 18.sp)
+                Spacer(Modifier.height(10.dp))
+                planItems.forEachIndexed { index, item ->
+                    Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.Top) {
+                        Text("${index + 1}.", color = Blue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.width(8.dp))
+                        Text(item, color = Ink, fontSize = 12.sp, lineHeight = 18.sp)
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(if (costMode == "zero") "Modo custo zero: não habilitar recursos que possam exigir faturamento. Storage e processamento avançado ficam sujeitos a verificação específica; se houver exigência de plano pago, a etapa será interrompida." else "Recursos pagos continuam dependendo de análise de custo e autorização separada. A escolha deste modo não ativa faturamento.", color = if (costMode == "zero") Color(0xFF77501A) else Muted, fontSize = 11.sp, lineHeight = 17.sp)
+                Spacer(Modifier.height(8.dp))
+                Text("Nesta versão, o plano é informativo: ainda não executa alterações nem habilita APIs. A próxima etapa será adicionar confirmação por serviço, revisão do comando e registro do resultado antes de avançar.", color = Muted, fontSize = 11.sp, lineHeight = 17.sp)
+            }
+        }
         Spacer(Modifier.height(22.dp))
         Card(
             colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF6EF)),

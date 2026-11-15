@@ -555,6 +555,10 @@ private fun CloudShellSetupScreen(
     var selectedProjectNumber by remember { mutableStateOf(prefs.getString("selected_project_number", null).orEmpty()) }
     var selectedApiForConfirmation by remember { mutableStateOf<Pair<String, String>?>(null) }
     var showCancelPendingDialog by remember { mutableStateOf(false) }
+    var firestoreLocation by remember { mutableStateOf(prefs.getString("firestore_location", "").orEmpty()) }
+    var firestoreDatabaseIds by remember { mutableStateOf<List<String>?>(null) }
+    var showFirestoreCreateDialog by remember { mutableStateOf(false) }
+    var firestoreActionStatus by remember { mutableStateOf("") }
     var apiActionStatus by remember { mutableStateOf("") }
     var actionHistory by remember {
         mutableStateOf(

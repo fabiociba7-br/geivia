@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Geivia.Splash" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowSplashScreenBackground">#FFFFFF</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/geivia_splash_icon</item>
+        <item name="android:windowSplashScreenAnimationDuration">500</item>
+        <item name="android:postSplashScreenTheme">@style/Theme.Geivia</item>
+    </style>
+    <style name="Theme.Geivia" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#087DB5</item>
+        <item name="android:statusBarColor">#F7FBFD</item>
+        <item name="android:navigationBarColor">#F7FBFD</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>

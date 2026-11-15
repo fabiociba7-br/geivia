@@ -55,8 +55,18 @@ object GoogleCloudProjectCommands {
         requireProjectId(projectId)
         return """
             set -euo pipefail
-            gcloud projects describe '$projectId' --format=json > geivia-project-result.json
-            jq '[{projectId:.projectId,name:.name,projectNumber:(.projectNumber|tostring),lifecycleState:.lifecycleState}]' geivia-project-result.json > geivia-projects.json
+            if gcloud projects describe '$projectId' --format=json > geivia-project-result.json 2> geivia-project-reconcile.err; then
+              jq '[{projectId:.projectId,name:.name,projectNumber:(.projectNumber|tostring),lifecycleState:.lifecycleState}]' geivia-project-result.json > geivia-projects.json
+            else
+              if grep -Eq '(^|[[:space:]])NOT_FOUND:' geivia-project-reconcile.err; then
+                jq -n --arg id '$projectId' '[{projectId:$id,name:$id,projectNumber:"",lifecycleState:"NOT_FOUND_CONFIRMED"}]' > geivia-projects.json
+                echo "O Google confirmou NOT_FOUND para este Project ID. Nenhum projeto foi criado."
+              else
+                cat geivia-project-reconcile.err
+                echo "Reconciliação inconclusiva. Não altere o ID nem tente criar outro projeto."
+                exit 24
+              fi
+            fi
             cloudshell download geivia-projects.json
         """.trimIndent()
     }

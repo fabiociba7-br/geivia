@@ -557,6 +557,7 @@ private fun CloudShellSetupScreen(
     var showCancelPendingDialog by remember { mutableStateOf(false) }
     var firestoreLocation by remember { mutableStateOf(prefs.getString("firestore_location", "").orEmpty()) }
     var firestoreDatabaseIds by remember { mutableStateOf<List<String>?>(null) }
+    var firestoreBillingEnabled by remember { mutableStateOf<Boolean?>(null) }
     var showFirestoreCreateDialog by remember { mutableStateOf(false) }
     var firestoreActionStatus by remember { mutableStateOf("") }
     var apiActionStatus by remember { mutableStateOf("") }

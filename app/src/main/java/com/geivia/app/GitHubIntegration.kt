@@ -233,7 +233,7 @@ object GitHubAuthClient {
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
             val response = readUtf8Limited(stream, 64 * 1024)
-            if (status !in 200..299) throw IllegalStateException("Falha ao renovar a autorização GitHub (HTTP $status).")
+            if (status == 401) throw IllegalStateException("A autorização expirou ou foi revogada. Conecte novamente.")\n            if (status !in 200..299) throw IllegalStateException("Falha ao renovar a autorização GitHub (HTTP $status).")
             require(JSONObject(response).optString("access_token").isNotBlank()) {
                 "O serviço não retornou um novo token válido."
             }

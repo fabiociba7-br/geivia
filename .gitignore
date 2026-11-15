@@ -34,3 +34,5 @@ google-services.json
 # Cloudflare Worker local files
 node_modules/
 .wrangler/
+.dev.vars
+.dev.vars.*

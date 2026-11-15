@@ -30,6 +30,48 @@ data class WorkflowStepRecord(
     val evidence: String
 )
 
+data class WorkflowBackupValidationResult(val valid: Boolean, val message: String)
+
+object WorkflowBackupValidator {
+    private const val FORMAT = "GEIVIA_WORKFLOW_BACKUP"
+    private const val SUPPORTED_VERSION = 1
+
+    /** Validates the backup envelope and raw-content hashes only; never imports or mutates state. */
+    fun validate(rawJson: String): WorkflowBackupValidationResult {
+        return try {
+            val backup = JSONObject(rawJson)
+            if (backup.getString("format") != FORMAT) {
+                return WorkflowBackupValidationResult(false, "Formato de backup não reconhecido.")
+            }
+            if (backup.getInt("version") != SUPPORTED_VERSION) {
+                return WorkflowBackupValidationResult(false, "Versão de backup não suportada.")
+            }
+            val recordsRaw = backup.getString("recordsRaw")
+            val historyRaw = backup.getString("historyRaw")
+            val recordsHash = backup.getString("recordsSha256")
+            val historyHash = backup.getString("historySha256")
+            val hashPattern = Regex("^[a-fA-F0-9]{64}$")
+            if (!hashPattern.matches(recordsHash) || !hashPattern.matches(historyHash)) {
+                return WorkflowBackupValidationResult(false, "Hash ausente ou em formato inválido.")
+            }
+            fun digest(value: String): ByteArray =
+                java.security.MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8))
+            fun decodeHex(value: String): ByteArray = ByteArray(value.length / 2) { index ->
+                value.substring(index * 2, index * 2 + 2).toInt(16).toByte()
+            }
+            val recordsValid = java.security.MessageDigest.isEqual(digest(recordsRaw), decodeHex(recordsHash))
+            val historyValid = java.security.MessageDigest.isEqual(digest(historyRaw), decodeHex(historyHash))
+            if (!recordsValid || !historyValid) {
+                WorkflowBackupValidationResult(false, "O conteúdo não corresponde aos hashes SHA-256. O arquivo pode ter sido alterado ou danificado.")
+            } else {
+                WorkflowBackupValidationResult(true, "Integridade do arquivo e dos dois conteúdos confirmada.")
+            }
+        } catch (_: Exception) {
+            WorkflowBackupValidationResult(false, "Arquivo inválido ou incompleto. Nenhum dado foi importado.")
+        }
+    }
+}
+
 class WorkflowProgressStore(private val prefs: SharedPreferences) {
     companion object {
         private const val KEY_RECORDS = "workflow_step_records_v1"

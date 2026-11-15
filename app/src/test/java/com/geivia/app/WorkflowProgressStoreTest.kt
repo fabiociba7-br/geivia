@@ -217,6 +217,38 @@ class WorkflowProgressStoreTest {
     }
 
     @Test
+    fun validExportedBackupPassesIntegrityValidation() {
+        val backup = WorkflowProgressStore(InMemorySharedPreferences()).exportBackupJson()
+        val result = WorkflowBackupValidator.validate(backup)
+        assertTrue(result.valid)
+        assertTrue(result.message.contains("Integridade"))
+    }
+
+    @Test
+    fun backupValidationRejectsTamperedRawContent() {
+        val backup = org.json.JSONObject(WorkflowProgressStore(InMemorySharedPreferences()).exportBackupJson())
+        backup.put("recordsRaw", "{\\"changed\\":true}")
+        val result = WorkflowBackupValidator.validate(backup.toString())
+        assertEquals(false, result.valid)
+        assertTrue(result.message.contains("SHA-256"))
+    }
+
+    @Test
+    fun backupValidationRejectsUnsupportedVersion() {
+        val backup = org.json.JSONObject(WorkflowProgressStore(InMemorySharedPreferences()).exportBackupJson())
+        backup.put("version", 2)
+        assertEquals(false, WorkflowBackupValidator.validate(backup.toString()).valid)
+    }
+
+    @Test
+    fun backupValidationRejectsMalformedOrIncompleteEnvelope() {
+        assertEquals(false, WorkflowBackupValidator.validate("{invalid-json").valid)
+        val backup = org.json.JSONObject(WorkflowProgressStore(InMemorySharedPreferences()).exportBackupJson())
+        backup.remove("historySha256")
+        assertEquals(false, WorkflowBackupValidator.validate(backup.toString()).valid)
+    }
+
+    @Test
     fun corruptedWorkflowStoreExposesHealthErrorAndKeepsMutationsBlocked() {
         val preferences = InMemorySharedPreferences()
         preferences.edit().putString("workflow_step_records_v1", "{invalid-json").apply()

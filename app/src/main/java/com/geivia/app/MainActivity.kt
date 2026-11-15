@@ -439,6 +439,26 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
                 }
             }
         }
+        val workflowBackupValidationLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.OpenDocument()
+        ) { uri ->
+            if (uri != null) {
+                val result = runCatching {
+                    val raw = context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                        ?: throw IllegalStateException("Não foi possível abrir o arquivo selecionado.")
+                    if (raw.length > 5 * 1024 * 1024) throw IllegalStateException("Arquivo excede o limite de 5 MB.")
+                    WorkflowBackupValidator.validate(raw)
+                }.getOrElse { error ->
+                    WorkflowBackupValidationResult(false, error.message ?: "Não foi possível verificar o arquivo.")
+                }
+                val message = if (result.valid) {
+                    "Backup íntegro. Nenhum dado foi restaurado ou alterado."
+                } else {
+                    "Backup rejeitado: ${result.message} Nenhum dado foi alterado."
+                }
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            }
+        }
         val workflowCatalog = listOf(
             "project_diagnostic" to "Diagnóstico do projeto",
             "api_firebase_googleapis_com" to "Firebase Management API",
@@ -469,7 +489,14 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
                 ) {
                     Text("Exportar backup do histórico")
                 }
-                Text("O backup preserva os dados originais, inclusive se houver corrupção. Ele não restaura nem libera operações automaticamente.", color = Muted, fontSize = 10.sp, lineHeight = 15.sp)
+                Spacer(Modifier.height(6.dp))
+                OutlinedButton(
+                    onClick = { workflowBackupValidationLauncher.launch(arrayOf("application/json", "text/json")) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Verificar integridade de backup")
+                }
+                Text("A verificação confere formato, versão e hashes SHA-256. Não restaura dados, não altera o histórico e não libera operações.", color = Muted, fontSize = 10.sp, lineHeight = 15.sp)
                 if (workflowStorageError != null) {
                     Spacer(Modifier.height(8.dp))
                     Text("OPERAÇÕES BLOQUEADAS PARA EVITAR DUPLICIDADE", color = Color(0xFF9A5B13), fontSize = 11.sp, fontWeight = FontWeight.Bold)

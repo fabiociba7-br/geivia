@@ -28,3 +28,13 @@ O arquivo é uma cópia para preservação e análise, não um comando de restau
 6. Não crie um projeto substituto nem altere o ID para contornar uma falha.
 
 A recuperação automática a partir de backup ainda não é oferecida. O GEIVIA prefere bloquear a operação e preservar os dados a restaurar um estado possivelmente desatualizado e provocar duplicidade.
+
+
+## Verificar integridade de um backup
+
+Use **Verificar integridade de backup** e selecione o arquivo JSON. O GEIVIA confere:
+- identificador do formato e versão suportada;
+- presença dos dois conteúdos originais;
+- hashes SHA-256 de registros e auditoria, calculados sobre os textos UTF-8 exatos.
+
+A verificação é somente leitura. Ela não interpreta o conteúdo interno como estado confiável, não importa/restaura registros e não altera o histórico atual. Um arquivo íntegro apenas prova que os conteúdos correspondem aos hashes incluídos no próprio arquivo; não prova que o backup é recente nem que representa o estado atual do Google Cloud. Continue reconciliando operações pendentes com consultas atuais no Project ID original.

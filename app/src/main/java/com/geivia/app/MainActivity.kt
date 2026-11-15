@@ -297,6 +297,17 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
         Text("Modo escolhido: " + if (costMode == "zero") "custo zero" else "recursos pagos somente com autorização", color = DeepBlue, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(6.dp))
         Text("Projeto: " + (answers["purpose"] ?: "não informado"), color = Ink, fontSize = 13.sp)
+        val projectPrefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val chosenProjectId = projectPrefs.getString("selected_project_id", null).orEmpty()
+        val chosenProjectName = projectPrefs.getString("selected_project_name", null).orEmpty()
+        Spacer(Modifier.height(10.dp))
+        Card(colors = CardDefaults.cardColors(containerColor = if (chosenProjectId.isBlank()) Color(0xFFFFF5E6) else Color(0xFFEAF6EF)), shape = RoundedCornerShape(12.dp)) {
+            Column(Modifier.padding(13.dp)) {
+                Text(if (chosenProjectId.isBlank()) "PROJETO GOOGLE CLOUD NÃO SELECIONADO" else "PROJETO GOOGLE CLOUD DE DESTINO", color = if (chosenProjectId.isBlank()) Color(0xFF9A5B13) else Color(0xFF236342), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text(if (chosenProjectId.isBlank()) "Importe a lista e escolha um projeto existente antes de qualquer configuração na nuvem." else chosenProjectName.ifBlank { chosenProjectId }, color = Ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                if (chosenProjectId.isNotBlank()) Text("Project ID: $chosenProjectId", color = Muted, fontSize = 12.sp)
+            }
+        }
         Spacer(Modifier.height(22.dp))
         Card(
             colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF6EF)),
@@ -387,6 +398,13 @@ private fun WorkspaceSetupScreen(
     }
 }
 
+private data class CloudProject(
+    val projectId: String,
+    val name: String,
+    val projectNumber: String,
+    val lifecycleState: String
+)
+
 @Composable
 private fun CloudShellSetupScreen(
     workspaceName: String,
@@ -396,20 +414,27 @@ private fun CloudShellSetupScreen(
 ) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
-    var importedProjects by remember {
-        mutableStateOf(
-            runCatching {
-                val saved = prefs.getString("cloud_projects_json", null) ?: "[]"
-                val array = JSONArray(saved)
-                (0 until array.length()).mapNotNull { index ->
-                    val item = array.optJSONObject(index) ?: return@mapNotNull null
-                    val id = item.optString("projectId")
-                    if (id.isBlank()) null else item.optString("name", id) + " • " + id
-                }
-            }.getOrDefault(emptyList())
-        )
+    fun readSavedProjects(): List<CloudProject> {
+        return runCatching {
+            val array = JSONArray(prefs.getString("cloud_projects_json", "[]") ?: "[]")
+            (0 until array.length()).mapNotNull { index ->
+                val item = array.optJSONObject(index) ?: return@mapNotNull null
+                val id = item.optString("projectId").trim()
+                if (id.isBlank()) null else CloudProject(
+                    projectId = id,
+                    name = item.optString("name").ifBlank { id },
+                    projectNumber = item.optString("projectNumber"),
+                    lifecycleState = item.optString("lifecycleState")
+                )
+            }
+        }.getOrDefault(emptyList())
     }
+    var importedProjects by remember { mutableStateOf(readSavedProjects()) }
     var importStatus by remember { mutableStateOf("") }
+    var selectedProjectId by remember { mutableStateOf(prefs.getString("selected_project_id", null).orEmpty()) }
+    var selectedProjectName by remember { mutableStateOf(prefs.getString("selected_project_name", null).orEmpty()) }
+    var selectedProjectNumber by remember { mutableStateOf(prefs.getString("selected_project_number", null).orEmpty()) }
+
     val cloudShellCommand = """echo 'GEIVIA - diagnóstico inicial'
 gcloud auth list --filter=status:ACTIVE --format='table(account,status)'
 echo
@@ -418,6 +443,7 @@ gcloud projects list --format=json > geivia-projects.json
 echo
 echo 'Baixando arquivo para o dispositivo:'
 cloudshell download geivia-projects.json"""
+
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             runCatching {
@@ -425,31 +451,48 @@ cloudshell download geivia-projects.json"""
                     ?: throw IllegalStateException("Não foi possível abrir o arquivo selecionado.")
                 val array = JSONArray(raw)
                 val clean = JSONArray()
-                val rows = mutableListOf<String>()
+                val projects = mutableListOf<CloudProject>()
                 for (index in 0 until array.length()) {
                     val item = array.optJSONObject(index) ?: continue
-                    val id = item.optString("projectId")
+                    val id = item.optString("projectId").trim()
                     if (id.isNotBlank()) {
-                        val safe = org.json.JSONObject()
-                        safe.put("projectId", id)
-                        safe.put("name", item.optString("name", id))
-                        safe.put("projectNumber", item.optString("projectNumber"))
-                        safe.put("lifecycleState", item.optString("lifecycleState"))
+                        val name = item.optString("name").ifBlank { id }
+                        val number = item.optString("projectNumber")
+                        val state = item.optString("lifecycleState")
+                        val safe = org.json.JSONObject().apply {
+                            put("projectId", id)
+                            put("name", name)
+                            put("projectNumber", number)
+                            put("lifecycleState", state)
+                        }
                         clean.put(safe)
-                        rows.add(item.optString("name", id) + " • " + id)
+                        projects.add(CloudProject(id, name, number, state))
                     }
                 }
-                if (rows.isEmpty()) throw IllegalStateException("O JSON não contém projetos com projectId.")
+                if (projects.isEmpty()) throw IllegalStateException("O JSON não contém projetos com projectId.")
                 prefs.edit().putString("cloud_projects_json", clean.toString()).apply()
-                rows
+                projects
             }.onSuccess {
                 importedProjects = it
-                importStatus = "Importação concluída: " + it.size + " projeto(s) lido(s)."
+                importStatus = "Importação concluída: ${it.size} projeto(s) lido(s). A seleção anterior foi preservada."
             }.onFailure {
                 importStatus = it.message ?: "Não foi possível importar o JSON."
             }
         }
     }
+
+    fun selectProject(project: CloudProject) {
+        prefs.edit()
+            .putString("selected_project_id", project.projectId)
+            .putString("selected_project_name", project.name)
+            .putString("selected_project_number", project.projectNumber)
+            .apply()
+        selectedProjectId = project.projectId
+        selectedProjectName = project.name
+        selectedProjectNumber = project.projectNumber
+        importStatus = "Projeto selecionado e salvo neste aparelho."
+    }
+
     fun openGoogleCloud(url: String) {
         runCatching {
             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
@@ -462,6 +505,7 @@ cloudshell download geivia-projects.json"""
         clipboard.setPrimaryClip(ClipData.newPlainText("Comando GEIVIA Cloud Shell", cloudShellCommand))
         Toast.makeText(context, "Comando copiado. Cole no terminal do Cloud Shell.", Toast.LENGTH_LONG).show()
     }
+
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp)) {
         Text("GEIVIA", color = DeepBlue, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
         Spacer(Modifier.height(18.dp))
@@ -471,6 +515,7 @@ cloudshell download geivia-projects.json"""
         Text("Código: $workspaceId", color = Muted, fontSize = 11.sp)
         Spacer(Modifier.height(14.dp))
         Text("O GEIVIA não usa nenhuma conta do desenvolvedor. O Cloud Shell acessa os recursos com a sua conta Google, autenticada diretamente no navegador.", color = Muted, fontSize = 14.sp, lineHeight = 21.sp)
+
         Spacer(Modifier.height(16.dp))
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF4FA)), shape = RoundedCornerShape(14.dp)) {
             Column(Modifier.padding(15.dp)) {
@@ -510,23 +555,65 @@ cloudshell download geivia-projects.json"""
                 Spacer(Modifier.height(10.dp))
                 Button(onClick = { copyCommand() }, modifier = Modifier.fillMaxWidth()) { Text("Copiar comando de diagnóstico") }
                 Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick = { importLauncher.launch(arrayOf("*/*")) }, modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/json", "text/*", "*/*")) }, modifier = Modifier.fillMaxWidth()) {
                     Text("Importar geivia-projects.json")
                 }
                 if (importStatus.isNotBlank()) {
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(importStatus, color = DeepBlue, fontSize = 12.sp)
                 }
-                if (importedProjects.isNotEmpty()) {
-                    Spacer(Modifier.height(8.dp))
-                    Text("PROJETOS IMPORTADOS (" + importedProjects.size + ")", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    importedProjects.forEach { Text(it, color = Muted, fontSize = 11.sp, modifier = Modifier.padding(vertical = 2.dp)) }
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+        Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {
+            Column(Modifier.padding(15.dp)) {
+                Text("ETAPA 4 — ESCOLHA O PROJETO DE DESTINO", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(6.dp))
+                Text("Selecione um projeto que já existe na sua conta. O GEIVIA salvará o ID exato e deverá manter esse mesmo destino nas próximas etapas. A importação de outra lista não troca sua seleção automaticamente.", color = Ink, fontSize = 13.sp, lineHeight = 19.sp)
+                Spacer(Modifier.height(10.dp))
+                if (selectedProjectId.isNotBlank()) {
+                    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF6EF)), shape = RoundedCornerShape(10.dp)) {
+                        Column(Modifier.padding(12.dp)) {
+                            Text("PROJETO ATUALMENTE SELECIONADO", color = Color(0xFF236342), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text(selectedProjectName.ifBlank { selectedProjectId }, color = Ink, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("Project ID: $selectedProjectId", color = Muted, fontSize = 12.sp)
+                            if (selectedProjectNumber.isNotBlank()) Text("Número: $selectedProjectNumber", color = Muted, fontSize = 11.sp)
+                            if (importedProjects.none { it.projectId == selectedProjectId }) {
+                                Text("Este projeto não aparece na última lista importada. A seleção foi preservada; confira o acesso antes de continuar.", color = Color(0xFF9A5B13), fontSize = 11.sp)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                }
+                if (importedProjects.isEmpty()) {
+                    Text("Nenhum projeto importado ainda. Faça o diagnóstico e importe o arquivo JSON para escolher um destino.", color = Muted, fontSize = 13.sp)
+                } else {
+                    Text("PROJETOS DISPONÍVEIS (${importedProjects.size})", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    importedProjects.forEach { project ->
+                        val chosen = selectedProjectId == project.projectId
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(top = 7.dp).clickable { selectProject(project) },
+                            shape = RoundedCornerShape(11.dp),
+                            colors = CardDefaults.cardColors(containerColor = if (chosen) Color(0xFFE8F4FA) else Color(0xFFF7FBFD))
+                        ) {
+                            Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(selected = chosen, onClick = { selectProject(project) })
+                                Spacer(Modifier.width(7.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(project.name, color = Ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                    Text("ID: ${project.projectId}", color = Muted, fontSize = 11.sp)
+                                    if (project.lifecycleState.isNotBlank()) Text("Estado: ${project.lifecycleState}", color = Muted, fontSize = 10.sp)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
         Spacer(Modifier.height(12.dp))
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF5E6)), shape = RoundedCornerShape(14.dp)) {
-            Text("Depois que o arquivo for baixado, volte ao GEIVIA e toque em Importar geivia-projects.json. O aplicativo guarda somente o identificador, nome, número e estado dos projetos. Nunca importe tokens, cookies ou chaves. O Cloud Shell oferece o comando cloudshell download para transferir arquivos ao dispositivo.", Modifier.padding(15.dp), color = Color(0xFF77501A), fontSize = 12.sp, lineHeight = 18.sp)
+            Text("O GEIVIA guarda apenas o identificador, nome, número e estado dos projetos. Nunca importe tokens, cookies ou chaves. A seleção fica salva neste aparelho e não será substituída por um projeto novo após um erro.", Modifier.padding(15.dp), color = Color(0xFF77501A), fontSize = 12.sp, lineHeight = 18.sp)
         }
         Spacer(Modifier.height(18.dp))
         Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) { Text("Continuar para o questionário") }

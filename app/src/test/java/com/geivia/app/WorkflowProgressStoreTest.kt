@@ -30,6 +30,24 @@ class WorkflowProgressStoreTest {
     }
 
     @Test
+    fun failedOperationRequiresASeparateNewConfirmationBeforeRetry() {
+        val store = store()
+        store.waitForConfirmation("project-retry", "hosting", "First review")
+        store.confirmAndStart("project-retry", "hosting", "op-first", "Started")
+        store.markFailed("project-retry", "hosting", "Known failure")
+
+        org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+            store.confirmAndStart("project-retry", "hosting", "op-second", "Must remain blocked")
+        }
+
+        store.waitForConfirmation("project-retry", "hosting", "User explicitly reviews a new attempt")
+        assertEquals(
+            WorkflowStepState.IN_PROGRESS,
+            store.confirmAndStart("project-retry", "hosting", "op-second", "New confirmed attempt").state
+        )
+    }
+
+    @Test
     fun manualConfirmationRemainsDistinctFromDiagnosticCompletion() {
         val store = store()
         store.waitForConfirmation("project-two", "hosting", "Review")

@@ -20,9 +20,9 @@ class FirebaseDeploymentCommandsTest {
     fun hostingCommandChecksSiteAndDeploysOnlyHosting() {
         val command = FirebaseDeploymentCommands.hostingStarterDeploy("geivia-sample-123")
         assertTrue(command.contains("SITE_HTTP"))
-        assertTrue(command.contains("[ \"$SITE_HTTP\" = \"404\" ]"))
+        assertTrue(command.contains("[ \"\$SITE_HTTP\" = \"404\" ]"))
         assertTrue(command.contains("firebase deploy --only hosting"))
-        assertTrue(command.contains("https://$PROJECT_ID.web.app"))
+        assertTrue(command.contains("https://\$PROJECT_ID.web.app"))
         assertFalse(command.contains("firebase deploy --only functions"))
     }
 

@@ -1886,13 +1886,7 @@ private fun GitHubScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("SEUS REPOSITÓRIOS", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
-                TextButton(onClick = {
-                    val token = tokenStore.accessToken()
-                    if (token != null) {
-                        loading = true
-                        error = null
-                    }
-                }) { refreshCounter++ }) { Text("Atualizar") }
+                TextButton(onClick = { refreshCounter++ }) { Text("Atualizar") }
             }
             if (loading) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())

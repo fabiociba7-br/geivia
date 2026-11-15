@@ -1826,6 +1826,11 @@ private fun GitHubScreen(
     var callbackUrl by rememberSaveable { mutableStateOf(prefs.getString("github_callback_url", "").orEmpty()) }
     var exchangeUrl by rememberSaveable { mutableStateOf(prefs.getString("github_exchange_url", "").orEmpty()) }
     var repositories by remember { mutableStateOf<List<GitHubRepository>>(emptyList()) }
+    var selectedRepository by remember { mutableStateOf<GitHubRepository?>(null) }
+    var commits by remember { mutableStateOf<List<GitHubCommit>>(emptyList()) }
+    var workflowRuns by remember { mutableStateOf<List<GitHubWorkflowRun>>(emptyList()) }
+    var pullRequests by remember { mutableStateOf<List<GitHubPullRequest>>(emptyList()) }
+    var detailsLoading by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
     var refreshCounter by remember { mutableIntStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }

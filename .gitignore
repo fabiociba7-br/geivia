@@ -30,3 +30,7 @@ google-services.json
 *.log
 *.tmp
 *.swp
+
+# Cloudflare Worker local files
+node_modules/
+.wrangler/

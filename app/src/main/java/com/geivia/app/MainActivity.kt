@@ -231,23 +231,137 @@ private fun SummaryScreen(answers: Map<String, String>, costMode: String, onBack
     }
 }
 
+private data class FirebaseProjectItem(val id: String, val name: String, val number: String)
+
 @Composable
 private fun DashboardScreen(answers: Map<String, String>, costMode: String, onRestart: () -> Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.Center) {
+    val activity = LocalContext.current as android.app.Activity
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var accessToken by remember { mutableStateOf<String?>(null) }
+    var projects by remember { mutableStateOf<List<FirebaseProjectItem>>(emptyList()) }
+    var status by remember { mutableStateOf("Sua conta Google ainda não foi conectada.") }
+    var loading by remember { mutableStateOf(false) }
+    var selectedProject by remember { mutableStateOf<FirebaseProjectItem?>(null) }
+    val requestedScopes = remember { listOf(com.google.android.gms.common.api.Scope("https://www.googleapis.com/auth/firebase.readonly")) }
+    val authLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        try {
+            if (result.resultCode == android.app.Activity.RESULT_OK) {
+                val authResult = com.google.android.gms.auth.api.identity.Identity.getAuthorizationClient(activity)
+                    .getAuthorizationResultFromIntent(result.data)
+                accessToken = authResult.accessToken
+                status = "Acesso de leitura autorizado. Buscando seus projetos Firebase..."
+                scope.launch { loadFirebaseProjects(authResult.accessToken, { projects = it; status = if (it.isEmpty()) "Nenhum projeto Firebase foi encontrado nesta conta." else "Projetos carregados. Selecione um para continuar." }, { status = it }, { loading = it }) }
+            } else status = "A autorização foi cancelada. Nenhum projeto foi alterado."
+        } catch (e: Exception) {
+            status = "Não foi possível concluir a autorização: " + (e.message ?: "erro desconhecido")
+        }
+    }
+
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp)) {
         BrandMark()
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(12.dp))
         Text("Análise concluída", color = Ink, fontSize = 25.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
-        Text("Suas respostas foram salvas neste aparelho. A próxima etapa será conectar sua conta Google com autorização segura e selecionar ou criar um projeto Firebase.", color = Muted, fontSize = 14.sp, lineHeight = 21.sp)
-        Spacer(Modifier.height(18.dp))
+        Text("Suas respostas foram salvas neste aparelho.", color = Muted, fontSize = 14.sp)
+        Spacer(Modifier.height(14.dp))
         Text("Modo escolhido: " + if (costMode == "zero") "custo zero" else "recursos pagos somente com autorização", color = DeepBlue, fontWeight = FontWeight.SemiBold)
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(6.dp))
         Text("Projeto: " + (answers["purpose"] ?: "não informado"), color = Ink, fontSize = 13.sp)
-        Spacer(Modifier.height(24.dp))
-        Button(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth()) { Text("Conectar conta Google — próxima etapa") }
+        Spacer(Modifier.height(22.dp))
+        Text("CONECTAR AO FIREBASE", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        Spacer(Modifier.height(8.dp))
+        Text("A GEIVIA solicitará somente permissão de leitura dos projetos Firebase nesta etapa. Nenhum projeto será criado ou modificado.", color = Muted, fontSize = 13.sp, lineHeight = 19.sp)
+        Spacer(Modifier.height(12.dp))
+        Button(
+            onClick = {
+                loading = true
+                status = "Aguardando autorização do Google..."
+                val request = com.google.android.gms.auth.api.identity.AuthorizationRequest.builder()
+                    .setRequestedScopes(requestedScopes).build()
+                com.google.android.gms.auth.api.identity.Identity.getAuthorizationClient(activity)
+                    .authorize(request)
+                    .addOnSuccessListener { auth ->
+                        if (auth.hasResolution()) {
+                            loading = false
+                            val pending = auth.pendingIntent
+                            if (pending != null) authLauncher.launch(
+                                androidx.activity.result.IntentSenderRequest.Builder(pending.intentSender).build()
+                            ) else status = "O Google não retornou a etapa de autorização."
+                        } else {
+                            accessToken = auth.accessToken
+                            scope.launch { loadFirebaseProjects(auth.accessToken, { projects = it; status = if (it.isEmpty()) "Nenhum projeto Firebase foi encontrado nesta conta." else "Projetos carregados. Selecione um para continuar." }, { status = it }, { loading = it }) }
+                        }
+                    }
+                    .addOnFailureListener { error ->
+                        loading = false
+                        status = "Falha na autorização Google: " + (error.message ?: "verifique a configuração OAuth do GEIVIA.")
+                    }
+            },
+            enabled = !loading && accessToken == null,
+            modifier = Modifier.fillMaxWidth()
+        ) { Text(if (loading) "Conectando..." else "Conectar conta Google") }
+        if (loading) { Spacer(Modifier.height(10.dp)); LinearProgressIndicator(Modifier.fillMaxWidth()) }
+        Spacer(Modifier.height(10.dp))
+        Text(status, color = Muted, fontSize = 13.sp, lineHeight = 19.sp)
+        projects.forEach { project ->
+            Card(Modifier.fillMaxWidth().padding(top = 9.dp).clickable { selectedProject = project }, colors = CardDefaults.cardColors(containerColor = if (selectedProject?.id == project.id) Color(0xFFE8F4FA) else Color.White), shape = RoundedCornerShape(13.dp)) {
+                Column(Modifier.padding(14.dp)) {
+                    Text(project.name, color = Ink, fontWeight = FontWeight.Bold)
+                    Text(project.id + " • " + project.number, color = Muted, fontSize = 11.sp)
+                }
+            }
+        }
+        if (selectedProject != null) {
+            Spacer(Modifier.height(10.dp))
+            Text("Projeto selecionado: " + selectedProject!!.name, color = DeepBlue, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+            Text("A próxima etapa será analisar as APIs e permissões deste projeto antes de qualquer alteração.", color = Muted, fontSize = 12.sp, lineHeight = 18.sp)
+        }
+        Spacer(Modifier.height(18.dp))
         OutlinedButton(onClick = onRestart, modifier = Modifier.fillMaxWidth()) { Text("Refazer questionário") }
-        Text("A conexão Google ainda não está habilitada nesta versão.", color = Muted, fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 10.dp))
+        Text("A criação e a configuração de projetos ainda não são executadas nesta etapa.", color = Muted, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
     }
+}
+
+private suspend fun loadFirebaseProjects(
+    token: String?,
+    onLoaded: (List<FirebaseProjectItem>) -> Unit,
+    onError: (String) -> Unit,
+    onLoading: (Boolean) -> Unit
+) {
+    onLoading(true)
+    try {
+        val items = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val connection = java.net.URL("https://firebase.googleapis.com/v1beta1/projects?pageSize=100").openConnection() as java.net.HttpURLConnection
+            try {
+                connection.requestMethod = "GET"
+                connection.setRequestProperty("Authorization", "Bearer " + token.orEmpty())
+                connection.setRequestProperty("Accept", "application/json")
+                connection.connectTimeout = 20000
+                connection.readTimeout = 20000
+                val code = connection.responseCode
+                val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+                val body = stream.bufferedReader().use { it.readText() }
+                if (code !in 200..299) throw IllegalStateException("HTTP " + code + ": " + org.json.JSONObject(body).optJSONObject("error")?.optString("message", "erro da API"))
+                val results = org.json.JSONObject(body).optJSONArray("results") ?: org.json.JSONArray()
+                buildList {
+                    for (i in 0 until results.length()) {
+                        val item = results.optJSONObject(i) ?: continue
+                        add(FirebaseProjectItem(
+                            item.optString("projectId"),
+                            item.optString("displayName").ifBlank { item.optString("projectId") },
+                            item.optString("projectNumber")
+                        ))
+                    }
+                }
+            } finally { connection.disconnect() }
+        }
+        onLoaded(items)
+    } catch (e: Exception) {
+        onError("Não foi possível listar projetos Firebase: " + (e.message ?: "erro de conexão"))
+    } finally { onLoading(false) }
 }
 
 @Composable

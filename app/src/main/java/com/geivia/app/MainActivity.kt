@@ -4,11 +4,9 @@ import android.content.Context
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
-import android.net.Uri
-import java.util.UUID
-import org.json.JSONArray
 import android.os.Bundle
 import android.net.Uri
+import org.json.JSONArray
 import android.widget.Toast
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.ComponentActivity

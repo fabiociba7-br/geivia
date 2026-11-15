@@ -27,6 +27,22 @@ object FirebaseDeploymentCommands {
                 exit 5
               fi
             fi
+            EXPECTED_RULES_FILE="$(mktemp)"
+            trap 'rm -f "$EXPECTED_RULES_FILE"' EXIT
+            cat > "$EXPECTED_RULES_FILE" <<'GEIVIA_EXPECTED_RULES'
+            rules_version = '2';
+            service cloud.firestore {
+              match /databases/{database}/documents {
+                match /{document=**} {
+                  allow read, write: if false;
+                }
+              }
+            }
+            GEIVIA_EXPECTED_RULES
+            if [ -e "§WORKDIR" ] && ! cmp -s "$§WORKDIR/firestore.rules" "$§EXPECTED_RULES_FILE"; then
+              echo "O arquivo firestore.rules foi alterado em relação ao modelo deny-all do GEIVIA. Nada foi publicado."
+              exit 34
+            fi
             if [ -e "§WORKDIR" ] && ! jq -e '.firestore.rules == "firestore.rules"' "§WORKDIR/firebase.json" >/dev/null 2>&1; then
               echo "A configuração Firestore local não aponta para firestore.rules. Nada foi publicado."
               exit 32
@@ -84,6 +100,10 @@ object FirebaseDeploymentCommands {
               }
             }
             GEIVIA_FIRESTORE_RULES
+            fi
+            if ! cmp -s "§WORKDIR/firestore.rules" "$§EXPECTED_RULES_FILE"; then
+              echo "O arquivo firestore.rules não corresponde ao modelo deny-all esperado. Nada foi publicado."
+              exit 34
             fi
             if ! jq -e '.firestore.rules == "firestore.rules"' "§WORKDIR/firebase.json" >/dev/null 2>&1; then
               echo "A configuração Firestore local não aponta para firestore.rules. Nada foi publicado."

@@ -25,7 +25,7 @@ Essa arquitetura evita colocar client secret, chave de conta de serviço ou toke
 
 1. O usuário instala o APK.
 2. Na primeira abertura, escolhe o nome do ambiente.
-3. O GEIVIA gera um identificador local único, por exemplo `GEIVIA-A1B2C3D4`.
+3. O GEIVIA gera um identificador local único, por exemplo `GEIVIA-A1B2C3D4E5`.
 4. O usuário toca em **Abrir Google Cloud** e autentica no navegador, fora do GEIVIA.
 5. O usuário abre o Cloud Shell, que executa comandos na sessão Google já autenticada.
 6. Se o usuário ainda não tiver um projeto, o GEIVIA oferece um comando opcional `gcloud projects create` com identificador sugerido. O comando cria somente o projeto e não associa faturamento; o usuário pode ignorá-lo e usar um projeto existente.

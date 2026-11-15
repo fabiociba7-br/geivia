@@ -22,9 +22,9 @@ Em particular:
 - manter o mesmo Project ID durante a recuperação;
 - não ativar faturamento nem recursos pagos sem autorização separada.
 
-## Próxima evolução
+## Estado atual da integração
 
-Unificar os estados individuais das operações em um registro central de etapas com estados `NOT_STARTED`, `IN_PROGRESS`, `WAITING_CONFIRMATION`, `UNKNOWN`, `COMPLETED` e `FAILED`, sem substituir as verificações específicas de cada serviço.
+O registro central está integrado às etapas de criação/reconciliação de projeto, habilitação individual de APIs, Firestore, Authentication e Hosting. As verificações específicas de cada serviço continuam obrigatórias: o estado central organiza o ciclo de vida, mas não substitui diagnósticos, pré-condições ou evidências próprias de cada recurso. A interface distingue conclusão comprovada por diagnóstico (`COMPLETED`) de declaração manual do usuário (`USER_CONFIRMED`).
 
 ## Registro central de operações (v1)
 
@@ -39,7 +39,6 @@ Regras da máquina de estados:
 - `UNKNOWN` não pode ser iniciado novamente. Só pode ser reconciliado com diagnóstico recente do mesmo Project ID: recurso encontrado = `COMPLETED`; recurso explicitamente ausente + confirmação do usuário = `FAILED`. A etapa não dispara nova operação automaticamente.
 - `COMPLETED` é terminal para essa etapa. Uma alteração futura deve ser modelada como nova operação/etapa, não apagando o registro anterior.
 
-**Importante:** este commit entrega o motor de estados e as regras de transição, mas ainda não conecta todos os botões e comandos existentes ao registro. Até essa integração, os estados atuais de APIs/Firestore continuam usando seus controles específicos. Não considerar o motor universal já aplicado a todas as operações.
 
 
 ## Integração inicial com a interface
@@ -55,7 +54,7 @@ A etapa de criação do Firestore foi conectada ao motor central:
 
 A reconciliação é tolerante com instalações que tinham uma pendência Firestore anterior à introdução do registro central. O histórico legado continua preservado.
 
-**Limitação atual:** o catálogo da Dashboard já mostra o estado central, mas as demais etapas (diagnóstico, habilitação de APIs, Authentication, Hosting e Storage) ainda precisam ser ligadas individualmente. Os botões existentes continuam com seus mecanismos de segurança específicos enquanto isso não é feito.
+**Limitação atual:** diagnóstico e execução de comandos no Google Cloud continuam assistidos e manuais. O app não recebe a sessão do Cloud Shell e não executa alterações remotas. Storage permanece bloqueado no modo custo zero. Cada etapa ainda depende de diagnóstico/evidência específica; não existe validação automática de todas as configurações em tempo real.
 
 
 ## Integração das etapas manuais (Authentication e Hosting)

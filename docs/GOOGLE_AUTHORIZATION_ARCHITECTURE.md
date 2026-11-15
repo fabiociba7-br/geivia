@@ -34,9 +34,10 @@ Essa arquitetura evita colocar client secret, chave de conta de serviço ou toke
 9. O comando usa `cloudshell download geivia-projects.json` para baixar o resultado ao aparelho.
 10. O usuário seleciona o JSON no GEIVIA; o app valida e importa apenas ID, nome, número e estado dos projetos.
 10. Para operações de escrita, o GEIVIA sempre mostra o comando exato, projeto, impacto, custo possível e exige confirmação do usuário antes de copiar/executar.
-9. Para operações de escrita, o GEIVIA sempre mostra o comando exato, projeto, impacto, custo possível e exige confirmação do usuário antes de copiar/executar.
 
 ## Limites e segurança
+
+- É proibido criar um projeto substituto como reação a erro. A política completa de pré-verificação, persistência de operação, reconciliação após timeout e retomada no mesmo Project ID está em [PROJECT_CREATION_SAFETY.md](PROJECT_CREATION_SAFETY.md).
 
 - O GEIVIA não recebe automaticamente a sessão do navegador nem o token do Cloud Shell.
 - Nunca pedir ao usuário para copiar tokens de acesso, cookies, senha, arquivos de credenciais ou chaves JSON de conta de serviço para dentro do app.

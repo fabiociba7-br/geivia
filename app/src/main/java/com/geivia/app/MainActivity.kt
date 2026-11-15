@@ -554,6 +554,7 @@ private fun CloudShellSetupScreen(
     var selectedProjectName by remember { mutableStateOf(prefs.getString("selected_project_name", null).orEmpty()) }
     var selectedProjectNumber by remember { mutableStateOf(prefs.getString("selected_project_number", null).orEmpty()) }
     var selectedApiForConfirmation by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var showCancelPendingDialog by remember { mutableStateOf(false) }
     var apiActionStatus by remember { mutableStateOf("") }
     var actionHistory by remember {
         mutableStateOf(
@@ -710,6 +711,8 @@ cloudshell download geivia-projects.json"""
                         .remove("pending_api_created_at")
                     apiActionStatus = "Confirmado pelo novo diagnóstico: $completedApi está ativa neste projeto."
                     addActionHistory("Confirmada pelo diagnóstico • $selectedProjectId • $completedApi")
+                } else if (pendingApi != null && pendingProject == selectedProjectId) {
+                    apiActionStatus = "O diagnóstico novo ainda não lista $pendingApi como ativa. A pendência foi mantida; o GEIVIA não repetirá o comando."
                 }
                 editor.apply()
                 summary
@@ -754,6 +757,24 @@ cloudshell download geivia-projects.json"""
         Toast.makeText(context, "Comando copiado. Cole no terminal do Cloud Shell.", Toast.LENGTH_LONG).show()
     }
 
+    if (showCancelPendingDialog) {
+        AlertDialog(
+            onDismissRequest = { showCancelPendingDialog = false },
+            title = { Text("Encerrar acompanhamento desta ação?") },
+            text = { Text("Isso apenas remove a pendência local de ${prefs.getString("pending_api_service", "API")}. Não desativa a API no Google Cloud, não apaga recursos e não confirma que o comando falhou. Se você já executou o comando, faça um novo diagnóstico antes de encerrar.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    val api = prefs.getString("pending_api_service", "API") ?: "API"
+                    val project = prefs.getString("pending_api_project_id", selectedProjectId) ?: selectedProjectId
+                    prefs.edit().remove("pending_api_service").remove("pending_api_project_id").remove("pending_api_created_at").apply()
+                    addActionHistory("Acompanhamento encerrado manualmente (sem confirmação de resultado) • $project • $api")
+                    apiActionStatus = "Acompanhamento encerrado neste aparelho. Nenhuma alteração foi feita no Google Cloud."
+                    showCancelPendingDialog = false
+                }) { Text("Encerrar acompanhamento") }
+            },
+            dismissButton = { TextButton(onClick = { showCancelPendingDialog = false }) { Text("Voltar") } }
+        )
+    }
     selectedApiForConfirmation?.let { (api, label) ->
         AlertDialog(
             onDismissRequest = { selectedApiForConfirmation = null },
@@ -931,6 +952,18 @@ cloudshell download geivia-projects.json"""
                         Text("ETAPA 7 — HABILITAÇÃO ASSISTIDA, UMA API POR VEZ", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         Text("O GEIVIA prepara um único comando para o projeto selecionado. Você revisa, confirma, copia e executa manualmente no Cloud Shell. Nenhuma alteração é executada pelo aplicativo.", color = Muted, fontSize = 11.sp, lineHeight = 16.sp)
                         Spacer(Modifier.height(8.dp))
+                        val currentPendingApi = prefs.getString("pending_api_service", null)
+                        val currentPendingProject = prefs.getString("pending_api_project_id", null)
+                        if (currentPendingApi != null && currentPendingProject == selectedProjectId) {
+                            Card(Modifier.fillMaxWidth().padding(vertical = 6.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF5E6)), shape = RoundedCornerShape(10.dp)) {
+                                Column(Modifier.padding(12.dp)) {
+                                    Text("AÇÃO AGUARDANDO VERIFICAÇÃO", color = Color(0xFF9A5B13), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    Text("$currentPendingApi • projeto $currentPendingProject", color = Ink, fontSize = 11.sp)
+                                    Text("Importe um diagnóstico atualizado. Se a API não aparecer, a pendência permanece e nenhum comando será repetido automaticamente.", color = Muted, fontSize = 10.sp, lineHeight = 14.sp)
+                                    TextButton(onClick = { showCancelPendingDialog = true }) { Text("Encerrar somente o acompanhamento local") }
+                                }
+                            }
+                        }
                         requestedApis.forEach { (api, label) ->
                             val enabled = api in enabledFirebaseApis
                             val blockedByCost = costMode == "zero" && (api == "firebasestorage.googleapis.com" || api == "cloudbuild.googleapis.com")

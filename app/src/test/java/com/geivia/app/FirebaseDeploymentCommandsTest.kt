@@ -77,6 +77,9 @@ class FirebaseDeploymentCommandsTest {
         assertTrue(command.contains("[ -L \"\$WORKDIR/firebase.json\" ]"))
         assertTrue(command.contains("[ -L \"\$WORKDIR/firestore.rules\" ]"))
         assertTrue(command.contains("GEIVIA_FIRESTORE_RULES_STARTER_V1"))
+        assertTrue(command.contains(".firestore.rules == \"firestore.rules\""))
+        assertTrue(command.contains("A configuração Firestore local não aponta para firestore.rules. Nada foi publicado."))
+        assertTrue(command.indexOf("A configuração Firestore local não aponta para firestore.rules. Nada foi publicado.") < command.indexOf("gcloud projects describe"))
         assertTrue(command.contains("mkdir \"\$WORKDIR\""))
     }
 
@@ -94,6 +97,9 @@ class FirebaseDeploymentCommandsTest {
         assertTrue(command.contains("[ -L \"\$WORKDIR/public\" ]"))
         assertTrue(command.contains("[ -L \"\$WORKDIR/public/index.html\" ]"))
         assertTrue(command.contains("GEIVIA_HOSTING_STARTER_V1"))
+        assertTrue(command.contains(".hosting.site == \$id and .hosting.public == \"public\""))
+        assertTrue(command.contains("A configuração Hosting local não corresponde ao site padrão deste projeto. Nada foi criado ou publicado."))
+        assertTrue(command.indexOf("A configuração Hosting local não corresponde ao site padrão deste projeto. Nada foi criado ou publicado.") < command.indexOf("gcloud projects describe"))
         assertTrue(command.contains("mkdir \"\$WORKDIR\""))
     }
 

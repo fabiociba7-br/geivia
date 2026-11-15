@@ -1,6 +1,7 @@
 package com.geivia.app
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.ComponentActivity
@@ -104,7 +105,7 @@ private fun WelcomeScreen(onStart: () -> Unit) {
         BrandMark()
         Spacer(Modifier.height(18.dp))
         Text("GEIVIA", color = Color(0xFF07131F), fontSize = 40.sp, fontWeight = FontWeight.Black, letterSpacing = 4.sp)
-        Text("FIREBASE DEPLOY & HOSTING AUTOMATION", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, textAlign = TextAlign.Center)
+        Text("PLANEJAMENTO DE PROJETOS • MODO INDEPENDENTE", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, textAlign = TextAlign.Center)
         Spacer(Modifier.height(34.dp))
         Text("Seus projetos começam aqui.", color = Ink, fontSize = 24.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         Spacer(Modifier.height(10.dp))
@@ -112,7 +113,7 @@ private fun WelcomeScreen(onStart: () -> Unit) {
         Spacer(Modifier.height(28.dp))
         Button(onClick = onStart, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Text("Começar", Modifier.padding(vertical = 7.dp), fontSize = 16.sp, fontWeight = FontWeight.Bold) }
         Spacer(Modifier.height(12.dp))
-        Text("Você poderá revisar suas respostas antes de conectar sua conta Google.", color = Muted, fontSize = 12.sp, textAlign = TextAlign.Center)
+        Text("Sem login e sem vínculo com contas pessoais. Suas respostas ficam neste aparelho.", color = Muted, fontSize = 12.sp, textAlign = TextAlign.Center)
     }
 }
 
@@ -232,8 +233,6 @@ private fun SummaryScreen(answers: Map<String, String>, costMode: String, onBack
     }
 }
 
-private data class FirebaseProjectItem(val id: String, val name: String, val number: String)
-
 @Composable
 private fun DashboardScreen(answers: Map<String, String>, costMode: String, onRestart: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp)) {
@@ -285,8 +284,42 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onRe
             )
         }
         Spacer(Modifier.height(20.dp))
+        Button(onClick = { shareProjectPlan(context = LocalContext.current, answers = answers, costMode = costMode) }, modifier = Modifier.fillMaxWidth()) { Text("Compartilhar plano do projeto") }
+        Spacer(Modifier.height(8.dp))
         OutlinedButton(onClick = onRestart, modifier = Modifier.fillMaxWidth()) { Text("Refazer questionário") }
     }
+}
+
+private fun shareProjectPlan(context: Context, answers: Map<String, String>, costMode: String) {
+    val labels = mapOf(
+        "platform" to "Plataforma",
+        "purpose" to "Finalidade",
+        "audience" to "Público",
+        "login" to "Acesso",
+        "data" to "Dados",
+        "files" to "Arquivos",
+        "hosting" to "Publicação web",
+        "extras" to "Recursos especiais"
+    )
+    val cost = if (costMode == "zero") "Custo zero: bloquear etapas que exijam faturamento." else "Recursos pagos: somente após autorização específica."
+    val body = buildString {
+        appendLine("PLANO INICIAL DO PROJETO — GEIVIA")
+        appendLine()
+        labels.forEach { (key, label) ->
+            answers[key]?.takeIf { it.isNotBlank() }?.let { appendLine("$label: $it") }
+        }
+        appendLine()
+        appendLine("Política de custos: $cost")
+        appendLine()
+        appendLine("Este documento é uma pré-análise. Disponibilidade, limites e preços dos serviços devem ser verificados antes da implementação.")
+        appendLine("Gerado localmente pelo GEIVIA. Nenhuma conta Google foi conectada.")
+    }
+    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_SUBJECT, "Plano inicial do projeto")
+        putExtra(Intent.EXTRA_TEXT, body)
+    }
+    context.startActivity(Intent.createChooser(sendIntent, "Compartilhar plano"))
 }
 
 @Composable

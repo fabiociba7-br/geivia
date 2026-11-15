@@ -59,9 +59,10 @@ private fun GeiviaApp() {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
     LaunchedEffect(Unit) { prefs.edit().remove("selected_project_id").remove("selected_project_name").remove("selected_project_number").apply() }
+    val answerKeys = setOf("platform", "purpose", "audience", "login", "data", "files", "hosting", "extras")
     val answers = remember {
         mutableStateMapOf<String, String>().apply {
-            prefs.all.forEach { (k, v) -> if (v is String) put(k, v) }
+            answerKeys.forEach { key -> prefs.getString(key, null)?.let { put(key, it) } }
         }
     }
     val workspaceId = remember {
@@ -136,7 +137,13 @@ private fun GeiviaApp() {
                     onContinue = { page = "dashboard" }
                 )
                 else -> DashboardScreen(answers.toMap(), costMode, onGoogleAccess = { page = "google_access" }) {
-                    answers.clear(); prefs.edit().clear().apply(); costMode = ""; index = 0; page = "workspace_setup"
+                    answers.clear()
+                    val editor = prefs.edit()
+                    answerKeys.forEach { editor.remove(it) }
+                    editor.remove("cost_mode").apply()
+                    costMode = ""
+                    index = 0
+                    page = "welcome"
                 }
             }
         }

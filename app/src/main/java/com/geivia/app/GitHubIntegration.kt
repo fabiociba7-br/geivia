@@ -83,32 +83,54 @@ class GitHubTokenStore(context: Context) {
     private val prefs = context.getSharedPreferences("geivia_github_secure", Context.MODE_PRIVATE)
     private val alias = "geivia_github_token_key"
 
+    private fun encryptValue(value: String): String {
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
+        val encrypted = cipher.doFinal(value.toByteArray(Charsets.UTF_8))
+        return Base64.encodeToString(cipher.iv + encrypted, Base64.NO_WRAP)
+    }
+
+    private fun decryptValue(encoded: String): String {
+        val payload = Base64.decode(encoded, Base64.NO_WRAP)
+        require(payload.size > 12) { "Dado protegido local inválido." }
+        val iv = payload.copyOfRange(0, 12)
+        val encrypted = payload.copyOfRange(12, payload.size)
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(), GCMParameterSpec(128, iv))
+        return String(cipher.doFinal(encrypted), Charsets.UTF_8)
+    }
+
     fun save(tokenResponse: String) {
         require(JSONObject(tokenResponse).optString("access_token").isNotBlank()) {
             "Resposta de autorização sem access_token."
         }
-        val key = getOrCreateKey()
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, key)
-        val encrypted = cipher.doFinal(tokenResponse.toByteArray(Charsets.UTF_8))
-        val payload = cipher.iv + encrypted
-        prefs.edit().putString("encrypted_token_response", Base64.encodeToString(payload, Base64.NO_WRAP)).apply()
+        prefs.edit().putString("encrypted_token_response", encryptValue(tokenResponse)).apply()
     }
 
     fun readTokenResponse(): String? {
         val encoded = prefs.getString("encrypted_token_response", null) ?: return null
-        return runCatching {
-            val payload = Base64.decode(encoded, Base64.NO_WRAP)
-            require(payload.size > 12) { "Token local inválido." }
-            val iv = payload.copyOfRange(0, 12)
-            val encrypted = payload.copyOfRange(12, payload.size)
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(), GCMParameterSpec(128, iv))
-            String(cipher.doFinal(encrypted), Charsets.UTF_8)
-        }.getOrElse {
+        return runCatching { decryptValue(encoded) }.getOrElse {
             clear()
             null
         }
+    }
+
+    fun savePendingAuthorization(verifier: String, state: String, startedAt: Long) {
+        val pending = JSONObject()
+            .put("verifier", verifier)
+            .put("state", state)
+            .put("startedAt", startedAt)
+            .toString()
+        prefs.edit().putString("encrypted_pending_authorization", encryptValue(pending)).apply()
+    }
+
+    fun readPendingAuthorization(): JSONObject? {
+        val encoded = prefs.getString("encrypted_pending_authorization", null) ?: return null
+        return runCatching { JSONObject(decryptValue(encoded)) }.getOrNull()
+    }
+
+    fun clearPendingAuthorization() {
+        prefs.edit().remove("encrypted_pending_authorization").apply()
     }
 
     fun accessToken(): String? = readTokenResponse()?.let {
@@ -116,7 +138,7 @@ class GitHubTokenStore(context: Context) {
     }
 
     fun clear() {
-        prefs.edit().remove("encrypted_token_response").apply()
+        prefs.edit().remove("encrypted_token_response").remove("encrypted_pending_authorization").apply()
         runCatching {
             val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
             keyStore.deleteEntry(alias)

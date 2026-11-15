@@ -421,7 +421,54 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
             val report = org.json.JSONObject(projectPrefs.getString("cloud_project_diagnostic_json", null) ?: return@runCatching false)
             report.optJSONObject("project")?.optString("projectId") == chosenProjectId && chosenProjectId.isNotBlank()
         }.getOrDefault(false)
+        val workflowStore = remember(projectPrefs) { WorkflowProgressStore(projectPrefs) }
+        val workflowCatalog = listOf(
+            "project_diagnostic" to "Diagnóstico do projeto",
+            "api_firebase" to "Firebase Management API",
+            "api_firestore" to "Cloud Firestore API",
+            "firestore_database" to "Banco Firestore (default)",
+            "authentication" to "Firebase Authentication",
+            "hosting" to "Firebase Hosting",
+            "storage" to "Cloud Storage"
+        )
+        val workflowRecords = remember(chosenProjectId) { workflowStore.allForProject(chosenProjectId).associateBy { it.stepId } }
         Spacer(Modifier.height(16.dp))
+        Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(15.dp)) {
+            Column(Modifier.padding(16.dp)) {
+                Text("ACOMPANHAMENTO DAS ETAPAS", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Spacer(Modifier.height(5.dp))
+                Text(if (chosenProjectId.isBlank()) "Selecione um projeto para iniciar o acompanhamento." else "Projeto: $chosenProjectId", color = Muted, fontSize = 11.sp)
+                Spacer(Modifier.height(8.dp))
+                workflowCatalog.forEach { (stepId, label) ->
+                    val record = workflowRecords[stepId]
+                    val state = record?.state ?: WorkflowStepState.NOT_STARTED
+                    val stateLabel = when (state) {
+                        WorkflowStepState.NOT_STARTED -> "Não iniciada"
+                        WorkflowStepState.IN_PROGRESS -> "Aguardando diagnóstico"
+                        WorkflowStepState.WAITING_CONFIRMATION -> "Aguardando confirmação"
+                        WorkflowStepState.UNKNOWN -> "Resultado desconhecido — reconciliar"
+                        WorkflowStepState.COMPLETED -> "Concluída"
+                        WorkflowStepState.FAILED -> "Falhou — revisar antes de tentar"
+                    }
+                    val stateColor = when (state) {
+                        WorkflowStepState.COMPLETED -> Color(0xFF238653)
+                        WorkflowStepState.UNKNOWN, WorkflowStepState.FAILED -> Color(0xFFB05A18)
+                        WorkflowStepState.IN_PROGRESS, WorkflowStepState.WAITING_CONFIRMATION -> Color(0xFF9A641B)
+                        WorkflowStepState.NOT_STARTED -> Muted
+                    }
+                    Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(label, color = Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text(stateLabel, color = stateColor, fontSize = 10.sp)
+                        }
+                        if (record != null) Text(android.text.format.DateFormat.format("dd/MM HH:mm", record.updatedAt).toString(), color = Muted, fontSize = 9.sp)
+                    }
+                    if (record?.message?.isNotBlank() == true) Text(record.message, color = Muted, fontSize = 10.sp, lineHeight = 14.sp)
+                    Divider(color = Color(0xFFE7EEF2))
+                }
+                Text("As etapas são vinculadas ao Project ID. Uma operação pendente ou desconhecida não é repetida automaticamente.", color = Muted, fontSize = 10.sp, lineHeight = 15.sp)
+            }
+        }
         Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(15.dp)) {
             Column(Modifier.padding(16.dp)) {
                 Text("PLANO DE EXECUÇÃO", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)

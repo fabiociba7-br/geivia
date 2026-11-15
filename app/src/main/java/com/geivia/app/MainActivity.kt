@@ -160,10 +160,15 @@ private fun GeiviaApp() {
                     answers.clear()
                     val editor = prefs.edit()
                     answerKeys.forEach { editor.remove(it) }
-                    editor.remove("cost_mode").apply()
+                    editor.remove("cost_mode")
+                        .remove("workflow_checkpoint")
+                        .remove("workflow_question_index")
+                        .remove("workflow_checkpoint_updated_at")
+                        .putBoolean("cloud_setup_completed", false)
+                        .apply()
                     costMode = ""
                     index = 0
-                    page = "welcome"
+                    page = "workspace_setup"
                 }
             }
         }

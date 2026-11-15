@@ -108,3 +108,13 @@ O fluxo mantém apenas uma habilitação pendente por vez para cada aparelho/pro
 ### Resolução explícita de acompanhamento pendente
 
 Ao importar um diagnóstico atualizado do mesmo projeto, se a API pendente ainda não aparecer na lista de serviços habilitados, o GEIVIA mantém a pendência e informa que não repetirá o comando automaticamente. O usuário pode encerrar somente o acompanhamento local após uma confirmação explícita. Essa ação remove os metadados locais da pendência e registra o encerramento no histórico, mas não desabilita serviços, não exclui recursos, não altera o projeto Google Cloud e não afirma que o comando falhou. Se o comando já tiver sido executado, a orientação é importar um novo diagnóstico antes de encerrar o acompanhamento.
+
+## Firestore Standard e Authentication Spark — fluxo assistido
+
+O diagnóstico de projeto também consulta, em modo somente leitura, os bancos Firestore existentes (quando a API está habilitada) e o estado de faturamento do projeto. Se a consulta de faturamento falhar, o estado fica desconhecido e o fluxo de criação permanece bloqueado.
+
+A criação do banco padrão é preparada somente quando a API está ativa, o diagnóstico do mesmo projeto não encontra `(default)`, o faturamento está confirmado como desabilitado e o usuário escolhe uma região. O comando verifica novamente faturamento, API e bancos existentes antes de criar. Ele cria apenas `(default)`, em edição Standard, com proteção contra exclusão. A execução é manual no Cloud Shell. Uma pendência só é reconciliada quando um novo diagnóstico do mesmo Project ID encontra o banco. Não repetir comandos após resultados ambíguos.
+
+A localização é uma decisão de provisionamento e não pode ser alterada depois. A localização do banco padrão também pode depender da localização padrão de recursos Google Cloud previamente definida no projeto. O GEIVIA apresenta São Paulo (`southamerica-east1`), Iowa (`us-central1`) e multirregião dos Estados Unidos (`nam5`) como opções iniciais; a compatibilidade deve ser verificada antes da criação.
+
+Para autenticação, o GEIVIA orienta a configuração dos provedores do Firebase Authentication básico pelo Console Firebase. O plano Spark inclui a maioria dos métodos de Authentication sem custo; telefone/SMS exige faturamento. O upgrade opcional para Identity Platform é separado e não deve ser feito no modo custo zero. Habilitar `identitytoolkit.googleapis.com` isoladamente não ativa provedores de login nem conclui a configuração de Authentication.

@@ -74,3 +74,12 @@ O Hosting declarado configurado ainda não significa que o código foi publicado
 O Storage permanece bloqueado no modo custo zero. A documentação oficial do Firebase informa que o plano Blaze é necessário para provisionar novos buckets padrão e para manter acesso aos recursos do Cloud Storage for Firebase; o uso sem custo dentro de cotas não elimina a exigência de vincular uma conta de faturamento. Portanto, o GEIVIA não oferece criação de bucket nem upgrade automático no modo custo zero.
 
 Referência oficial: https://firebase.google.com/docs/storage/faqs-storage-changes-announced-sept-2024
+
+
+## Pré-requisitos das etapas de produto
+
+A configuração de Authentication e Hosting agora é liberada somente depois que um diagnóstico novo, do Project ID selecionado, confirmar respectivamente:
+- `identitytoolkit.googleapis.com` habilitada antes de abrir os provedores de login;
+- `firebasehosting.googleapis.com` habilitada antes de abrir a configuração do Hosting.
+
+Habilitar a API é apenas um pré-requisito técnico. Authentication ainda exige ativar os provedores desejados no Console Firebase. Hosting ainda exige criar/configurar o site, fazer o deploy do conteúdo e testar a URL pública. A confirmação manual do usuário não substitui essas verificações independentes.

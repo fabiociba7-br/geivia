@@ -689,6 +689,42 @@ echo
 echo 'Baixando arquivo para o dispositivo:'
 cloudshell download geivia-projects.json"""
 
+
+    val pendingCreationId = prefs.getString("pending_project_creation_id", null).orEmpty()
+    val projectCreationCommand = remember(newProjectId, newProjectName) {
+        val id = newProjectId.trim()
+        val name = newProjectName.trim()
+        val encodedName = java.util.Base64.getEncoder().encodeToString(name.toByteArray(Charsets.UTF_8))
+        if (!id.matches(Regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$")) || name.isBlank()) "" else """
+            set -euo pipefail
+            PROJECT_ID='$id'
+            PROJECT_NAME="$(printf '%s' '$encodedName' | base64 -d)"
+            if gcloud projects describe "$PROJECT_ID" --format=json > geivia-project-preflight.json 2> geivia-project-preflight.err; then
+              echo "Projeto já existe e está acessível. Nenhuma criação será feita."
+            else
+              if grep -Eqi 'NOT_FOUND|not found|does not exist' geivia-project-preflight.err; then
+                echo "Project ID não encontrado. Enviando uma única solicitação de criação."
+                gcloud projects create "$PROJECT_ID" --name="$PROJECT_NAME" --format=json > geivia-project-create-response.json
+              else
+                cat geivia-project-preflight.err
+                echo "Consulta inconclusiva. Nenhuma criação foi enviada."
+                exit 2
+              fi
+            fi
+            gcloud projects describe "$PROJECT_ID" --format=json > geivia-project-result.json
+            jq '[{projectId:.projectId,name:.name,projectNumber:(.projectNumber|tostring),lifecycleState:.lifecycleState}]' geivia-project-result.json > geivia-projects.json
+            cloudshell download geivia-projects.json
+        """.trimIndent()
+    }
+    val projectReconcileCommand = remember(pendingCreationId) {
+        if (!pendingCreationId.matches(Regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$"))) "" else """
+            set -euo pipefail
+            gcloud projects describe '$pendingCreationId' --format=json > geivia-project-result.json
+            jq '[{projectId:.projectId,name:.name,projectNumber:(.projectNumber|tostring),lifecycleState:.lifecycleState}]' geivia-project-result.json > geivia-projects.json
+            cloudshell download geivia-projects.json
+        """.trimIndent()
+    }
+
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             runCatching {

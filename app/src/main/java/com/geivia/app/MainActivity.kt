@@ -81,7 +81,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
     var index by rememberSaveable {
         mutableIntStateOf(prefs.getInt("workflow_question_index", 0).coerceAtLeast(0))
     }
-    var costMode by rememberSaveable { mutableStateOf(prefs.getString("cost_mode", "") ?: "") }\n    val githubTokenStore = remember { GitHubTokenStore(context) }\n    var githubConnected by remember { mutableStateOf(githubTokenStore.accessToken() != null) }\n    var githubCallbackMessage by remember { mutableStateOf<String?>(null) }\n\n    LaunchedEffect(githubCallbackUri) {\n        val callback = githubCallbackUri ?: return@LaunchedEffect\n        if (callback.scheme != "geivia" || callback.host != "github" || callback.path != "/callback") return@LaunchedEffect\n        val expectedState = prefs.getString("github_oauth_state", null)\n        val verifier = prefs.getString("github_oauth_verifier", null)\n        val receivedState = callback.getQueryParameter("state")\n        val code = callback.getQueryParameter("code")\n        val callbackError = callback.getQueryParameter("error")\n        try {\n            require(expectedState != null && receivedState == expectedState) { "A validação de segurança da autorização falhou. Inicie a conexão novamente." }\n            require(callbackError == null) { "O GitHub cancelou ou recusou a autorização." }\n            require(!code.isNullOrBlank() && !verifier.isNullOrBlank()) { "O retorno do GitHub está incompleto. Inicie a conexão novamente." }\n            val clientId = prefs.getString("github_client_id", "").orEmpty()\n            val callbackUrl = prefs.getString("github_callback_url", "").orEmpty()\n            val exchangeUrl = prefs.getString("github_exchange_url", "").orEmpty()\n            val tokenResponse = withContext(Dispatchers.IO) {\n                GitHubAuthClient.exchangeCode(exchangeUrl, clientId, callbackUrl, code, verifier)\n            }\n            githubTokenStore.save(tokenResponse)\n            githubConnected = true\n            githubCallbackMessage = "Conta GitHub conectada. Carregando seus repositórios."\n        } catch (error: Exception) {\n            githubCallbackMessage = error.message ?: "Não foi possível concluir a autorização GitHub."\n        } finally {\n            prefs.edit().remove("github_oauth_state").remove("github_oauth_verifier").remove("github_oauth_started_at").apply()\n        }\n        page = "github"\n    }
+    var costMode by rememberSaveable { mutableStateOf(prefs.getString("cost_mode", "") ?: "") }\n    val githubTokenStore = remember { GitHubTokenStore(context) }\n    var githubConnected by remember { mutableStateOf(githubTokenStore.accessToken() != null) }\n    var githubCallbackMessage by remember { mutableStateOf<String?>(null) }\n\n    LaunchedEffect(githubCallbackUri) {\n        val callback = githubCallbackUri ?: return@LaunchedEffect\n        if (callback.scheme != "geivia" || callback.host != "github" || callback.path != "/callback") return@LaunchedEffect\n        val expectedState = prefs.getString("github_oauth_state", null)\n        val verifier = prefs.getString("github_oauth_verifier", null)\n        val receivedState = callback.getQueryParameter("state")\n        val code = callback.getQueryParameter("code")\n        val startedAt = prefs.getLong("github_oauth_started_at", 0L)\n        val callbackError = callback.getQueryParameter("error")\n        try {\n            require(expectedState != null && receivedState == expectedState) { "A validação de segurança da autorização falhou. Inicie a conexão novamente." }\n            require(startedAt > 0L && System.currentTimeMillis() - startedAt in 0..600_000L) { "A autorização expirou. Inicie a conexão novamente." }\n            require(callbackError == null) { "O GitHub cancelou ou recusou a autorização." }\n            require(!code.isNullOrBlank() && !verifier.isNullOrBlank()) { "O retorno do GitHub está incompleto. Inicie a conexão novamente." }\n            val clientId = prefs.getString("github_client_id", "").orEmpty()\n            val callbackUrl = prefs.getString("github_callback_url", "").orEmpty()\n            val exchangeUrl = prefs.getString("github_exchange_url", "").orEmpty()\n            val tokenResponse = withContext(Dispatchers.IO) {\n                GitHubAuthClient.exchangeCode(exchangeUrl, clientId, callbackUrl, code, verifier)\n            }\n            githubTokenStore.save(tokenResponse)\n            githubConnected = true\n            githubCallbackMessage = "Conta GitHub conectada. Carregando seus repositórios."\n        } catch (error: Exception) {\n            githubCallbackMessage = error.message ?: "Não foi possível concluir a autorização GitHub."\n        } finally {\n            prefs.edit().remove("github_oauth_state").remove("github_oauth_verifier").remove("github_oauth_started_at").apply()\n        }\n        page = "github"\n    }
 
     // Central checkpoint: every screen transition is persisted, so force-closing
     // the app does not send the user back to the beginning of onboarding.
@@ -1784,11 +1784,11 @@ private fun GitHubScreen(
     var callbackUrl by rememberSaveable { mutableStateOf(prefs.getString("github_callback_url", "").orEmpty()) }
     var exchangeUrl by rememberSaveable { mutableStateOf(prefs.getString("github_exchange_url", "").orEmpty()) }
     var repositories by remember { mutableStateOf<List<GitHubRepository>>(emptyList()) }
-    var loading by remember { mutableStateOf(false) }
+    var loading by remember { mutableStateOf(false) }\n    var refreshCounter by remember { mutableIntStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }
     var localConnected by remember { mutableStateOf(connected) }
 
-    LaunchedEffect(connected) {
+    LaunchedEffect(connected, refreshCounter) {
         localConnected = connected
         val token = tokenStore.accessToken()
         if (token != null) {
@@ -1847,7 +1847,7 @@ private fun GitHubScreen(
             Spacer(Modifier.height(8.dp))
             OutlinedButton(
                 onClick = {
-                    val valid = clientId.isNotBlank() && callbackUrl.startsWith("https://") && callbackUrl.endsWith("/callback") && exchangeUrl.startsWith("https://") && exchangeUrl.endsWith("/exchange")
+                    val valid = clientId.isNotBlank() && GitHubOAuth.validEndpoints(callbackUrl, exchangeUrl)
                     if (!valid) {
                         error = "Informe o Client ID, a URL HTTPS terminada em /callback e a URL HTTPS terminada em /exchange."
                     } else {
@@ -1863,7 +1863,7 @@ private fun GitHubScreen(
             Button(
                 onClick = {
                     runCatching {
-                        require(clientId.isNotBlank() && callbackUrl.startsWith("https://") && callbackUrl.endsWith("/callback") && exchangeUrl.startsWith("https://") && exchangeUrl.endsWith("/exchange")) {
+                        require(clientId.isNotBlank() && GitHubOAuth.validEndpoints(callbackUrl, exchangeUrl)) {
                             "Configure Client ID, callback HTTPS e serviço /exchange antes de conectar."
                         }
                         val verifier = GitHubOAuth.randomVerifier()
@@ -1892,7 +1892,7 @@ private fun GitHubScreen(
                         loading = true
                         error = null
                     }
-                }) { Text("Atualizar") }
+                }) { refreshCounter++ }) { Text("Atualizar") }
             }
             if (loading) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())

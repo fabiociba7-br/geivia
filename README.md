@@ -13,11 +13,17 @@ O GEIVIA será um produto independente do Zupi Gestão. Nesta primeira fase, o d
 - Preparar um ambiente local exclusivo por usuário e acessar o Google Cloud pelo navegador e Cloud Shell da própria conta.
 - Importar inventários de projetos e diagnósticos gerados no Cloud Shell, sem transferir tokens ou senhas.
 - Criar e selecionar projetos Google Cloud/Firebase.
-- Orientar e automatizar a habilitação das APIs necessárias.
-- Configurar Firebase Authentication e Cloud Firestore.
-- Preparar e publicar Firebase Hosting.
-- Implantar e validar regras do Firestore.
+- Diagnosticar APIs e preparar comandos individuais de habilitação, executados manualmente pelo usuário no Cloud Shell.
+- Orientar a configuração do Firebase Authentication e preparar a criação segura do Cloud Firestore.
+- Preparar comandos para configurar e publicar Firebase Hosting.
+- Preparar a publicação de regras Firestore restritivas e orientar sua validação.
 - Exibir diagnóstico claro, progresso por etapa e instruções de recuperação.
+
+## Estado atual do produto
+
+O aplicativo está em desenvolvimento. O fluxo atual usa o navegador e o Cloud Shell autenticados pelo próprio usuário: o GEIVIA prepara comandos, registra o progresso local e importa diagnósticos JSON. **O aplicativo ainda não executa operações de escrita diretamente no Google Cloud.** Cada alteração remota depende da revisão e execução manual do comando pelo usuário, seguida de novo diagnóstico quando aplicável.
+
+A geração de APK e os testes automatizados são realizados pelo GitHub Actions. A validação real de serviços Firebase depende de um projeto Google Cloud/Firebase e da conta do usuário; não é simulada pelos testes locais.
 
 ## Segurança
 

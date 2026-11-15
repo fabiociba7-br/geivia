@@ -1023,6 +1023,32 @@ cloudshell download geivia-projects.json"""
             dismissButton = { TextButton(onClick = { showCancelPendingDialog = false }) { Text("Voltar") } }
         )
     }
+    if (showProjectCreateDialog) {
+        AlertDialog(
+            onDismissRequest = { showProjectCreateDialog = false },
+            title = { Text("Confirmar criação ou reutilização?") },
+            text = { Text("Project ID: $newProjectId\nNome: $newProjectName\n\nO comando consulta primeiro este ID exato. Se existir e estiver acessível, reutiliza. Só uma resposta explícita de não encontrado permite uma única solicitação de criação. Erros de permissão, rede ou resposta ambígua interrompem o processo. Depois de executar, não repita o comando: use a reconciliação do mesmo ID.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    runCatching {
+                        workflowProgressStore.waitForConfirmation(newProjectId.trim(), "project_creation", "Revisar criação ou reutilização do Project ID exato.")
+                        workflowProgressStore.confirmAndStart(newProjectId.trim(), "project_creation", "project-create-\${newProjectId.trim()}", "Comando único preparado; aguardando execução e reconciliação do mesmo Project ID.")
+                    }.onFailure {
+                        projectCreationStatus = it.message ?: "Não foi possível registrar a operação."
+                        showProjectCreateDialog = false
+                        return@TextButton
+                    }
+                    prefs.edit().putString("pending_project_creation_id", newProjectId.trim()).putString("pending_project_creation_name", newProjectName.trim()).apply()
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("GEIVIA criar ou reutilizar projeto", projectCreationCommand))
+                    projectCreationStatus = "Comando copiado. Execute uma vez no Cloud Shell. Em caso de erro ou dúvida, não repita; reconcilie o mesmo Project ID."
+                    Toast.makeText(context, "Comando copiado. Execução manual.", Toast.LENGTH_LONG).show()
+                    showProjectCreateDialog = false
+                }) { Text("Confirmar e copiar") }
+            },
+            dismissButton = { TextButton(onClick = { showProjectCreateDialog = false }) { Text("Cancelar") } }
+        )
+    }
     if (showFirestoreCreateDialog) {
         AlertDialog(
             onDismissRequest = { showFirestoreCreateDialog = false },

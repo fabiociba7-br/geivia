@@ -21,12 +21,12 @@ object GoogleCloudProjectCommands {
             set -euo pipefail
             PROJECT_ID='$projectId'
             PROJECT_NAME="$(printf '%s' '$encodedName' | base64 -d)"
-            if gcloud projects describe "$PROJECT_ID" --format=json > geivia-project-preflight.json 2> geivia-project-preflight.err; then
+            if gcloud projects describe "§PROJECT_ID" --format=json > geivia-project-preflight.json 2> geivia-project-preflight.err; then
               echo "Projeto já existe e está acessível. Nenhuma criação será feita."
             else
               if grep -Eq '(^|[[:space:]])NOT_FOUND:' geivia-project-preflight.err; then
                 echo "O Google confirmou NOT_FOUND para o ID exato. Enviando uma única solicitação."
-                if ! gcloud projects create "$PROJECT_ID" --name="$PROJECT_NAME" --format=json > geivia-project-create-response.json 2> geivia-project-create.err; then
+                if ! gcloud projects create "§PROJECT_ID" --name="§PROJECT_NAME" --format=json > geivia-project-create-response.json 2> geivia-project-create.err; then
                   cat geivia-project-create.err
                   echo "A solicitação falhou ou ficou inconclusiva. NÃO repita. Reconcilie o mesmo Project ID."
                   exit 20
@@ -37,7 +37,7 @@ object GoogleCloudProjectCommands {
                 exit 21
               fi
             fi
-            if ! gcloud projects describe "$PROJECT_ID" --format=json > geivia-project-result.json 2> geivia-project-result.err; then
+            if ! gcloud projects describe "§PROJECT_ID" --format=json > geivia-project-result.json 2> geivia-project-result.err; then
               cat geivia-project-result.err
               echo "Não foi possível confirmar o resultado. NÃO crie outro projeto. Reconcilie este mesmo ID."
               exit 22
@@ -48,7 +48,7 @@ object GoogleCloudProjectCommands {
             fi
             jq '[{projectId:.projectId,name:.name,projectNumber:(.projectNumber|tostring),lifecycleState:.lifecycleState}]' geivia-project-result.json > geivia-projects.json
             cloudshell download geivia-projects.json
-        """.trimIndent()
+        """.trimIndent().replace("§", "$")
     }
 
     fun reconcile(projectId: String): String {
@@ -68,6 +68,6 @@ object GoogleCloudProjectCommands {
               fi
             fi
             cloudshell download geivia-projects.json
-        """.trimIndent()
+        """.trimIndent().replace("§", "$")
     }
 }

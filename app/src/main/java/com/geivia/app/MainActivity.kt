@@ -525,7 +525,7 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
             "Mantém suas respostas e preferências localmente neste aparelho.",
             "Organiza os serviços que poderão ser necessários para o projeto.",
             "Respeita a escolha de custo zero ou de recursos pagos somente com autorização.",
-            "Não recebe tokens nem executa alterações na nuvem sem sua confirmação."
+            "Não recebe tokens nem executa comandos remotamente: você revisa e executa cada comando no Cloud Shell."
         ).forEach { item ->
             Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.Top) {
                 Text("•", color = Blue, fontWeight = FontWeight.Bold)

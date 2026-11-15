@@ -39,6 +39,18 @@ class GoogleCloudProjectCommandsTest {
         assertFalse(command.contains("gcloud projects create"))
     }
 
+    @Test
+    fun displayNameIsBase64EncodedAndCannotInjectShellCommands() {
+        val displayName = "Projeto '$(touch /tmp/geivia-pwned)'; \"teste\""
+        val command = GoogleCloudProjectCommands.createOrReuse("geivia-demo-123", displayName)
+        val encoded = java.util.Base64.getEncoder().encodeToString(displayName.toByteArray(Charsets.UTF_8))
+
+        assertTrue(command.contains("PROJECT_NAME=\"\$(printf '%s' '$encoded' | base64 -d)\""))
+        assertFalse(command.contains(displayName))
+        assertFalse(command.contains("touch /tmp/geivia-pwned"))
+        assertEquals(displayName, String(java.util.Base64.getDecoder().decode(encoded), Charsets.UTF_8))
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun invalidProjectIdCannotBeUsedForCreation() {
         GoogleCloudProjectCommands.createOrReuse("Not A Valid ID", "Projeto")

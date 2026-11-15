@@ -48,6 +48,70 @@ class WorkflowProgressStoreTest {
     }
 
     @Test
+    fun unknownAndCompletedOperationsCannotReturnToConfirmation() {
+        val store = store()
+        store.waitForConfirmation("project-guard", "step-unknown", "Review")
+        store.confirmAndStart("project-guard", "step-unknown", "op-unknown", "Started")
+        store.markUnknown("project-guard", "step-unknown", "Timeout")
+        org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+            store.waitForConfirmation("project-guard", "step-unknown", "Must remain blocked")
+        }
+
+        store.waitForConfirmation("project-guard", "step-complete", "Review")
+        store.confirmAndStart("project-guard", "step-complete", "op-complete", "Started")
+        store.reconcileCompleted("project-guard", "step-complete", "Fresh diagnostic evidence")
+        org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+            store.waitForConfirmation("project-guard", "step-complete", "Must remain terminal")
+        }
+    }
+
+    @Test
+    fun reconciliationRequiresEvidenceAndExplicitAcknowledgement() {
+        val store = store()
+        store.waitForConfirmation("project-evidence", "create", "Review")
+        store.confirmAndStart("project-evidence", "create", "op-evidence", "Started")
+        store.markUnknown("project-evidence", "create", "Ambiguous result")
+
+        org.junit.Assert.assertThrows(IllegalArgumentException::class.java) {
+            store.reconcileAbsent("project-evidence", "create", "", true)
+        }
+        org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+            store.reconcileAbsent("project-evidence", "create", "Fresh NOT_FOUND", false)
+        }
+        assertEquals(WorkflowStepState.UNKNOWN, store.get("project-evidence", "create").state)
+
+        store.reconcileAbsent("project-evidence", "create", "Fresh NOT_FOUND for same project", true)
+        assertEquals(WorkflowStepState.FAILED, store.get("project-evidence", "create").state)
+    }
+
+    @Test
+    fun completionRequiresEvidenceAndAnActiveOperation() {
+        val store = store()
+        org.junit.Assert.assertThrows(IllegalArgumentException::class.java) {
+            store.reconcileCompleted("project-completion", "hosting", "",)
+        }
+        org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+            store.reconcileCompleted("project-completion", "hosting", "Evidence without operation")
+        }
+        store.waitForConfirmation("project-completion", "hosting", "Review")
+        store.confirmAndStart("project-completion", "hosting", "op-hosting", "Started")
+        store.reconcileCompleted("project-completion", "hosting", "Fresh diagnostic evidence")
+        assertEquals(WorkflowStepState.COMPLETED, store.get("project-completion", "hosting").state)
+    }
+
+    @Test
+    fun manualCompletionCannotBeUsedBeforeAnOperationStarts() {
+        val store = store()
+        org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+            store.confirmManualCompletion("project-manual", "authentication", "User says done")
+        }
+        store.waitForConfirmation("project-manual", "authentication", "Review")
+        org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+            store.confirmManualCompletion("project-manual", "authentication", "Not started yet")
+        }
+    }
+
+    @Test
     fun manualConfirmationRemainsDistinctFromDiagnosticCompletion() {
         val store = store()
         store.waitForConfirmation("project-two", "hosting", "Review")

@@ -122,6 +122,41 @@ class WorkflowProgressStoreTest {
     }
 
     @Test
+    fun workflowProgressSurvivesStoreRecreationWithOperationAndEvidence() {
+        val preferences = InMemorySharedPreferences()
+        val firstStore = WorkflowProgressStore(preferences)
+        firstStore.waitForConfirmation("project-persist", "firestore_database", "Review database")
+        firstStore.confirmAndStart("project-persist", "firestore_database", "operation-persist-1", "Command copied")
+        firstStore.markUnknown("project-persist", "firestore_database", "Cloud Shell response was interrupted")
+
+        val reopenedStore = WorkflowProgressStore(preferences)
+        val restored = reopenedStore.get("project-persist", "firestore_database")
+
+        assertEquals(WorkflowStepState.UNKNOWN, restored.state)
+        assertEquals("operation-persist-1", restored.operationId)
+        assertEquals("Cloud Shell response was interrupted", restored.message)
+        assertEquals("", restored.evidence)
+    }
+
+    @Test
+    fun failedOperationCannotBeCompletedWithoutASeparateConfirmedAttempt() {
+        val store = store()
+        store.waitForConfirmation("project-failed", "hosting", "Review")
+        store.confirmAndStart("project-failed", "hosting", "operation-failed", "Started")
+        store.markFailed("project-failed", "hosting", "Known failure")
+
+        org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+            store.reconcileCompleted("project-failed", "hosting", "Evidence from an unrelated later check")
+        }
+        assertEquals(WorkflowStepState.FAILED, store.get("project-failed", "hosting").state)
+
+        store.waitForConfirmation("project-failed", "hosting", "User reviewed a new attempt")
+        store.confirmAndStart("project-failed", "hosting", "operation-retry", "Explicit retry started")
+        store.reconcileCompleted("project-failed", "hosting", "Fresh evidence for retry")
+        assertEquals(WorkflowStepState.COMPLETED, store.get("project-failed", "hosting").state)
+    }
+
+    @Test
     fun recordsAreIsolatedByProjectId() {
         val store = store()
         store.waitForConfirmation("project-a", "api", "Review A")

@@ -483,13 +483,13 @@ cloudshell download geivia-projects.json"""
 
     var diagnosticSummary by remember { mutableStateOf(prefs.getString("cloud_project_diagnostic_summary", "").orEmpty()) }
     val diagnosticCommand = remember(selectedProjectId) {
-        if (selectedProjectId.isBlank()) "" else listOf(
+        if (selectedProjectId.isBlank() || !selectedProjectId.matches(Regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$"))) "" else listOf(
             "set -e",
-            "PROJECT_ID='$selectedProjectId'",
-            "echo \\\"Verificando o projeto exato: \\\$PROJECT_ID\\\"",
-            "gcloud projects describe \\\"\\\$PROJECT_ID\\\" --format=json > geivia-project-details.json",
-            "gcloud services list --enabled --project=\\\"\\\$PROJECT_ID\\\" --format=json > geivia-enabled-apis.json",
-            "jq -n --slurpfile p geivia-project-details.json --slurpfile s geivia-enabled-apis.json '{project:\\$p[0],enabledServices:\\$s[0]}' > geivia-diagnostic.json",
+            "PROJECT_ID='\$selectedProjectId'",
+            "echo \"Verificando o projeto exato: \$PROJECT_ID\"",
+            "gcloud projects describe \"\$PROJECT_ID\" --format=json > geivia-project-details.json",
+            "gcloud services list --enabled --project=\"\$PROJECT_ID\" --format=json > geivia-enabled-apis.json",
+            "jq -n --slurpfile p geivia-project-details.json --slurpfile s geivia-enabled-apis.json '{project:\$p[0],enabledServices:\$s[0]}' > geivia-diagnostic.json",
             "cloudshell download geivia-diagnostic.json"
         ).joinToString("\n")
     }

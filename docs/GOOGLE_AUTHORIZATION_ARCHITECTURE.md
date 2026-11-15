@@ -82,3 +82,17 @@ O painel pós-questionário organiza as etapas de configuração com base nas re
 O plano exibido nesta etapa é informativo e não executa comandos nem habilita APIs. A implementação de alterações deve ser feita em uma etapa posterior, com confirmação por serviço, apresentação do comando exato, execução pelo usuário no Cloud Shell e registro verificável do resultado. No modo custo zero, qualquer serviço que exija faturamento deve ser bloqueado, sem ativar Blaze ou associar forma de pagamento.
 
 O relatório de diagnóstico só é considerado correspondente quando o `project.projectId` é exatamente igual ao projeto selecionado no aparelho.
+
+## Habilitação assistida de APIs — etapa implementada
+
+Com um diagnóstico recente vinculado ao projeto selecionado, o GEIVIA cruza as respostas do questionário com as APIs necessárias e apresenta ações individuais. Para cada API pendente e permitida pelo modo de custo, o usuário pode abrir uma confirmação que mostra o nome da API, o Project ID e o comando exato:
+
+```bash
+gcloud services enable API --project=PROJECT_ID
+```
+
+O botão de confirmação apenas copia um comando por vez. O usuário continua responsável por revisar e executar o comando no Cloud Shell. O app não executa chamadas de escrita no Google Cloud e não habilita APIs em segundo plano.
+
+Após a execução manual, o usuário deve gerar e importar um novo diagnóstico somente leitura. O GEIVIA só registra a API como confirmada quando o relatório pertence ao mesmo Project ID e lista o serviço como habilitado. Um comando copiado não é considerado sucesso.
+
+No modo custo zero, Cloud Storage for Firebase e Cloud Build permanecem bloqueados nesta etapa por risco de limites/faturamento. O usuário não pode contornar esse bloqueio pela interface. A ativação de uma API não garante que o uso posterior do serviço seja gratuito; os limites e preços devem ser conferidos antes da utilização.

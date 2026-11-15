@@ -852,6 +852,17 @@ cloudshell download geivia-projects.json"""
                         val api = prefs.getString("pending_api_service", "API") ?: "API"
                         val project = prefs.getString("pending_api_project_id", selectedProjectId) ?: selectedProjectId
                         prefs.edit().remove("pending_api_service").remove("pending_api_project_id").remove("pending_api_created_at").apply()
+                        runCatching {
+                            val saved = org.json.JSONObject(prefs.getString("cloud_project_diagnostic_json", null) ?: "{}")
+                            saved.put("enabledServices", JSONArray())
+                            saved.remove("firestoreDatabases")
+                            saved.remove("billing")
+                            prefs.edit().putString("cloud_project_diagnostic_json", saved.toString()).apply()
+                        }
+                        diagnosticSummary = ""
+                        enabledFirebaseApis = emptySet()
+                        firestoreDatabaseIds = null
+                        firestoreBillingEnabled = null
                         apiActionStatus = "Acompanhamento encerrado neste aparelho. Importe um novo diagnóstico antes de preparar outra ação. Nenhuma alteração foi feita no Google Cloud."
                         addActionHistory("Acompanhamento de API encerrado manualmente, sem confirmação de resultado • $project • $api")
                     }

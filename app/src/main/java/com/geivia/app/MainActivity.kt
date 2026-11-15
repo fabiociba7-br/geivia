@@ -1845,7 +1845,25 @@ private fun GitHubScreen(
 
     LaunchedEffect(connected, refreshCounter) {
         localConnected = connected
-        val token = tokenStore.accessToken()
+        val tokenResult = withContext(Dispatchers.IO) {
+            runCatching {
+                GitHubAuthClient.ensureFreshAccessToken(
+                    prefs.getString("github_exchange_url", "").orEmpty(),
+                    prefs.getString("github_client_id", "").orEmpty(),
+                    prefs.getString("github_callback_url", "").orEmpty(),
+                    tokenStore
+                )
+            }
+        }
+        val token = tokenResult.getOrNull()
+        if (tokenResult.isFailure) {
+            error = tokenResult.exceptionOrNull()?.message ?: "Não foi possível renovar a autorização GitHub."
+            if (error.orEmpty().contains("expirou") || error.orEmpty().contains("Conecte novamente")) {
+                tokenStore.clear()
+                localConnected = false
+                onConnectedChanged(false)
+            }
+        }
         if (token != null) {
             loading = true
             val result = withContext(Dispatchers.IO) {
@@ -1872,7 +1890,17 @@ private fun GitHubScreen(
 
     LaunchedEffect(connected, selectedRepository?.fullName, refreshCounter) {
         val repository = selectedRepository ?: return@LaunchedEffect
-        val token = tokenStore.accessToken() ?: return@LaunchedEffect
+        val tokenResult = withContext(Dispatchers.IO) {
+            runCatching {
+                GitHubAuthClient.ensureFreshAccessToken(
+                    prefs.getString("github_exchange_url", "").orEmpty(),
+                    prefs.getString("github_client_id", "").orEmpty(),
+                    prefs.getString("github_callback_url", "").orEmpty(),
+                    tokenStore
+                )
+            }
+        }
+        val token = tokenResult.getOrNull() ?: return@LaunchedEffect
         detailsLoading = true
         val result = withContext(Dispatchers.IO) {
             runCatching {
@@ -1906,7 +1934,17 @@ private fun GitHubScreen(
     LaunchedEffect(connected, selectedRepository?.fullName, selectedWorkflowRun?.id, refreshCounter) {
         val repository = selectedRepository ?: return@LaunchedEffect
         val run = selectedWorkflowRun ?: return@LaunchedEffect
-        val token = tokenStore.accessToken() ?: return@LaunchedEffect
+        val tokenResult = withContext(Dispatchers.IO) {
+            runCatching {
+                GitHubAuthClient.ensureFreshAccessToken(
+                    prefs.getString("github_exchange_url", "").orEmpty(),
+                    prefs.getString("github_client_id", "").orEmpty(),
+                    prefs.getString("github_callback_url", "").orEmpty(),
+                    tokenStore
+                )
+            }
+        }
+        val token = tokenResult.getOrNull() ?: return@LaunchedEffect
         jobsLoading = true
         val result = withContext(Dispatchers.IO) {
             runCatching {

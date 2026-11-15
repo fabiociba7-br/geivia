@@ -444,9 +444,21 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
         ) { uri ->
             if (uri != null) {
                 val result = runCatching {
-                    val raw = context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
-                        ?: throw IllegalStateException("Não foi possível abrir o arquivo selecionado.")
-                    if (raw.length > 5 * 1024 * 1024) throw IllegalStateException("Arquivo excede o limite de 5 MB.")
+                    val raw = context.contentResolver.openInputStream(uri)?.use { input ->
+                        val output = java.io.ByteArrayOutputStream()
+                        val buffer = ByteArray(8192)
+                        var total = 0
+                        while (true) {
+                            val count = input.read(buffer)
+                            if (count < 0) break
+                            total += count
+                            if (total > 5 * 1024 * 1024) {
+                                throw IllegalStateException("Arquivo excede o limite de 5 MB.")
+                            }
+                            output.write(buffer, 0, count)
+                        }
+                        output.toString(Charsets.UTF_8.name())
+                    } ?: throw IllegalStateException("Não foi possível abrir o arquivo selecionado.")
                     WorkflowBackupValidator.validate(raw)
                 }.getOrElse { error ->
                     WorkflowBackupValidationResult(false, error.message ?: "Não foi possível verificar o arquivo.")

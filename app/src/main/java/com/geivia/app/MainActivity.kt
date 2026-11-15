@@ -806,6 +806,25 @@ cloudshell download geivia-projects.json"""
             dismissButton = { TextButton(onClick = { showCancelPendingDialog = false }) { Text("Voltar") } }
         )
     }
+    if (showFirestoreCreateDialog) {
+        AlertDialog(
+            onDismissRequest = { showFirestoreCreateDialog = false },
+            title = { Text("Confirmar criação do Firestore?") },
+            text = { Text("Será preparado um comando para criar somente o banco (default), edição Standard, na região $firestoreLocation, no projeto $selectedProjectId. O comando consulta os bancos existentes e não tenta criar outro se (default) já existir. A localização é uma decisão importante e não pode ser simplesmente trocada depois. O GEIVIA apenas copia o comando; você executará manualmente no Cloud Shell.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("GEIVIA criar Firestore", firestoreCreateCommand))
+                    prefs.edit().putString("pending_firestore_project_id", selectedProjectId).putString("pending_firestore_location", firestoreLocation).putLong("pending_firestore_created_at", System.currentTimeMillis()).apply()
+                    addActionHistory("Comando de criação Firestore preparado; aguardando diagnóstico • $selectedProjectId • $firestoreLocation")
+                    firestoreActionStatus = "Comando copiado. Execute uma única vez no Cloud Shell e importe um novo diagnóstico para reconciliar o resultado."
+                    Toast.makeText(context, "Comando copiado. A execução é manual.", Toast.LENGTH_LONG).show()
+                    showFirestoreCreateDialog = false
+                }) { Text("Confirmar e copiar") }
+            },
+            dismissButton = { TextButton(onClick = { showFirestoreCreateDialog = false }) { Text("Cancelar") } }
+        )
+    }
     selectedApiForConfirmation?.let { (api, label) ->
         AlertDialog(
             onDismissRequest = { selectedApiForConfirmation = null },

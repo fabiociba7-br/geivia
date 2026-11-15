@@ -1,21 +1,12 @@
 package com.geivia.app
 
-import android.content.Context
+import android.content.SharedPreferences
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import java.util.UUID
 
-@RunWith(RobolectricTestRunner::class)
 class WorkflowProgressStoreTest {
-    private fun store(): WorkflowProgressStore {
-        val context: Context = org.robolectric.RuntimeEnvironment.getApplication()
-        return WorkflowProgressStore(
-            context.getSharedPreferences("workflow-test-${UUID.randomUUID()}", Context.MODE_PRIVATE)
-        )
-    }
+    private fun store() = WorkflowProgressStore(InMemorySharedPreferences())
 
     @Test
     fun unknownOperationCannotBeRetriedUntilSameProjectIsReconciled() {
@@ -56,5 +47,44 @@ class WorkflowProgressStoreTest {
         store.confirmAndStart("project-a", "api", "op-a", "Started A")
         assertEquals(WorkflowStepState.IN_PROGRESS, store.get("project-a", "api").state)
         assertEquals(WorkflowStepState.WAITING_CONFIRMATION, store.get("project-b", "api").state)
+    }
+}
+
+/** Minimal in-memory implementation so state-machine tests need no emulator or network. */
+private class InMemorySharedPreferences : SharedPreferences {
+    private val values = mutableMapOf<String, Any>()
+
+    override fun getAll(): MutableMap<String, *> = values.toMutableMap()
+    override fun getString(name: String?, defValue: String?): String? = values[name.orEmpty()] as? String ?: defValue
+    override fun getStringSet(name: String?, defValues: MutableSet<String>?): MutableSet<String>? =
+        (values[name.orEmpty()] as? Set<*>)?.filterIsInstance<String>()?.toMutableSet() ?: defValues
+    override fun getInt(name: String?, defValue: Int): Int = values[name.orEmpty()] as? Int ?: defValue
+    override fun getLong(name: String?, defValue: Long): Long = values[name.orEmpty()] as? Long ?: defValue
+    override fun getFloat(name: String?, defValue: Float): Float = values[name.orEmpty()] as? Float ?: defValue
+    override fun getBoolean(name: String?, defValue: Boolean): Boolean = values[name.orEmpty()] as? Boolean ?: defValue
+    override fun contains(name: String?): Boolean = values.containsKey(name.orEmpty())
+    override fun edit(): SharedPreferences.Editor = MemoryEditor()
+    override fun registerOnSharedPreferenceChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener?) = Unit
+    override fun unregisterOnSharedPreferenceChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener?) = Unit
+
+    private inner class MemoryEditor : SharedPreferences.Editor {
+        private val changes = mutableMapOf<String, Any?>()
+        private var clearAll = false
+
+        override fun putString(name: String?, value: String?): SharedPreferences.Editor = apply { changes[name.orEmpty()] = value }
+        override fun putStringSet(name: String?, values: MutableSet<String>?): SharedPreferences.Editor =
+            apply { changes[name.orEmpty()] = values?.toMutableSet() }
+        override fun putInt(name: String?, value: Int): SharedPreferences.Editor = apply { changes[name.orEmpty()] = value }
+        override fun putLong(name: String?, value: Long): SharedPreferences.Editor = apply { changes[name.orEmpty()] = value }
+        override fun putFloat(name: String?, value: Float): SharedPreferences.Editor = apply { changes[name.orEmpty()] = value }
+        override fun putBoolean(name: String?, value: Boolean): SharedPreferences.Editor = apply { changes[name.orEmpty()] = value }
+        override fun remove(name: String?): SharedPreferences.Editor = apply { changes[name.orEmpty()] = null }
+        override fun clear(): SharedPreferences.Editor = apply { clearAll = true; changes.clear() }
+        override fun commit(): Boolean {
+            if (clearAll) values.clear()
+            changes.forEach { (key, value) -> if (value == null) values.remove(key) else values[key] = value }
+            return true
+        }
+        override fun apply() { commit() }
     }
 }

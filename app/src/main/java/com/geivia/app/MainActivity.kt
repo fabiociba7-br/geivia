@@ -422,6 +422,7 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
             report.optJSONObject("project")?.optString("projectId") == chosenProjectId && chosenProjectId.isNotBlank()
         }.getOrDefault(false)
         val workflowStore = remember(projectPrefs) { WorkflowProgressStore(projectPrefs) }
+        val workflowStorageError = workflowStore.healthError()
         val workflowCatalog = listOf(
             "project_diagnostic" to "Diagnóstico do projeto",
             "api_firebase_googleapis_com" to "Firebase Management API",
@@ -438,11 +439,18 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
             "hosting_deploy" to "Publicação do site",
             "storage" to "Cloud Storage"
         )
-        val workflowRecords = workflowStore.allForProject(chosenProjectId).associateBy { it.stepId }
+        val workflowRecords = if (workflowStorageError == null) workflowStore.allForProject(chosenProjectId).associateBy { it.stepId } else emptyMap()
         Spacer(Modifier.height(16.dp))
         Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(15.dp)) {
             Column(Modifier.padding(16.dp)) {
                 Text("ACOMPANHAMENTO DAS ETAPAS", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                if (workflowStorageError != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Text("OPERAÇÕES BLOQUEADAS PARA EVITAR DUPLICIDADE", color = Color(0xFF9A5B13), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(5.dp))
+                    Text(workflowStorageError, color = Color(0xFF9A5B13), fontSize = 11.sp, lineHeight = 16.sp)
+                    Text("O histórico não foi apagado nem reiniciado. Abra a configuração do Cloud Shell para ver as orientações de recuperação; nenhuma nova operação será iniciada.", color = Muted, fontSize = 10.sp, lineHeight = 15.sp)
+                }
                 Spacer(Modifier.height(5.dp))
                 Text(if (chosenProjectId.isBlank()) "Selecione um projeto para iniciar o acompanhamento." else "Projeto: $chosenProjectId", color = Muted, fontSize = 11.sp)
                 Spacer(Modifier.height(8.dp))
@@ -668,6 +676,24 @@ private fun CloudShellSetupScreen(
         )
     }
     val workflowProgressStore = remember(prefs) { WorkflowProgressStore(prefs) }
+    val workflowStorageError = workflowProgressStore.healthError()
+    if (workflowStorageError != null) {
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text("GEIVIA", color = DeepBlue, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+            Spacer(Modifier.height(18.dp))
+            Text("Histórico de operações protegido", color = Ink, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(10.dp))
+            Text(workflowStorageError, color = Color(0xFF9A5B13), fontSize = 14.sp, lineHeight = 21.sp)
+            Spacer(Modifier.height(12.dp))
+            Text("Nenhum progresso foi apagado ou reiniciado. Para evitar uma criação duplicada ou uma alteração repetida na nuvem, todas as operações ficam bloqueadas até a recuperação segura do histórico.", color = Muted, fontSize = 13.sp, lineHeight = 19.sp)
+            Spacer(Modifier.height(22.dp))
+            OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Voltar ao painel") }
+        }
+        return
+    }
     var showFirestoreCreateDialog by remember { mutableStateOf(false) }
     var firestoreActionStatus by remember { mutableStateOf("") }
     var apiActionStatus by remember { mutableStateOf("") }

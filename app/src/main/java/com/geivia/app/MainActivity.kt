@@ -627,6 +627,7 @@ private fun CloudShellSetupScreen(
     }
     var importedProjects by remember { mutableStateOf(readSavedProjects()) }
     var importStatus by remember { mutableStateOf("") }
+    var pendingAbsentConfirmation by remember { mutableStateOf("") }
     var selectedProjectId by remember { mutableStateOf(prefs.getString("selected_project_id", null).orEmpty()) }
     var selectedProjectName by remember { mutableStateOf(prefs.getString("selected_project_name", null).orEmpty()) }
     var selectedProjectNumber by remember { mutableStateOf(prefs.getString("selected_project_number", null).orEmpty()) }
@@ -777,24 +778,10 @@ cloudshell download geivia-projects.json"""
                         }
                     }
                     pendingId.isNotBlank() && confirmedAbsentId == pendingId -> {
-                        val reconciled = runCatching {
-                            val current = workflowProgressStore.get(pendingId, "project_creation")
-                            if (current.state == WorkflowStepState.IN_PROGRESS) {
-                                workflowProgressStore.markUnknown(pendingId, "project_creation", "Reconciliação manual consultou o mesmo Project ID.")
-                            }
-                            workflowProgressStore.reconcileAbsent(
-                                pendingId,
-                                "project_creation",
-                                "Cloud Shell retornou NOT_FOUND explícito para o mesmo Project ID: $pendingId.",
-                                userAcknowledged = true
-                            )
-                        }
-                        if (reconciled.isSuccess) {
-                            prefs.edit().remove("pending_project_creation_id").remove("pending_project_creation_name").apply()
-                            importStatus = "O Google confirmou que $pendingId não existe. A operação anterior foi encerrada; uma nova tentativa exige outra confirmação explícita."
-                        } else {
-                            importStatus = reconciled.exceptionOrNull()?.message ?: "Não foi possível reconciliar a ausência."
-                        }
+                        // Imported JSON is user-supplied and is not cryptographically authenticated.
+                        // Require an explicit user acknowledgement before releasing the creation lock.
+                        pendingAbsentConfirmation = pendingId
+                        importStatus = "O arquivo importado declara NOT_FOUND para $pendingId. Confirme que ele foi gerado agora pelo comando de reconciliação no Cloud Shell."
                     }
                     pendingId.isNotBlank() -> {
                         importStatus = "Inventário importado, mas a operação $pendingId continua pendente. Somente o mesmo ID pode ser reconciliado; não inicie outra criação."
@@ -1058,6 +1045,39 @@ cloudshell download geivia-projects.json"""
                 }) { Text("Encerrar acompanhamento") }
             },
             dismissButton = { TextButton(onClick = { showCancelPendingDialog = false }) { Text("Voltar") } }
+        )
+    }
+    if (pendingAbsentConfirmation.isNotBlank()) {
+        val absentId = pendingAbsentConfirmation
+        AlertDialog(
+            onDismissRequest = { pendingAbsentConfirmation = "" },
+            title = { Text("Confirmar relatório de ausência?") },
+            text = { Text("O arquivo JSON é fornecido pelo usuário e não possui assinatura digital. Ele declara que a consulta gcloud projects describe retornou NOT_FOUND para o mesmo Project ID: $absentId. Só confirme se você acabou de gerar esse arquivo executando o comando de reconciliação exibido pelo GEIVIA no Cloud Shell, na conta Google correta. Se houver dúvida, cancele e mantenha a operação bloqueada.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    runCatching {
+                        val current = workflowProgressStore.get(absentId, "project_creation")
+                        if (current.state == WorkflowStepState.IN_PROGRESS) {
+                            workflowProgressStore.markUnknown(absentId, "project_creation", "Usuário confirmou que importou o resultado da consulta de reconciliação do mesmo Project ID.")
+                        }
+                        workflowProgressStore.reconcileAbsent(
+                            absentId,
+                            "project_creation",
+                            "Usuário confirmou arquivo importado que declara NOT_FOUND para o mesmo Project ID.",
+                            userAcknowledged = true
+                        )
+                    }.onSuccess {
+                        prefs.edit().remove("pending_project_creation_id").remove("pending_project_creation_name").apply()
+                        importStatus = "Relatório de ausência confirmado pelo usuário. A operação anterior foi encerrada; uma nova tentativa exige outra confirmação explícita."
+                    }.onFailure {
+                        importStatus = it.message ?: "Não foi possível reconciliar a ausência."
+                    }
+                    pendingAbsentConfirmation = ""
+                }) { Text("Confirmar arquivo") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingAbsentConfirmation = "" }) { Text("Cancelar") }
+            }
         )
     }
     if (showProjectCreateDialog) {

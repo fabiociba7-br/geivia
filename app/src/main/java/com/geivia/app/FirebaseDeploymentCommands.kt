@@ -39,7 +39,7 @@ object FirebaseDeploymentCommands {
               }
             }
             GEIVIA_EXPECTED_RULES
-            if [ -e "§WORKDIR" ] && ! cmp -s "$§WORKDIR/firestore.rules" "$§EXPECTED_RULES_FILE"; then
+            if [ -e "§WORKDIR" ] && ! cmp -s "§WORKDIR/firestore.rules" "§EXPECTED_RULES_FILE"; then
               echo "O arquivo firestore.rules foi alterado em relação ao modelo deny-all do GEIVIA. Nada foi publicado."
               exit 34
             fi
@@ -101,7 +101,7 @@ object FirebaseDeploymentCommands {
             }
             GEIVIA_FIRESTORE_RULES
             fi
-            if ! cmp -s "§WORKDIR/firestore.rules" "$§EXPECTED_RULES_FILE"; then
+            if ! cmp -s "§WORKDIR/firestore.rules" "§EXPECTED_RULES_FILE"; then
               echo "O arquivo firestore.rules não corresponde ao modelo deny-all esperado. Nada foi publicado."
               exit 34
             fi

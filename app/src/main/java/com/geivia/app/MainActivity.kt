@@ -1069,7 +1069,7 @@ cloudshell download geivia-projects.json"""
                 TextButton(onClick = {
                     runCatching {
                         workflowProgressStore.waitForConfirmation(newProjectId.trim(), "project_creation", "Revisar criação ou reutilização do Project ID exato.")
-                        workflowProgressStore.confirmAndStart(newProjectId.trim(), "project_creation", "project-create-\${newProjectId.trim()}", "Comando único preparado; aguardando execução e reconciliação do mesmo Project ID.")
+                        workflowProgressStore.confirmAndStart(newProjectId.trim(), "project_creation", "project-create-${newProjectId.trim()}-${System.currentTimeMillis()}", "Comando único preparado; aguardando execução e reconciliação do mesmo Project ID.")
                     }.onFailure {
                         projectCreationStatus = it.message ?: "Não foi possível registrar a operação."
                         showProjectCreateDialog = false

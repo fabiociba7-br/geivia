@@ -73,6 +73,9 @@ private fun GeiviaApp() {
     var workspaceName by remember {
         mutableStateOf(prefs.getString("workspace_name", null) ?: "Meu ambiente GEIVIA")
     }
+    var cloudProjectId by remember {
+        mutableStateOf(prefs.getString("cloud_project_id", null) ?: workspaceId)
+    }
     var page by rememberSaveable {
         mutableStateOf(if (prefs.getBoolean("cloud_setup_completed", false)) "welcome" else "cloud_setup")
     }
@@ -104,12 +107,14 @@ private fun GeiviaApp() {
                 "cloud_setup" -> CloudWorkspaceScreen(
                     workspaceId = workspaceId,
                     workspaceName = workspaceName,
+                    cloudProjectId = cloudProjectId,
+                    onProjectIdChange = { cloudProjectId = it.lowercase().filter { char -> char.isLetterOrDigit() || char == '-' } },
                     onNameChange = {
                         workspaceName = it
                         prefs.edit().putString("workspace_name", it).apply()
                     },
                     onContinue = {
-                        prefs.edit().putBoolean("cloud_setup_completed", true).apply()
+                        prefs.edit().putBoolean("cloud_setup_completed", true).putString("cloud_project_id", cloudProjectId).apply()
                         page = "welcome"
                     }
                 )
@@ -166,6 +171,8 @@ private fun GeiviaApp() {
 private fun CloudWorkspaceScreen(
     workspaceId: String,
     workspaceName: String,
+    cloudProjectId: String,
+    onProjectIdChange: (String) -> Unit,
     onNameChange: (String) -> Unit,
     onContinue: () -> Unit
 ) {
@@ -205,6 +212,17 @@ private fun CloudWorkspaceScreen(
             singleLine = true,
             placeholder = { Text("Meu ambiente GEIVIA") }
         )
+        Spacer(Modifier.height(14.dp))
+        Text("ID real do projeto Google Cloud", color = Ink, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+        OutlinedTextField(
+            value = cloudProjectId,
+            onValueChange = onProjectIdChange,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            placeholder = { Text("geivia-xxxxxxxxxx") },
+            supportingText = { Text("Use o ID exibido no Google Cloud após criar o projeto. Ele pode ser diferente da sugestão.") }
+        )
+        val validProjectId = cloudProjectId.matches(Regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$"))
         Spacer(Modifier.height(17.dp))
         Button(
             onClick = {
@@ -224,12 +242,16 @@ private fun CloudWorkspaceScreen(
             Spacer(Modifier.height(6.dp))
             Text(error, color = Color(0xFFB3261E), fontSize = 12.sp)
         }
+        if (cloudProjectId.isNotBlank() && !validProjectId) {
+            Spacer(Modifier.height(4.dp))
+            Text("O ID precisa ter de 6 a 30 caracteres, começar com letra minúscula e usar somente letras minúsculas, números e hífen, sem hífen no final.", color = Color(0xFFB3261E), fontSize = 11.sp, lineHeight = 16.sp)
+        }
         Spacer(Modifier.height(13.dp))
         OutlinedButton(
             onClick = onContinue,
-            enabled = openedCloud,
+            enabled = openedCloud && validProjectId,
             modifier = Modifier.fillMaxWidth()
-        ) { Text("Já entrei no Google Cloud, continuar") }
+        ) { Text("Projeto criado, continuar") }
         Spacer(Modifier.height(8.dp))
         Text("Você poderá continuar usando o questionário e o planejamento sem conectar nenhuma conta ao GEIVIA.", color = Muted, fontSize = 11.sp, lineHeight = 17.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
     }

@@ -38,12 +38,12 @@ object FirebaseDeploymentCommands {
             RULES_HTTP="$(curl -sS -o geivia-firestore-release.json -w '%{http_code}' \\
               -H "Authorization: Bearer §TOKEN" \\
               "https://firebaserules.googleapis.com/v1/projects/§PROJECT_ID/releases/cloud.firestore")"
-            if [ "$RULES_HTTP" = "200" ]; then
+            if [ "§RULES_HTTP" = "200" ]; then
               echo "Já existe uma versão ativa de regras Firestore. Por segurança, nenhuma regra será sobrescrita."
               echo "Revise as regras atuais no Console Firebase antes de planejar uma atualização."
               exit 4
-            elif [ "$RULES_HTTP" != "404" ]; then
-              echo "Não foi possível verificar a versão de regras (HTTP $RULES_HTTP). Nenhuma publicação foi feita."
+            elif [ "§RULES_HTTP" != "404" ]; then
+              echo "Não foi possível verificar a versão de regras (HTTP §RULES_HTTP). Nenhuma publicação foi feita."
               cat geivia-firestore-release.json
               exit 25
             fi
@@ -124,7 +124,7 @@ object FirebaseDeploymentCommands {
               SITE_HTTP="$(curl -sS -o geivia-hosting-site-check.json -w '%{http_code}' \\
                 -H "Authorization: Bearer §TOKEN" \\
                 "https://firebasehosting.googleapis.com/v1beta1/projects/§PROJECT_ID/sites/§SITE_ID")"
-              if [ "$SITE_HTTP" = "200" ]; then
+              if [ "§SITE_HTTP" = "200" ]; then
                 if ! jq -e '.type == "DEFAULT_SITE"' geivia-hosting-site-check.json >/dev/null; then
                   echo "O site encontrado não é o site padrão. Deploy interrompido para evitar publicar no destino errado."
                   cat geivia-hosting-site-check.json
@@ -132,15 +132,15 @@ object FirebaseDeploymentCommands {
                 fi
                 SITE_READY=true
                 break
-              elif [ "$SITE_HTTP" = "404" ]; then
+              elif [ "§SITE_HTTP" = "404" ]; then
                 sleep 10
               else
-                echo "Falha ao confirmar a propagação do site (HTTP $SITE_HTTP)."
+                echo "Falha ao confirmar a propagação do site (HTTP §SITE_HTTP)."
                 cat geivia-hosting-site-check.json
                 exit 27
               fi
             done
-            if [ "$SITE_READY" != "true" ]; then
+            if [ "§SITE_READY" != "true" ]; then
               echo "O site ainda não propagou. Não crie outro site; execute novamente a verificação do mesmo projeto."
               exit 28
             fi
@@ -197,7 +197,7 @@ object FirebaseDeploymentCommands {
               fi
               sleep 10
             done
-            if [ "$URL_READY" != "true" ]; then
+            if [ "§URL_READY" != "true" ]; then
               echo "O deploy foi enviado, mas a URL ainda não respondeu. Não repita a criação do site; verifique o Hosting no Console."
               exit 29
             fi

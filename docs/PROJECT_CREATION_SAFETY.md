@@ -28,7 +28,7 @@ O Project ID escolhido nunca muda automaticamente durante uma operação. O nome
 6. Executar uma única solicitação com o mesmo Project ID escolhido. Guardar qualquer nome de operação retornado.
 7. Se a resposta for timeout, conexão perdida ou resultado ambíguo, marcar `CREATION_STATUS_UNKNOWN`. **Não enviar outro comando de criação.**
 8. Reconciliar consultando o mesmo Project ID com `gcloud projects describe PROJECT_ID` e, quando aplicável, consultar o estado da operação assíncrona original.
-9. Se o projeto já existir, associá-lo à operação original e continuar. Se a operação ainda estiver em andamento, aguardar/consultar. Se houver falha definitiva confirmada, mostrar o erro e oferecer nova tentativa somente no mesmo Project ID após nova verificação.
+9. Se o projeto existir e estiver `ACTIVE`, associá-lo à operação original. Se a resposta ainda for ambígua, manter o bloqueio e reconciliar novamente o mesmo ID. A implementação atual só encerra uma tentativa sem projeto quando a consulta `describe` do mesmo ID produz o marcador exato `NOT_FOUND:` e o usuário importa a evidência `NOT_FOUND_CONFIRMED`; uma nova tentativa exige nova confirmação explícita e novo identificador de operação. Erros de permissão, rede ou formato não liberam a pendência.
 10. Um Project ID diferente só pode ser escolhido pelo usuário, em uma nova ação explícita, depois de explicar por que o ID anterior não pode ser usado.
 
 ## Comportamento obrigatório diante de erros

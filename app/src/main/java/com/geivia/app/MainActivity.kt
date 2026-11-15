@@ -776,7 +776,7 @@ cloudshell download geivia-projects.json"""
                         firebaseApiChecks.forEach { (api, label) ->
                             val enabled = api in enabledFirebaseApis
                             Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(imageVector = if (enabled) androidx.compose.material.icons.Icons.Default.CheckCircle else androidx.compose.material.icons.Icons.Default.Info, contentDescription = null, tint = if (enabled) Color(0xFF238653) else Color(0xFFB7791F), modifier = Modifier.size(18.dp))
+                                Text(if (enabled) "✓" else "!", color = if (enabled) Color(0xFF238653) else Color(0xFFB7791F), fontSize = 17.sp, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.width(8.dp))
                                 Column(Modifier.weight(1f)) {
                                     Text(label, color = Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)

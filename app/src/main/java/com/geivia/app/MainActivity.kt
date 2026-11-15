@@ -556,8 +556,30 @@ private fun CloudShellSetupScreen(
     var selectedApiForConfirmation by remember { mutableStateOf<Pair<String, String>?>(null) }
     var showCancelPendingDialog by remember { mutableStateOf(false) }
     var firestoreLocation by remember { mutableStateOf(prefs.getString("firestore_location", "").orEmpty()) }
-    var firestoreDatabaseIds by remember { mutableStateOf<List<String>?>(null) }
-    var firestoreBillingEnabled by remember { mutableStateOf<Boolean?>(null) }
+    var firestoreDatabaseIds by remember {
+        mutableStateOf(
+            runCatching {
+                val report = org.json.JSONObject(prefs.getString("cloud_project_diagnostic_json", null) ?: "")
+                if (report.optJSONObject("project")?.optString("projectId") != selectedProjectId) null
+                else report.optJSONArray("firestoreDatabases")?.let { array ->
+                    (0 until array.length()).mapNotNull { index ->
+                        array.optJSONObject(index)?.optString("name")?.substringAfterLast("/databases/")?.takeIf { it.isNotBlank() }
+                    }
+                }
+            }.getOrNull()
+        )
+    }
+    var firestoreBillingEnabled by remember {
+        mutableStateOf(
+            runCatching {
+                val report = org.json.JSONObject(prefs.getString("cloud_project_diagnostic_json", null) ?: "")
+                if (report.optJSONObject("project")?.optString("projectId") != selectedProjectId) null
+                else report.optJSONObject("billing")?.let { billing ->
+                    if (billing.has("billingEnabled") && !billing.isNull("billingEnabled")) billing.optBoolean("billingEnabled") else null
+                }
+            }.getOrNull()
+        )
+    }
     var showFirestoreCreateDialog by remember { mutableStateOf(false) }
     var firestoreActionStatus by remember { mutableStateOf("") }
     var apiActionStatus by remember { mutableStateOf("") }

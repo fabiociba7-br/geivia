@@ -80,6 +80,10 @@ class FirebaseDeploymentCommandsTest {
         assertTrue(command.contains(".firestore.rules == \"firestore.rules\""))
         assertTrue(command.contains("A configuração Firestore local não aponta para firestore.rules. Nada foi publicado."))
         assertTrue(command.indexOf("A configuração Firestore local não aponta para firestore.rules. Nada foi publicado.") < command.indexOf("gcloud projects describe"))
+        assertTrue(command.contains("cmp -s \"\$WORKDIR/firestore.rules\" \"\$EXPECTED_RULES_FILE\""))
+        assertTrue(command.contains("O arquivo firestore.rules foi alterado em relação ao modelo deny-all do GEIVIA. Nada foi publicado."))
+        assertTrue(command.contains("O arquivo firestore.rules não corresponde ao modelo deny-all esperado. Nada foi publicado."))
+        assertTrue(command.indexOf("O arquivo firestore.rules foi alterado em relação ao modelo deny-all do GEIVIA. Nada foi publicado.") < command.indexOf("gcloud projects describe"))
         assertTrue(command.contains("mkdir \"\$WORKDIR\""))
     }
 

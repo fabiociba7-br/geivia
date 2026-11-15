@@ -57,7 +57,7 @@ O app usa Authorization Code + PKCE S256 e valida state e validade de 10 minutos
 - O GEIVIA mostra até 20 commits, 15 execuções recentes do Actions e 20 pull requests abertos por repositório; detalhes de jobs e artefatos serão adicionados depois.
 - Desconectar no GEIVIA apaga o token local e a chave Android Keystore. Para revogação completa, remova a autorização/instalação nas configurações GitHub.
 - Se a autorização for revogada, o GitHub retorna 401/403 e o usuário deverá reconectar ou corrigir as permissões.
-- Não habilite tokens de usuário com expiração opcional até que a renovação automática esteja disponível; se habilitar, o usuário poderá precisar reconectar quando o token expirar.
+- Tokens de usuário GitHub App expiram por padrão após 8 horas. O GEIVIA renova automaticamente pelo endpoint `/refresh` e salva a nova resposta cifrada. O refresh token também expira (atualmente após 6 meses); se a renovação for recusada, reconecte a conta.
 
 ## Segurança
 

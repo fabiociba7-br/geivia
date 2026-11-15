@@ -84,14 +84,14 @@ A etapa de criação/reutilização está disponível na tela Cloud Shell:
 - o usuário escolhe e confirma explicitamente o Project ID e o nome;
 - antes de copiar o comando, o app grava o ID pendente e registra a operação como `IN_PROGRESS`;
 - o comando consulta primeiro o ID exato com `gcloud projects describe`;
-- somente o marcador explícito `NOT_FOUND:` permite enviar uma única chamada de criação; mensagens genéricas como "not found" não são aceitas;
+- somente a linha de erro completa `ERROR: (gcloud.projects.describe) NOT_FOUND:` permite enviar uma única chamada de criação; mensagens genéricas como "not found" não são aceitas;
 - falhas de permissão, rede, resposta desconhecida ou qualquer erro não reconhecido encerram o script sem criar;
 - se a solicitação de criação falhar ou ficar ambígua, o script manda não repetir e encerra; o app mantém o mesmo ID pendente;
 - após a criação, o script exige `lifecycleState == ACTIVE` antes de exportar o inventário;
 - a reconciliação consulta somente o ID original e não contém comando de criação;
 - a importação só conclui a etapa quando o mesmo Project ID aparece com estado `ACTIVE`;
 - se a consulta de reconciliação retornar o marcador explícito `NOT_FOUND:`, o comando exporta `NOT_FOUND_CONFIRMED`; a importação encerra a operação anterior como falha reconciliada, remove o bloqueio pendente e permite uma nova tentativa somente após outra confirmação explícita do usuário;
-- ausência em uma lista genérica de projetos nunca libera nova tentativa: somente a consulta `describe` do mesmo ID com erro explícito é aceita.
+- ausência em uma lista genérica de projetos nunca libera nova tentativa: somente a consulta `describe` do mesmo ID com a linha de erro completa `ERROR: (gcloud.projects.describe) NOT_FOUND:` é aceita.
 
 O comando é copiado para execução manual no Cloud Shell. O aplicativo não executa operações de nuvem remotamente. Mesmo que o usuário execute novamente o comando por engano, a pré-consulta reutiliza o projeto existente e não envia nova criação se ele estiver acessível.
 

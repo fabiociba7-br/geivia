@@ -235,6 +235,7 @@ private fun SummaryScreen(answers: Map<String, String>, costMode: String, onBack
 
 @Composable
 private fun DashboardScreen(answers: Map<String, String>, costMode: String, onRestart: () -> Unit) {
+    val context = LocalContext.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp)) {
         BrandMark()
         Spacer(Modifier.height(12.dp))
@@ -284,7 +285,7 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onRe
             )
         }
         Spacer(Modifier.height(20.dp))
-        Button(onClick = { shareProjectPlan(context = LocalContext.current, answers = answers, costMode = costMode) }, modifier = Modifier.fillMaxWidth()) { Text("Compartilhar plano do projeto") }
+        Button(onClick = { shareProjectPlan(context = context, answers = answers, costMode = costMode) }, modifier = Modifier.fillMaxWidth()) { Text("Compartilhar plano do projeto") }
         Spacer(Modifier.height(8.dp))
         OutlinedButton(onClick = onRestart, modifier = Modifier.fillMaxWidth()) { Text("Refazer questionário") }
     }

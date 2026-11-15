@@ -59,7 +59,7 @@ object GoogleCloudProjectCommands {
               jq '[{projectId:.projectId,name:.name,projectNumber:(.projectNumber|tostring),lifecycleState:.lifecycleState}]' geivia-project-result.json > geivia-projects.json
             else
               if grep -Eq '(^|[[:space:]])NOT_FOUND:' geivia-project-reconcile.err; then
-                jq -n --arg id '$projectId' '[{projectId:$id,name:$id,projectNumber:"",lifecycleState:"NOT_FOUND_CONFIRMED"}]' > geivia-projects.json
+                jq -n --arg id '$projectId' '[{projectId:§id,name:§id,projectNumber:"",lifecycleState:"NOT_FOUND_CONFIRMED"}]' > geivia-projects.json
                 echo "O Google confirmou NOT_FOUND para este Project ID. Nenhum projeto foi criado."
               else
                 cat geivia-project-reconcile.err

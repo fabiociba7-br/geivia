@@ -13,8 +13,8 @@ Conectar a conta GitHub do próprio usuário, listar os repositórios autorizado
 - Worker não persiste nem registra tokens.
 - Token e dados temporários PKCE criptografados com AES-GCM e chave do Android Keystore.
 - Renovação automática de tokens de usuário expirando, com rotação e armazenamento cifrado do novo refresh token.
-- Consulta de até 100 repositórios via `GET /user/repos`.
-- Detalhes por repositório: branches, até 20 commits, 15 execuções recentes do Actions, jobs da execução selecionada, metadados de artefatos e até 20 pull requests abertos.
+- Consulta paginada de até 1.000 repositórios pelo endpoint `GET /user/repos`.
+- Perfil conectado, branches, até 20 commits, 15 execuções recentes do Actions, jobs da execução selecionada, metadados de artefatos e até 20 pull requests abertos.
 - Desconexão local remove token, dados PKCE e chave do Android Keystore.
 - CI executa testes Node do Worker, testes Kotlin, build APK e upload do artefato.
 
@@ -23,13 +23,14 @@ A conexão real depende do proprietário registrar a GitHub App e publicar/confi
 ## Arquitetura
 
 1. O usuário registra uma GitHub App e instala a App somente nos repositórios que deseja autorizar.
-2. A GitHub App habilita autorização do usuário (OAuth) e usa a URL HTTPS do Worker como callback.
+2. A GitHub App usa a URL HTTPS do Worker como callback. O GEIVIA inicia o fluxo web OAuth manualmente com `redirect_uri` explícito.
 3. O Android gera verifier e state aleatórios, calcula o challenge S256 e abre o navegador no GitHub.
 4. O GitHub retorna um código ao Worker; o Worker redireciona apenas código e state para o deep link Android.
 5. O app valida state e idade da solicitação e envia o código e verifier ao Worker.
 6. O Worker troca o código no GitHub usando o Client Secret armazenado como Secret no Cloudflare.
 7. O Worker devolve a resposta do token diretamente ao app sem persistir ou registrar credenciais.
 8. O app cifra a resposta do token com Android Keystore e consulta a API do GitHub.
+9. Antes das consultas, o app verifica a expiração e renova o token pelo endpoint `/refresh`; a resposta com refresh token rotacionado também é cifrada localmente.
 
 PKCE protege o código de autorização contra interceptação por outro aplicativo. O segredo da GitHub App nunca é distribuído no APK.
 
@@ -37,16 +38,16 @@ PKCE protege o código de autorização contra interceptação por outro aplicat
 
 Configure somente:
 - Metadata: Read-only (listar repositórios).
-- Contents: Read-only (consultar commits e conteúdo).
-- Actions: Read-only (consultar execuções).
+- Contents: Read-only (consultar commits e branches).
+- Actions: Read-only (consultar execuções, jobs e metadados de artefatos).
 - Pull requests: Read-only (consultar PRs abertos).
 
 Não habilite escrita, administração, secrets, variables, deployments ou alteração de workflows. Instale a App somente nos repositórios selecionados.
 
 ## Limitações atuais
 
-- Lista até 100 repositórios; paginação ainda não foi implementada.
-- Exibe commits, pull requests abertos e execuções recentes; jobs individuais, artefatos, perfil e branches ainda não têm telas próprias.
+- Lista até 1.000 repositórios por atualização (10 páginas de 100).
+- Exibe branches, commits, PRs, execuções, jobs e metadados de artefatos. O download de artefatos ainda é aberto no GitHub.
 - Não altera arquivos, branches, workflows, configurações ou conteúdo dos repositórios.
 - Tokens de usuário expiram por padrão após 8 horas; o app renova automaticamente pelo Worker. O refresh token tem validade limitada (atualmente 6 meses); se o GitHub recusar a renovação, o usuário precisa reconectar.
 - O Worker não mantém banco de dados. O plano gratuito da Cloudflare pode atender o uso pessoal inicial, sujeito aos limites e termos vigentes.
@@ -66,10 +67,9 @@ Não habilite escrita, administração, secrets, variables, deployments ou alter
 ## Próximas entregas
 
 1. Validar fluxo completo com uma GitHub App real e Worker publicado.
-2. Adicionar paginação de repositórios e perfil conectado.
-3. Exibir branches, jobs individuais e artefatos.
-4. Implementar renovação segura de tokens antes de habilitar expiração.
-5. Só então avaliar criação de branches e pull requests. Escrita deverá continuar desativada por padrão e usar PR em vez de push direto em `main`.
+2. Adicionar download de artefatos com confirmação do usuário.
+3. Melhorar paginação para além de 1.000 repositórios se necessário.
+4. Só então avaliar criação de branches e pull requests. Escrita deverá continuar desativada por padrão e usar PR em vez de push direto em `main`.
 
 ## Referências oficiais
 

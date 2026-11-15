@@ -33,7 +33,7 @@ O arquivo `WorkflowProgress.kt` adiciona um registro persistente por combinaçã
 Regras da máquina de estados:
 
 - `NOT_STARTED` pode aguardar confirmação; não executa nada por si só.
-- `WAITING_CONFIRMATION` só passa a `IN_PROGRESS` quando o chamador registra uma confirmação explícita e um identificador de operação.
+- `WAITING_CONFIRMATION` só passa a `IN_PROGRESS` quando o chamador registra uma confirmação explícita e um identificador de operação novo, diferente do identificador da tentativa anterior.
 - `IN_PROGRESS` pode terminar em `COMPLETED` somente com evidência não vazia de diagnóstico externo; ou em `FAILED` quando a falha é conhecida.
 - Timeout, perda de conexão ou resposta ambígua devem resultar em `UNKNOWN`.
 - `UNKNOWN` não pode ser iniciado novamente. Só pode ser reconciliado com diagnóstico recente do mesmo Project ID: recurso encontrado = `COMPLETED`; recurso explicitamente ausente + confirmação do usuário = `FAILED`. A etapa não dispara nova operação automaticamente.

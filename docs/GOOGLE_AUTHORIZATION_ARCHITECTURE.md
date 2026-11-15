@@ -28,9 +28,11 @@ Essa arquitetura evita colocar client secret, chave de conta de serviço ou toke
 3. O GEIVIA gera um identificador local único, por exemplo `GEIVIA-A1B2C3D4`.
 4. O usuário toca em **Abrir Google Cloud** e autentica no navegador, fora do GEIVIA.
 5. O usuário abre o Cloud Shell, que executa comandos na sessão Google já autenticada.
-6. O GEIVIA fornece comandos de diagnóstico de leitura para listar projetos.
-7. O usuário executa e revisa os comandos antes de confirmar.
-8. O resultado pode ser exportado pelo Cloud Shell e importado no GEIVIA em uma etapa posterior.
+6. O GEIVIA fornece um comando de diagnóstico somente leitura para listar projetos em JSON.
+7. O usuário executa e revisa o comando no terminal.
+8. O comando usa `cloudshell download geivia-projects.json` para baixar o resultado ao aparelho.
+9. O usuário seleciona o JSON no GEIVIA; o app valida e importa apenas ID, nome, número e estado dos projetos.
+10. Para operações de escrita, o GEIVIA sempre mostra o comando exato, projeto, impacto, custo possível e exige confirmação do usuário antes de copiar/executar.
 9. Para operações de escrita, o GEIVIA sempre mostra o comando exato, projeto, impacto, custo possível e exige confirmação do usuário antes de copiar/executar.
 
 ## Limites e segurança
@@ -45,8 +47,8 @@ Essa arquitetura evita colocar client secret, chave de conta de serviço ou toke
 
 ## Próximas fases
 
-1. Importar arquivo JSON de projetos gerado no Cloud Shell.
-2. Consultar Firebase e APIs habilitadas com comandos de leitura, sempre no Cloud Shell.
+1. Consultar Firebase e APIs habilitadas com comandos de leitura, sempre no Cloud Shell.
+2. Importar os resultados estruturados desses diagnósticos.
 3. Gerar comandos específicos para cada configuração.
 4. Permitir execução assistida de alterações somente após revisão e confirmação explícita.
 5. Reavaliar OAuth Android direto somente se houver necessidade real e um fluxo compatível com os requisitos atuais do Google.

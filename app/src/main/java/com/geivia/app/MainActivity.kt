@@ -631,6 +631,10 @@ private fun CloudShellSetupScreen(
     var showCancelPendingDialog by remember { mutableStateOf(false) }
     var pendingActionToCancel by remember { mutableStateOf("api") }
     var firestoreLocation by remember { mutableStateOf(prefs.getString("firestore_location", "").orEmpty()) }
+    var newProjectId by rememberSaveable { mutableStateOf(prefs.getString("new_project_id", "").orEmpty()) }
+    var newProjectName by rememberSaveable { mutableStateOf(prefs.getString("new_project_name", "").orEmpty()) }
+    var showProjectCreateDialog by remember { mutableStateOf(false) }
+    var projectCreationStatus by remember { mutableStateOf("") }
     var firestoreDatabaseIds by remember {
         mutableStateOf(
             runCatching {

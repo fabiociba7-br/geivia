@@ -42,6 +42,10 @@ object GoogleCloudProjectCommands {
               echo "Não foi possível confirmar o resultado. NÃO crie outro projeto. Reconcilie este mesmo ID."
               exit 22
             fi
+            if ! jq -e '.lifecycleState == "ACTIVE"' geivia-project-result.json >/dev/null; then
+              echo "O projeto existe, mas ainda não está ACTIVE. Não crie outro; aguarde e reconcilie este mesmo ID."
+              exit 23
+            fi
             jq '[{projectId:.projectId,name:.name,projectNumber:(.projectNumber|tostring),lifecycleState:.lifecycleState}]' geivia-project-result.json > geivia-projects.json
             cloudshell download geivia-projects.json
         """.trimIndent()

@@ -41,6 +41,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
 
     testImplementation("junit:junit:4.13.2")
+    // Android's local-test android.jar stubs do not implement org.json.
+    // Use the real JSON implementation so persistence tests exercise production logic.
+    testImplementation("org.json:json:20240303")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

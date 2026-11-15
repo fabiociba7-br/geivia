@@ -45,7 +45,7 @@ class GoogleCloudProjectCommandsTest {
         val command = GoogleCloudProjectCommands.createOrReuse("geivia-demo-123", displayName)
         val encoded = java.util.Base64.getEncoder().encodeToString(displayName.toByteArray(Charsets.UTF_8))
 
-        assertTrue(command.contains("PROJECT_NAME=\"\$(printf '%s' '$encoded' | base64 -d)\""))
+        assertTrue(command.contains("PROJECT_NAME=\"$(printf '%s' '$encoded' | base64 -d)\""))
         assertFalse(command.contains(displayName))
         assertFalse(command.contains("touch /tmp/geivia-pwned"))
         assertEquals(displayName, String(java.util.Base64.getDecoder().decode(encoded), Charsets.UTF_8))

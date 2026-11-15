@@ -37,7 +37,7 @@ object GitHubOAuth {
     private fun randomBytes(size: Int): String {
         val bytes = ByteArray(size)
         random.nextBytes(bytes)
-        return Base64.encodeToString(bytes, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+        return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
     }
 
     fun codeChallenge(verifier: String): String {

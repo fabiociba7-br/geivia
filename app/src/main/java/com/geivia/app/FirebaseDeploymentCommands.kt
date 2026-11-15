@@ -18,8 +18,22 @@ object FirebaseDeploymentCommands {
             PROJECT_ID='$projectId'
             gcloud projects describe "$PROJECT_ID" --format=json >/dev/null
             gcloud services list --enabled --project="$PROJECT_ID" --format=json | jq -e 'any(.[]; ((.config.name // .name) == "firestore.googleapis.com"))' >/dev/null
-            command -v node >/dev/null
+            gcloud services list --enabled --project="$PROJECT_ID" --format=json | jq -e 'any(.[]; ((.config.name // .name) == "firebase.googleapis.com"))' >/dev/null
+            command -v firebase >/dev/null
+            if ! firebase projects:list >/dev/null 2>&1; then
+              echo "Autentique a Firebase CLI com sua conta Google."
+              firebase login --no-localhost
+              firebase projects:list >/dev/null
+            fi
             TOKEN="$(gcloud auth print-access-token)"
+            FIREBASE_HTTP="$(curl -sS -o geivia-firebase-project.json -w '%{http_code}' -H "Authorization: Bearer $TOKEN" "https://firebase.googleapis.com/v1beta1/projects/$PROJECT_ID")"
+            if [ "$FIREBASE_HTTP" = "404" ]; then
+              firebase projects:addfirebase "$PROJECT_ID" --non-interactive
+            elif [ "$FIREBASE_HTTP" != "200" ]; then
+              echo "Não foi possível verificar o registro Firebase (HTTP $FIREBASE_HTTP)."
+              cat geivia-firebase-project.json
+              exit 8
+            fi
             curl -fsS -H "Authorization: Bearer $TOKEN" \
               "https://firebaserules.googleapis.com/v1/projects/$PROJECT_ID/releases?pageSize=100" \
               > geivia-firestore-releases.json
@@ -56,7 +70,7 @@ object FirebaseDeploymentCommands {
             GEIVIA_FIRESTORE_RULES
             fi
             cd "$WORKDIR"
-            npx --yes firebase-tools deploy --only firestore:rules --project "$PROJECT_ID" --non-interactive
+            firebase deploy --only firestore:rules --project "$PROJECT_ID" --non-interactive
             echo "Regras iniciais restritivas publicadas. Todas as leituras e gravações de clientes estão bloqueadas até personalizar e testar regras por coleção."
         """.trimIndent()
     }
@@ -69,8 +83,22 @@ object FirebaseDeploymentCommands {
             SITE_ID='$projectId'
             gcloud projects describe "$PROJECT_ID" --format=json >/dev/null
             gcloud services list --enabled --project="$PROJECT_ID" --format=json | jq -e 'any(.[]; ((.config.name // .name) == "firebasehosting.googleapis.com"))' >/dev/null
-            command -v node >/dev/null
+            gcloud services list --enabled --project="$PROJECT_ID" --format=json | jq -e 'any(.[]; ((.config.name // .name) == "firebase.googleapis.com"))' >/dev/null
+            command -v firebase >/dev/null
+            if ! firebase projects:list >/dev/null 2>&1; then
+              echo "Autentique a Firebase CLI com sua conta Google."
+              firebase login --no-localhost
+              firebase projects:list >/dev/null
+            fi
             TOKEN="$(gcloud auth print-access-token)"
+            FIREBASE_HTTP="$(curl -sS -o geivia-firebase-project.json -w '%{http_code}' -H "Authorization: Bearer $TOKEN" "https://firebase.googleapis.com/v1beta1/projects/$PROJECT_ID")"
+            if [ "$FIREBASE_HTTP" = "404" ]; then
+              firebase projects:addfirebase "$PROJECT_ID" --non-interactive
+            elif [ "$FIREBASE_HTTP" != "200" ]; then
+              echo "Não foi possível verificar o registro Firebase (HTTP $FIREBASE_HTTP)."
+              cat geivia-firebase-project.json
+              exit 9
+            fi
             SITE_HTTP="$(curl -sS -o geivia-hosting-site.json -w '%{http_code}' \
               -H "Authorization: Bearer $TOKEN" \
               "https://firebasehosting.googleapis.com/v1beta1/projects/$PROJECT_ID/sites/$SITE_ID")"
@@ -129,7 +157,7 @@ object FirebaseDeploymentCommands {
             GEIVIA_HOSTING_HTML
             fi
             cd "$WORKDIR"
-            npx --yes firebase-tools deploy --only hosting --project "$PROJECT_ID" --non-interactive
+            firebase deploy --only hosting --project "$PROJECT_ID" --non-interactive
             echo "Publicação concluída. URL padrão: https://$PROJECT_ID.web.app"
             curl -fsSI "https://$PROJECT_ID.web.app" >/dev/null
             echo "A URL respondeu por HTTPS."

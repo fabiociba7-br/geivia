@@ -729,6 +729,17 @@ cloudshell download geivia-projects.json"""
         """.trimIndent()
     }
 
+    val firestoreRulesCommand = remember(selectedProjectId) {
+        if (selectedProjectId.isBlank()) "" else runCatching {
+            FirebaseDeploymentCommands.firestoreRulesBootstrap(selectedProjectId)
+        }.getOrDefault("")
+    }
+    val hostingStarterCommand = remember(selectedProjectId) {
+        if (selectedProjectId.isBlank()) "" else runCatching {
+            FirebaseDeploymentCommands.hostingStarterDeploy(selectedProjectId)
+        }.getOrDefault("")
+    }
+
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             runCatching {

@@ -16,6 +16,17 @@ object FirebaseDeploymentCommands {
         return """
             set -euo pipefail
             PROJECT_ID='$projectId'
+            WORKDIR="§HOME/geivia-firestore-§PROJECT_ID"
+            if [ -L "§WORKDIR" ]; then
+              echo "A pasta de destino é um link simbólico. Operação interrompida."
+              exit 30
+            fi
+            if [ -e "§WORKDIR" ]; then
+              if [ ! -d "§WORKDIR" ] || [ ! -f "§WORKDIR/.geivia-generated" ] || [ -L "§WORKDIR/.geivia-generated" ] || [ "$(cat "§WORKDIR/.geivia-generated" 2>/dev/null)" != "GEIVIA_FIRESTORE_RULES_STARTER_V1" ]; then
+                echo "A pasta de destino não corresponde exatamente à estrutura gerada pelo GEIVIA. Nada foi alterado."
+                exit 5
+              fi
+            fi
             gcloud projects describe "§PROJECT_ID" --format=json >/dev/null
             gcloud services list --enabled --project="§PROJECT_ID" --format=json | jq -e 'any(.[]; ((.config.name // .name) == "firestore.googleapis.com"))' >/dev/null
             gcloud services list --enabled --project="§PROJECT_ID" --format=json | jq -e 'any(.[]; ((.config.name // .name) == "firebaserules.googleapis.com"))' >/dev/null
@@ -47,14 +58,10 @@ object FirebaseDeploymentCommands {
               cat geivia-firestore-release.json
               exit 25
             fi
-            WORKDIR="§HOME/geivia-firestore-§PROJECT_ID"
             if [ -e "§WORKDIR" ]; then
-              if [ ! -f "§WORKDIR/.geivia-generated" ]; then
-                echo "A pasta de destino já existe e não pertence ao GEIVIA. Nada foi sobrescrito."
-                exit 5
-              fi
+              :
             else
-              mkdir -p "§WORKDIR"
+              mkdir "§WORKDIR"
               printf '%s\n' 'GEIVIA_FIRESTORE_RULES_STARTER_V1' > "§WORKDIR/.geivia-generated"
               cat > "§WORKDIR/firebase.json" <<'GEIVIA_FIREBASE_JSON'
             {
@@ -86,6 +93,17 @@ object FirebaseDeploymentCommands {
             set -euo pipefail
             PROJECT_ID='$projectId'
             SITE_ID='$projectId'
+            WORKDIR="§HOME/geivia-hosting-§PROJECT_ID"
+            if [ -L "§WORKDIR" ]; then
+              echo "A pasta de destino é um link simbólico. Operação interrompida."
+              exit 31
+            fi
+            if [ -e "§WORKDIR" ]; then
+              if [ ! -d "§WORKDIR" ] || [ ! -f "§WORKDIR/.geivia-generated" ] || [ -L "§WORKDIR/.geivia-generated" ] || [ "$(cat "§WORKDIR/.geivia-generated" 2>/dev/null)" != "GEIVIA_HOSTING_STARTER_V1" ]; then
+                echo "A pasta de destino não corresponde exatamente à estrutura gerada pelo GEIVIA. Nada foi alterado."
+                exit 7
+              fi
+            fi
             gcloud projects describe "§PROJECT_ID" --format=json >/dev/null
             gcloud services list --enabled --project="§PROJECT_ID" --format=json | jq -e 'any(.[]; ((.config.name // .name) == "firebasehosting.googleapis.com"))' >/dev/null
             gcloud services list --enabled --project="§PROJECT_ID" --format=json | jq -e 'any(.[]; ((.config.name // .name) == "firebase.googleapis.com"))' >/dev/null
@@ -144,14 +162,11 @@ object FirebaseDeploymentCommands {
               echo "O site ainda não propagou. Não crie outro site; execute novamente a verificação do mesmo projeto."
               exit 28
             fi
-            WORKDIR="§HOME/geivia-hosting-§PROJECT_ID"
             if [ -e "§WORKDIR" ]; then
-              if [ ! -f "§WORKDIR/.geivia-generated" ]; then
-                echo "A pasta de destino já existe e não pertence ao GEIVIA. Nada foi sobrescrito."
-                exit 7
-              fi
+              :
             else
-              mkdir -p "§WORKDIR/public"
+              mkdir "§WORKDIR"
+              mkdir "§WORKDIR/public"
               printf '%s\n' 'GEIVIA_HOSTING_STARTER_V1' > "§WORKDIR/.geivia-generated"
               cat > "§WORKDIR/firebase.json" <<'GEIVIA_HOSTING_JSON'
             {

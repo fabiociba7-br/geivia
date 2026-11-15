@@ -74,3 +74,12 @@ Referência:
 ## Preservar o projeto Google Cloud existente
 
 Se o Project ID selecionado ainda não estiver registrado como projeto Firebase, adicionar Firebase ao projeto Google Cloud existente pelo Console Firebase. Não escolher a opção de criar outro projeto para contornar qualquer erro de configuração. Se o projeto já estiver associado ao Firebase, reutilizá-lo.
+
+## Encerrar acompanhamento local de uma criação pendente
+
+- O usuário pode encerrar o acompanhamento local de uma criação cujo resultado ainda não foi confirmado.
+- Essa ação remove somente os marcadores locais de pendência; não cancela uma operação já enviada ao Google Cloud, não apaga o banco e não prova que a criação falhou.
+- Ao encerrar o acompanhamento Firestore, o GEIVIA invalida localmente a parte Firestore do diagnóstico importado e exige um novo diagnóstico antes de permitir qualquer nova preparação.
+- O novo diagnóstico deve ser do mesmo Project ID selecionado. Se encontrar `(default)`, o fluxo reconhece o banco existente e não prepara outra criação.
+- O comando de criação sempre consulta o banco com ID fixo `(default)` antes de tentar criar. Não criar um projeto Google Cloud alternativo para resolver erro.
+- O histórico local registra o encerramento como resultado não confirmado.

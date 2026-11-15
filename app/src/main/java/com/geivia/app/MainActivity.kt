@@ -6,11 +6,14 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
 import java.util.UUID
+import org.json.JSONArray
 import android.os.Bundle
 import android.net.Uri
 import android.widget.Toast
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -412,10 +415,10 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
             Column(Modifier.padding(17.dp)) {
                 Text("MODO INDEPENDENTE", color = Color(0xFF236342), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 Spacer(Modifier.height(8.dp))
-                Text("O GEIVIA não está conectado a nenhuma conta Google.", color = Ink, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                Text("Sua conta Google fica sob seu controle.", color = Ink, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Você pode usar o questionário e organizar o planejamento do seu projeto sem entrar em uma conta, criar vínculo com o desenvolvedor ou compartilhar credenciais.",
+                    "O GEIVIA abre o Google Cloud no navegador e usa o Cloud Shell para executar comandos na sessão da sua própria conta. Senhas, tokens e chaves não são enviados ao aplicativo.",
                     color = Muted, fontSize = 13.sp, lineHeight = 19.sp
                 )
             }
@@ -427,7 +430,7 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
             "Mantém suas respostas e preferências localmente neste aparelho.",
             "Organiza os serviços que poderão ser necessários para o projeto.",
             "Respeita a escolha de custo zero ou de recursos pagos somente com autorização.",
-            "Não acessa projetos Firebase nem altera configurações na nuvem."
+            "Não recebe tokens nem executa alterações na nuvem sem sua confirmação."
         ).forEach { item ->
             Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.Top) {
                 Text("•", color = Blue, fontWeight = FontWeight.Bold)
@@ -438,12 +441,12 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
         Spacer(Modifier.height(14.dp))
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF5E6)), shape = RoundedCornerShape(14.dp)) {
             Text(
-                "Importante: operações diretas no Firebase, como criar projetos, ativar APIs ou publicar Hosting, ficam indisponíveis nesta versão independente. Não será solicitada sua conta Google.",
+                "Importante: o diagnóstico inicial é executado por você no Cloud Shell. O GEIVIA não pede sua senha Google. Alterações em projetos serão apresentadas como comandos separados, com revisão e confirmação.",
                 Modifier.padding(15.dp), color = Color(0xFF77501A), fontSize = 13.sp, lineHeight = 19.sp
             )
         }
         Spacer(Modifier.height(16.dp))
-        OutlinedButton(onClick = onGoogleAccess, modifier = Modifier.fillMaxWidth()) { Text("Integração com Google e permissões") }
+        OutlinedButton(onClick = onGoogleAccess, modifier = Modifier.fillMaxWidth()) { Text("Acessar Google Cloud com minha conta") }
         Spacer(Modifier.height(8.dp))
         Button(onClick = { shareProjectPlan(context = context, answers = answers, costMode = costMode) }, modifier = Modifier.fillMaxWidth()) { Text("Compartilhar plano do projeto") }
         Spacer(Modifier.height(8.dp))
@@ -502,11 +505,60 @@ private fun CloudShellSetupScreen(
     onContinue: () -> Unit
 ) {
     val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
+    var importedProjects by remember {
+        mutableStateOf(
+            runCatching {
+                val saved = prefs.getString("cloud_projects_json", null) ?: "[]"
+                val array = JSONArray(saved)
+                (0 until array.length()).mapNotNull { index ->
+                    val item = array.optJSONObject(index) ?: return@mapNotNull null
+                    val id = item.optString("projectId")
+                    if (id.isBlank()) null else item.optString("name", id) + " • " + id
+                }
+            }.getOrDefault(emptyList())
+        )
+    }
+    var importStatus by remember { mutableStateOf("") }
     val cloudShellCommand = """echo 'GEIVIA - diagnóstico inicial'
 gcloud auth list --filter=status:ACTIVE --format='table(account,status)'
 echo
 echo 'Projetos disponíveis para esta conta:'
-gcloud projects list --format='table(projectId,name,projectNumber,lifecycleState)'"""
+gcloud projects list --format=json > geivia-projects.json
+echo
+echo 'Arquivo gerado: geivia-projects.json'"""
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching {
+                val raw = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                    ?: throw IllegalStateException("Não foi possível abrir o arquivo selecionado.")
+                val array = JSONArray(raw)
+                val clean = JSONArray()
+                val rows = mutableListOf<String>()
+                for (index in 0 until array.length()) {
+                    val item = array.optJSONObject(index) ?: continue
+                    val id = item.optString("projectId")
+                    if (id.isNotBlank()) {
+                        val safe = org.json.JSONObject()
+                        safe.put("projectId", id)
+                        safe.put("name", item.optString("name", id))
+                        safe.put("projectNumber", item.optString("projectNumber"))
+                        safe.put("lifecycleState", item.optString("lifecycleState"))
+                        clean.put(safe)
+                        rows.add(item.optString("name", id) + " • " + id)
+                    }
+                }
+                if (rows.isEmpty()) throw IllegalStateException("O JSON não contém projetos com projectId.")
+                prefs.edit().putString("cloud_projects_json", clean.toString()).apply()
+                rows
+            }.onSuccess {
+                importedProjects = it
+                importStatus = "Importação concluída: " + it.size + " projeto(s) lido(s)."
+            }.onFailure {
+                importStatus = it.message ?: "Não foi possível importar o JSON."
+            }
+        }
+    }
     fun openGoogleCloud(url: String) {
         runCatching {
             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
@@ -562,6 +614,19 @@ gcloud projects list --format='table(projectId,name,projectNumber,lifecycleState
                 Text(cloudShellCommand, color = Color(0xFFDAEAF4), fontSize = 10.sp, lineHeight = 15.sp, modifier = Modifier.fillMaxWidth().background(Color(0xFF102B43), RoundedCornerShape(10.dp)).padding(12.dp))
                 Spacer(Modifier.height(10.dp))
                 Button(onClick = { copyCommand() }, modifier = Modifier.fillMaxWidth()) { Text("Copiar comando de diagnóstico") }
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/json", "text/json")) }, modifier = Modifier.fillMaxWidth()) {
+                    Text("Importar geivia-projects.json")
+                }
+                if (importStatus.isNotBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(importStatus, color = DeepBlue, fontSize = 12.sp)
+                }
+                if (importedProjects.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text("PROJETOS IMPORTADOS (" + importedProjects.size + ")", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    importedProjects.forEach { Text(it, color = Muted, fontSize = 11.sp, modifier = Modifier.padding(vertical = 2.dp)) }
+                }
             }
         }
         Spacer(Modifier.height(12.dp))

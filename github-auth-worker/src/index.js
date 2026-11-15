@@ -55,6 +55,9 @@ export default {
         return json({ error: "Serviço ainda não configurado." }, 503);
       }
 
+      const declaredLength = Number(request.headers.get("content-length") || "0");
+      if (declaredLength > 16_384) return json({ error: "Requisição muito grande." }, 413);
+
       let input;
       try {
         const raw = await request.text();

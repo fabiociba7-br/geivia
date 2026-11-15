@@ -243,7 +243,18 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onRe
     var projects by remember { mutableStateOf<List<FirebaseProjectItem>>(emptyList()) }
     var status by remember { mutableStateOf("Sua conta Google ainda não foi conectada.") }
     var loading by remember { mutableStateOf(false) }
-    var selectedProject by remember { mutableStateOf<FirebaseProjectItem?>(null) }
+    val projectPrefs = remember { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
+    var selectedProject by remember {
+        mutableStateOf(
+            projectPrefs.getString("selected_project_id", null)?.let { id ->
+                FirebaseProjectItem(
+                    id,
+                    projectPrefs.getString("selected_project_name", id) ?: id,
+                    projectPrefs.getString("selected_project_number", "") ?: ""
+                )
+            }
+        )
+    }
     val requestedScopes = remember { listOf(com.google.android.gms.common.api.Scope("https://www.googleapis.com/auth/firebase.readonly")) }
     val authLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.StartIntentSenderForResult()
@@ -308,7 +319,14 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onRe
         Spacer(Modifier.height(10.dp))
         Text(status, color = Muted, fontSize = 13.sp, lineHeight = 19.sp)
         projects.forEach { project ->
-            Card(Modifier.fillMaxWidth().padding(top = 9.dp).clickable { selectedProject = project }, colors = CardDefaults.cardColors(containerColor = if (selectedProject?.id == project.id) Color(0xFFE8F4FA) else Color.White), shape = RoundedCornerShape(13.dp)) {
+            Card(Modifier.fillMaxWidth().padding(top = 9.dp).clickable {
+                selectedProject = project
+                projectPrefs.edit()
+                    .putString("selected_project_id", project.id)
+                    .putString("selected_project_name", project.name)
+                    .putString("selected_project_number", project.number)
+                    .apply()
+            }, colors = CardDefaults.cardColors(containerColor = if (selectedProject?.id == project.id) Color(0xFFE8F4FA) else Color.White), shape = RoundedCornerShape(13.dp)) {
                 Column(Modifier.padding(14.dp)) {
                     Text(project.name, color = Ink, fontWeight = FontWeight.Bold)
                     Text(project.id + " • " + project.number, color = Muted, fontSize = 11.sp)
@@ -335,29 +353,55 @@ private suspend fun loadFirebaseProjects(
     onLoading(true)
     try {
         val items = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            val connection = java.net.URL("https://firebase.googleapis.com/v1beta1/projects?pageSize=100").openConnection() as java.net.HttpURLConnection
-            try {
-                connection.requestMethod = "GET"
-                connection.setRequestProperty("Authorization", "Bearer " + token.orEmpty())
-                connection.setRequestProperty("Accept", "application/json")
-                connection.connectTimeout = 20000
-                connection.readTimeout = 20000
-                val code = connection.responseCode
-                val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-                val body = stream.bufferedReader().use { it.readText() }
-                if (code !in 200..299) throw IllegalStateException("HTTP " + code + ": " + org.json.JSONObject(body).optJSONObject("error")?.optString("message", "erro da API"))
-                val results = org.json.JSONObject(body).optJSONArray("results") ?: org.json.JSONArray()
-                buildList {
-                    for (i in 0 until results.length()) {
-                        val item = results.optJSONObject(i) ?: continue
-                        add(FirebaseProjectItem(
-                            item.optString("projectId"),
-                            item.optString("displayName").ifBlank { item.optString("projectId") },
-                            item.optString("projectNumber")
-                        ))
+            val allProjects = mutableListOf<FirebaseProjectItem>()
+            val seenProjectIds = mutableSetOf<String>()
+            var pageToken: String? = null
+            do {
+                val pageUrl = buildString {
+                    append("https://firebase.googleapis.com/v1beta1/projects?pageSize=100")
+                    pageToken?.let {
+                        append("&pageToken=")
+                        append(java.net.URLEncoder.encode(it, "UTF-8"))
                     }
                 }
-            } finally { connection.disconnect() }
+                val connection = java.net.URL(pageUrl).openConnection() as java.net.HttpURLConnection
+                val response = try {
+                    connection.requestMethod = "GET"
+                    connection.setRequestProperty("Authorization", "Bearer " + token.orEmpty())
+                    connection.setRequestProperty("Accept", "application/json")
+                    connection.connectTimeout = 20000
+                    connection.readTimeout = 20000
+                    val code = connection.responseCode
+                    val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+                    val body = stream.bufferedReader().use { it.readText() }
+                    if (code !in 200..299) {
+                        val message = runCatching {
+                            org.json.JSONObject(body).optJSONObject("error")?.optString("message", "erro da API")
+                        }.getOrNull() ?: "erro da API"
+                        throw IllegalStateException("HTTP " + code + ": " + message)
+                    }
+                    org.json.JSONObject(body)
+                } finally {
+                    connection.disconnect()
+                }
+
+                val results = response.optJSONArray("results") ?: org.json.JSONArray()
+                for (i in 0 until results.length()) {
+                    val item = results.optJSONObject(i) ?: continue
+                    val projectId = item.optString("projectId")
+                    if (projectId.isBlank() || !seenProjectIds.add(projectId)) continue
+                    allProjects.add(
+                        FirebaseProjectItem(
+                            projectId,
+                            item.optString("displayName").ifBlank { projectId },
+                            item.optString("projectNumber")
+                        )
+                    )
+                }
+                pageToken = response.optString("nextPageToken").takeIf { it.isNotBlank() }
+            } while (pageToken != null)
+
+            allProjects
         }
         onLoaded(items)
     } catch (e: Exception) {

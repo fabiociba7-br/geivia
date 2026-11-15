@@ -83,3 +83,18 @@ A configuração de Authentication e Hosting agora é liberada somente depois qu
 - `firebasehosting.googleapis.com` habilitada antes de abrir a configuração do Hosting.
 
 Habilitar a API é apenas um pré-requisito técnico. Authentication ainda exige ativar os provedores desejados no Console Firebase. Hosting ainda exige criar/configurar o site, fazer o deploy do conteúdo e testar a URL pública. A confirmação manual do usuário não substitui essas verificações independentes.
+
+
+## Criação de projeto, regras e Hosting
+
+A tela Cloud Shell inclui criação/reutilização assistida de projeto com Project ID informado pelo usuário. O script consulta o ID exato antes de criar, não interpreta erros desconhecidos como ausência e bloqueia uma segunda criação enquanto a operação aguarda reconciliação. O usuário executa o comando manualmente e importa o inventário para confirmar o mesmo ID.
+
+### Regras iniciais do Firestore
+
+Quando o diagnóstico confirma o banco `(default)`, a etapa de regras oferece um comando que consulta a API Firebase Rules antes de publicar. Se já existir uma release `cloud.firestore`, o script interrompe sem sobrescrever. Se não existir, publica um conjunto inicial deny-all (`allow read, write: if false`). Essa regra é deliberadamente restritiva: nenhum cliente pode ler ou gravar até que regras específicas por coleção e usuário sejam modeladas, testadas e publicadas. A confirmação no aplicativo continua sendo uma declaração manual, não uma verificação automática do conteúdo ativo.
+
+### Firebase Hosting
+
+Quando a API Firebase Hosting está ativa, a etapa de publicação prepara um site estático demonstrativo no site padrão do mesmo Project ID. O script consulta o site pela API REST, cria somente quando a resposta é HTTP 404, interrompe em outros erros e não sobrescreve pastas locais que não tenham marcador GEIVIA. O deploy é limitado a `hosting`, sem publicar Functions ou outros serviços. A página é um placeholder e precisa ser substituída pelo site real antes da divulgação.
+
+Os comandos são copiados para o Cloud Shell e executados pelo usuário. Eles não são executados pelo APK nem usam credenciais armazenadas no aplicativo.

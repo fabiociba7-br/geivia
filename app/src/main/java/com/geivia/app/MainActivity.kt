@@ -424,14 +424,18 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
         val workflowStore = remember(projectPrefs) { WorkflowProgressStore(projectPrefs) }
         val workflowCatalog = listOf(
             "project_diagnostic" to "Diagnóstico do projeto",
-            "api_firebase" to "Firebase Management API",
-            "api_firestore" to "Cloud Firestore API",
+            "api_firebase_googleapis_com" to "Firebase Management API",
+            "api_firestore_googleapis_com" to "Cloud Firestore API",
+            "api_identitytoolkit_googleapis_com" to "Identity Toolkit API",
+            "api_firebasestorage_googleapis_com" to "Cloud Storage for Firebase API",
+            "api_firebasehosting_googleapis_com" to "Firebase Hosting API",
+            "api_cloudbuild_googleapis_com" to "Cloud Build API",
             "firestore_database" to "Banco Firestore (default)",
             "authentication" to "Firebase Authentication",
             "hosting" to "Firebase Hosting",
             "storage" to "Cloud Storage"
         )
-        val workflowRecords = remember(chosenProjectId) { workflowStore.allForProject(chosenProjectId).associateBy { it.stepId } }
+        val workflowRecords = workflowStore.allForProject(chosenProjectId).associateBy { it.stepId }
         Spacer(Modifier.height(16.dp))
         Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(15.dp)) {
             Column(Modifier.padding(16.dp)) {
@@ -669,6 +673,7 @@ private fun CloudShellSetupScreen(
         updated.forEach { json.put(it) }
         prefs.edit().putString("api_action_history", json.toString()).apply()
     }
+    fun apiWorkflowStepId(api: String) = "api_" + api.replace(Regex("[^a-zA-Z0-9]+"), "_")
 
     val cloudShellCommand = """echo 'GEIVIA - diagnóstico inicial'
 gcloud auth list --filter=status:ACTIVE --format='table(account,status)'
@@ -839,6 +844,19 @@ cloudshell download geivia-projects.json"""
                 val pendingApi = prefs.getString("pending_api_service", null)
                 val pendingProject = prefs.getString("pending_api_project_id", null)
                 val completedApi = if (pendingApi != null && pendingProject == selectedProjectId && pendingApi in enabledNames) pendingApi else null
+                if (completedApi != null) {
+                    val stepId = "api_" + completedApi.replace(Regex("[^a-zA-Z0-9]+"), "_")
+                    runCatching {
+                        val tracked = workflowProgressStore.get(selectedProjectId, stepId)
+                        if (tracked.state == WorkflowStepState.IN_PROGRESS || tracked.state == WorkflowStepState.UNKNOWN) {
+                            workflowProgressStore.reconcileCompleted(
+                                selectedProjectId,
+                                stepId,
+                                "Diagnóstico importado em ${System.currentTimeMillis()}: $completedApi consta entre os serviços habilitados para $selectedProjectId."
+                            )
+                        }
+                    }
+                }
                 val editor = prefs.edit()
                     .putString("cloud_project_diagnostic_json", report.toString())
                     .putString("cloud_project_diagnostic_summary", summary)
@@ -1001,6 +1019,21 @@ cloudshell download geivia-projects.json"""
             confirmButton = {
                 TextButton(onClick = {
                     val command = "gcloud services enable $api --project=$selectedProjectId"
+                    val stepId = apiWorkflowStepId(api)
+                    val operationId = "api-$selectedProjectId-$api-${System.currentTimeMillis()}"
+                    val started = runCatching {
+                        workflowProgressStore.confirmAndStart(
+                            selectedProjectId,
+                            stepId,
+                            operationId,
+                            "Comando preparado e copiado; aguardando execução manual e diagnóstico."
+                        )
+                    }
+                    if (started.isFailure) {
+                        apiActionStatus = started.exceptionOrNull()?.message ?: "Não foi possível registrar a operação."
+                        selectedApiForConfirmation = null
+                        return@TextButton
+                    }
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     clipboard.setPrimaryClip(ClipData.newPlainText("GEIVIA habilitar API", command))
                     prefs.edit()
@@ -1190,7 +1223,18 @@ cloudshell download geivia-projects.json"""
                                         selectedProjectId.isBlank() -> Text("Selecione um projeto antes de preparar alterações.", color = Muted, fontSize = 11.sp)
                                         prefs.getString("pending_api_service", null) != null && prefs.getString("pending_api_project_id", null) == selectedProjectId ->
                                             Text("Há uma ação aguardando verificação. Importe um novo diagnóstico antes de preparar outra API.", color = Color(0xFF9A5B13), fontSize = 11.sp, lineHeight = 15.sp)
-                                        else -> Button(onClick = { selectedApiForConfirmation = api to label }, modifier = Modifier.fillMaxWidth()) {
+                                        else -> Button(onClick = {
+                                            runCatching {
+                                                workflowProgressStore.waitForConfirmation(
+                                                    selectedProjectId,
+                                                    apiWorkflowStepId(api),
+                                                    "Revisar habilitação de $api para o projeto selecionado."
+                                                )
+                                                selectedApiForConfirmation = api to label
+                                            }.onFailure {
+                                                apiActionStatus = it.message ?: "Não foi possível abrir a confirmação da API."
+                                            }
+                                        }, modifier = Modifier.fillMaxWidth()) {
                                             Text("Revisar e confirmar")
                                         }
                                     }

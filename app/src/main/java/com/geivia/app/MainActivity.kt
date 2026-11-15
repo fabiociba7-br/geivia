@@ -481,6 +481,27 @@ cloudshell download geivia-projects.json"""
         }
     }
 
+    val firebaseApiChecks = listOf(
+        "firebase.googleapis.com" to "Firebase Management API",
+        "firestore.googleapis.com" to "Cloud Firestore API",
+        "identitytoolkit.googleapis.com" to "Firebase Authentication",
+        "firebasestorage.googleapis.com" to "Cloud Storage for Firebase",
+        "firebasehosting.googleapis.com" to "Firebase Hosting",
+        "cloudbuild.googleapis.com" to "Cloud Build"
+    )
+    var enabledFirebaseApis by remember {
+        mutableStateOf(
+            runCatching {
+                val report = org.json.JSONObject(prefs.getString("cloud_project_diagnostic_json", null) ?: return@runCatching emptySet<String>())
+                val id = report.optJSONObject("project")?.optString("projectId").orEmpty()
+                if (id != selectedProjectId) return@runCatching emptySet<String>()
+                val services = report.optJSONArray("enabledServices") ?: return@runCatching emptySet<String>()
+                (0 until services.length()).mapNotNull { index ->
+                    services.optJSONObject(index)?.optJSONObject("config")?.optString("name")?.takeIf { it.isNotBlank() }
+                }.toSet()
+            }.getOrDefault(emptySet())
+        )
+    }
     var diagnosticSummary by remember {
         mutableStateOf(
             runCatching {
@@ -513,6 +534,10 @@ cloudshell download geivia-projects.json"""
                 if (reportId != selectedProjectId || selectedProjectId.isBlank()) throw IllegalStateException("O relatório é de outro projeto. Selecione o mesmo Project ID antes de importar.")
                 val services = report.optJSONArray("enabledServices") ?: throw IllegalStateException("Relatório inválido: lista de APIs ausente.")
                 val summary = "Último diagnóstico: $reportId • ${services.length()} API(s) habilitada(s)."
+                val enabledNames = (0 until services.length()).mapNotNull { index ->
+                    services.optJSONObject(index)?.optJSONObject("config")?.optString("name")?.takeIf { it.isNotBlank() }
+                }.toSet()
+                enabledFirebaseApis = enabledNames
                 prefs.edit().putString("cloud_project_diagnostic_json", report.toString()).putString("cloud_project_diagnostic_summary", summary).apply()
                 summary
             }.onSuccess { diagnosticSummary = it; importStatus = "Diagnóstico importado e vinculado ao projeto selecionado." }
@@ -668,7 +693,27 @@ cloudshell download geivia-projects.json"""
                     Spacer(Modifier.height(8.dp))
                     Button(onClick = { copyDiagnosticCommand() }, modifier = Modifier.fillMaxWidth()) { Text("Copiar diagnóstico deste projeto") }
                     OutlinedButton(onClick = { diagnosticLauncher.launch(arrayOf("application/json", "text/*", "*/*")) }, modifier = Modifier.fillMaxWidth()) { Text("Importar geivia-diagnostic.json") }
-                    if (diagnosticSummary.isNotBlank()) Text(diagnosticSummary, color = DeepBlue, fontSize = 11.sp)
+                    if (diagnosticSummary.isNotBlank()) {
+                        Text(diagnosticSummary, color = DeepBlue, fontSize = 11.sp)
+                        Spacer(Modifier.height(12.dp))
+                        Divider(color = Color(0xFFE1EAF0))
+                        Spacer(Modifier.height(10.dp))
+                        Text("ETAPA 6 — SERVIÇOS FIREBASE", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text("Comparação informativa das APIs mais comuns. Uma API ausente não será ativada automaticamente; a necessidade depende dos recursos escolhidos no questionário.", color = Muted, fontSize = 11.sp, lineHeight = 16.sp)
+                        Spacer(Modifier.height(7.dp))
+                        firebaseApiChecks.forEach { (api, label) ->
+                            val enabled = api in enabledFirebaseApis
+                            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(imageVector = if (enabled) androidx.compose.material.icons.Icons.Default.CheckCircle else androidx.compose.material.icons.Icons.Default.Info, contentDescription = null, tint = if (enabled) Color(0xFF238653) else Color(0xFFB7791F), modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(label, color = Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(api, color = Muted, fontSize = 10.sp)
+                                }
+                                Text(if (enabled) "Ativa" else "Não listada", color = if (enabled) Color(0xFF238653) else Color(0xFF9A641B), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
                 }
             }
         }

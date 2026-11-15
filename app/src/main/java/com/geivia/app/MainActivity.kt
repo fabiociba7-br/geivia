@@ -1115,7 +1115,7 @@ cloudshell download geivia-projects.json"""
                 TextButton(onClick = {
                     runCatching {
                         workflowProgressStore.waitForConfirmation(selectedProjectId, "firestore_rules", "Revisar publicação inicial de regras deny-all; não substitui regras existentes.")
-                        workflowProgressStore.confirmAndStart(selectedProjectId, "firestore_rules", "firestore-rules-$selectedProjectId", "Comando preparado; aguardando execução manual e confirmação.")
+                        workflowProgressStore.confirmAndStart(selectedProjectId, "firestore_rules", "firestore-rules-$selectedProjectId-${System.currentTimeMillis()}", "Comando preparado; aguardando execução manual e confirmação.")
                     }.onFailure {
                         firestoreRulesStatus = it.message ?: "Não foi possível registrar a etapa."
                         showFirestoreRulesDialog = false
@@ -1140,7 +1140,7 @@ cloudshell download geivia-projects.json"""
                 TextButton(onClick = {
                     runCatching {
                         workflowProgressStore.waitForConfirmation(selectedProjectId, "hosting_deploy", "Revisar criação/reutilização do site padrão e publicação da página inicial.")
-                        workflowProgressStore.confirmAndStart(selectedProjectId, "hosting_deploy", "hosting-deploy-$selectedProjectId", "Comando preparado; aguardando deploy e teste manual da URL.")
+                        workflowProgressStore.confirmAndStart(selectedProjectId, "hosting_deploy", "hosting-deploy-$selectedProjectId-${System.currentTimeMillis()}", "Comando preparado; aguardando deploy e teste manual da URL.")
                     }.onFailure {
                         hostingDeployStatus = it.message ?: "Não foi possível registrar a etapa."
                         showHostingDeployDialog = false

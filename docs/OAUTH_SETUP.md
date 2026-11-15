@@ -4,7 +4,7 @@
 
 O GEIVIA deve integrar com a conta Google escolhida por cada usuário, mas não pode depender de uma conta Google pessoal do desenvolvedor. O cliente OAuth pertence ao produto/publicador e é separado das contas pessoais dos usuários.
 
-O usuário final não precisa criar projeto Google Cloud. A configuração OAuth institucional do produto, entretanto, precisa existir antes que o Google possa identificar o aplicativo e emitir tokens.
+O usuário final não precisa criar projeto Google Cloud. A configuração OAuth institucional do produto, entretanto, precisa existir antes que o Google possa identificar o aplicativo e emitir tokens. Esse cadastro não é uma publicação na Play Store.
 
 ## Estado do código neste momento
 
@@ -24,6 +24,17 @@ O responsável institucional pelo produto deverá:
 ## Autorização progressiva
 
 Seguir a matriz e as etapas de `docs/GOOGLE_AUTHORIZATION_ARCHITECTURE.md`. Não solicitar todos os escopos no primeiro login. A conexão inicial pede apenas identidade básica. Firebase, Cloud Resource Manager, Service Usage e Cloud Billing são solicitados em momentos separados, quando o usuário iniciar a função correspondente.
+
+## Distribuição fora da Play Store e estado OAuth
+
+O status OAuth `Testing` ou `In production` é independente da publicação do APK na Google Play. O GEIVIA pode ser distribuído diretamente por APK e, ainda assim, usar OAuth em produção.
+
+- Em `Testing`, usuários que precisem dos escopos adicionais devem estar na lista de testadores (até 100). Autorizações de teste para escopos além de identidade básica têm tokens de atualização com validade limitada, normalmente 7 dias.
+- A exceção de identidade básica (`openid`, `email`, `profile`) não exige lista de testadores.
+- Em `In production`, o acesso pode ser oferecido a contas Google em geral. Porém, escopos sensíveis/restritos não aprovados podem gerar avisos e limite de 100 usuários no total. Para uso público sem esse limite, submeter marca e escopos exigidos à verificação Google.
+- `In production` não significa publicar o APK na Play Store.
+
+A política do Google recomenda projetos OAuth separados para desenvolvimento/teste e produção.
 
 ## Assinatura Android
 

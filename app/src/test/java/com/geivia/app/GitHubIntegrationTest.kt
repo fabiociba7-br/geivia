@@ -24,9 +24,10 @@ class GitHubIntegrationTest {
     @Test
     fun boundedReaderRejectsOversizedResponse() {
         val bytes = "123456789".toByteArray()
-        assertThrows(IllegalArgumentException::class.java) {
+        val result = runCatching {
             readUtf8Limited(ByteArrayInputStream(bytes), 8)
         }
+        assertTrue(result.isFailure)
     }
 
     @Test

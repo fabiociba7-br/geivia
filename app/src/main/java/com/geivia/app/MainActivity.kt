@@ -451,11 +451,12 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
                         WorkflowStepState.IN_PROGRESS -> "Aguardando diagnóstico"
                         WorkflowStepState.WAITING_CONFIRMATION -> "Aguardando confirmação"
                         WorkflowStepState.UNKNOWN -> "Resultado desconhecido — reconciliar"
-                        WorkflowStepState.COMPLETED -> "Concluída"
+                        WorkflowStepState.COMPLETED -> "Concluída por diagnóstico"
+                        WorkflowStepState.USER_CONFIRMED -> "Declarada concluída pelo usuário"
                         WorkflowStepState.FAILED -> "Falhou — revisar antes de tentar"
                     }
                     val stateColor = when (state) {
-                        WorkflowStepState.COMPLETED -> Color(0xFF238653)
+                        WorkflowStepState.COMPLETED, WorkflowStepState.USER_CONFIRMED -> Color(0xFF238653)
                         WorkflowStepState.UNKNOWN, WorkflowStepState.FAILED -> Color(0xFFB05A18)
                         WorkflowStepState.IN_PROGRESS, WorkflowStepState.WAITING_CONFIRMATION -> Color(0xFF9A641B)
                         WorkflowStepState.NOT_STARTED -> Muted
@@ -1299,6 +1300,64 @@ cloudshell download geivia-projects.json"""
                                 }
                             }
                             Text("No Console: abra Método de login e ative somente os provedores necessários, como e-mail/senha ou Google. A ativação da Identity Toolkit API, isoladamente, não configura nenhum provedor.", color = Ink, fontSize = 11.sp, lineHeight = 16.sp)
+                        }
+                        if (answers["login"].orEmpty().isNotBlank() && !answers["login"].orEmpty().contains("Não precisa") && selectedProjectId.isNotBlank()) {
+                            val authRecord = workflowProgressStore.get(selectedProjectId, "authentication")
+                            Spacer(Modifier.height(6.dp))
+                            when (authRecord.state) {
+                                WorkflowStepState.NOT_STARTED, WorkflowStepState.WAITING_CONFIRMATION -> Button(onClick = {
+                                    runCatching {
+                                        workflowProgressStore.waitForConfirmation(selectedProjectId, "authentication", "Configurar os provedores escolhidos no Console Firebase.")
+                                        workflowProgressStore.confirmAndStart(selectedProjectId, "authentication", "auth-manual-$selectedProjectId-${System.currentTimeMillis()}", "Configuração manual iniciada no Console Firebase.")
+                                        openGoogleCloud("https://console.firebase.google.com/project/$selectedProjectId/authentication/providers")
+                                    }.onFailure { apiActionStatus = it.message ?: "Não foi possível iniciar a etapa manual." }
+                                }, modifier = Modifier.fillMaxWidth()) { Text("Iniciar configuração de autenticação") }
+                                WorkflowStepState.IN_PROGRESS -> Button(onClick = {
+                                    runCatching {
+                                        workflowProgressStore.confirmManualCompletion(selectedProjectId, "authentication", "O usuário confirmou que os provedores necessários foram configurados no Console Firebase.")
+                                        addActionHistory("Authentication declarada configurada pelo usuário • $selectedProjectId")
+                                    }.onFailure { apiActionStatus = it.message ?: "Não foi possível registrar a confirmação." }
+                                }, modifier = Modifier.fillMaxWidth()) { Text("Já configurei — registrar confirmação") }
+                                WorkflowStepState.USER_CONFIRMED -> Text("Configuração declarada pelo usuário. O GEIVIA não consegue verificar automaticamente os provedores ativos.", color = Color(0xFF236342), fontSize = 10.sp)
+                                WorkflowStepState.COMPLETED -> Text("Etapa confirmada por diagnóstico.", color = Color(0xFF236342), fontSize = 10.sp)
+                                WorkflowStepState.UNKNOWN, WorkflowStepState.FAILED -> Text("Etapa bloqueada até reconciliar o estado anterior. Não reinicie automaticamente.", color = Color(0xFF9A5B13), fontSize = 10.sp)
+                            }
+                        }
+                        if (answers["platform"].orEmpty().let { it.contains("web") || it.contains("Site") || it.contains("Android e web") }) {
+                            Spacer(Modifier.height(14.dp))
+                            Divider(color = Color(0xFFE1EAF0))
+                            Spacer(Modifier.height(10.dp))
+                            Text("ETAPA 10 — FIREBASE HOSTING", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text("O Hosting publica o site, mas não cria o conteúdo nem faz o deploy do seu código. Primeiro habilite a API Firebase Hosting pela etapa de APIs; depois configure o site no projeto já selecionado. Não crie outro projeto para contornar erros.", color = Muted, fontSize = 11.sp, lineHeight = 16.sp)
+                            if (selectedProjectId.isNotBlank()) {
+                                val hostingRecord = workflowProgressStore.get(selectedProjectId, "hosting")
+                                when (hostingRecord.state) {
+                                    WorkflowStepState.NOT_STARTED, WorkflowStepState.WAITING_CONFIRMATION -> Button(onClick = {
+                                        runCatching {
+                                            workflowProgressStore.waitForConfirmation(selectedProjectId, "hosting", "Abrir o painel de Hosting do projeto existente.")
+                                            workflowProgressStore.confirmAndStart(selectedProjectId, "hosting", "hosting-manual-$selectedProjectId-${System.currentTimeMillis()}", "Configuração manual do Hosting iniciada.")
+                                            openGoogleCloud("https://console.firebase.google.com/project/$selectedProjectId/hosting/sites")
+                                        }.onFailure { apiActionStatus = it.message ?: "Não foi possível iniciar a etapa de Hosting." }
+                                    }, modifier = Modifier.fillMaxWidth()) { Text("Abrir configuração do Hosting") }
+                                    WorkflowStepState.IN_PROGRESS -> Button(onClick = {
+                                        runCatching {
+                                            workflowProgressStore.confirmManualCompletion(selectedProjectId, "hosting", "O usuário confirmou que o site Firebase Hosting foi criado/configurado no projeto selecionado.")
+                                            addActionHistory("Firebase Hosting declarado configurado pelo usuário • $selectedProjectId")
+                                        }.onFailure { apiActionStatus = it.message ?: "Não foi possível registrar a confirmação." }
+                                    }, modifier = Modifier.fillMaxWidth()) { Text("Já configurei — registrar confirmação") }
+                                    WorkflowStepState.USER_CONFIRMED -> Text("Hosting declarado configurado pelo usuário; o deploy e a URL pública ainda precisam ser testados.", color = Color(0xFF236342), fontSize = 10.sp)
+                                    WorkflowStepState.COMPLETED -> Text("Etapa confirmada por diagnóstico.", color = Color(0xFF236342), fontSize = 10.sp)
+                                    WorkflowStepState.UNKNOWN, WorkflowStepState.FAILED -> Text("Etapa bloqueada até reconciliar o estado anterior. Não reinicie automaticamente.", color = Color(0xFF9A5B13), fontSize = 10.sp)
+                                }
+                            } else Text("Selecione um projeto existente para configurar o Hosting.", color = Color(0xFF9A641B), fontSize = 10.sp)
+                        }
+                        if (answers["files"].orEmpty().isNotBlank() && !answers["files"].orEmpty().startsWith("Não terá")) {
+                            Spacer(Modifier.height(14.dp))
+                            Divider(color = Color(0xFFE1EAF0))
+                            Spacer(Modifier.height(10.dp))
+                            Text("ETAPA 11 — CLOUD STORAGE", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text(if (costMode == "zero") "Bloqueado no modo custo zero: a criação de novos buckets do Cloud Storage for Firebase pode exigir o plano Blaze e faturamento associado. O GEIVIA não habilitará, criará bucket nem solicitará upgrade nesta configuração." else "Antes de criar um bucket, confira no Console Firebase o plano exigido, a região e os preços aplicáveis. Nenhum recurso será criado automaticamente.", color = Color(0xFF9A5B13), fontSize = 11.sp, lineHeight = 16.sp)
+                            Text("A API habilitada não significa que o Storage esteja pronto nem que o uso seja gratuito. Não faça upgrade nem associe faturamento sem decisão explícita.", color = Muted, fontSize = 10.sp, lineHeight = 14.sp)
                         }
                         if (actionHistory.isNotEmpty()) {
                             Spacer(Modifier.height(12.dp))

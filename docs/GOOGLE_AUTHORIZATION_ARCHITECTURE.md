@@ -28,10 +28,11 @@ Essa arquitetura evita colocar client secret, chave de conta de serviço ou toke
 3. O GEIVIA gera um identificador local único, por exemplo `GEIVIA-A1B2C3D4`.
 4. O usuário toca em **Abrir Google Cloud** e autentica no navegador, fora do GEIVIA.
 5. O usuário abre o Cloud Shell, que executa comandos na sessão Google já autenticada.
-6. O GEIVIA fornece um comando de diagnóstico somente leitura para listar projetos em JSON.
-7. O usuário executa e revisa o comando no terminal.
-8. O comando usa `cloudshell download geivia-projects.json` para baixar o resultado ao aparelho.
-9. O usuário seleciona o JSON no GEIVIA; o app valida e importa apenas ID, nome, número e estado dos projetos.
+6. Se o usuário ainda não tiver um projeto, o GEIVIA oferece um comando opcional `gcloud projects create` com identificador sugerido. O comando cria somente o projeto e não associa faturamento; o usuário pode ignorá-lo e usar um projeto existente.
+7. O GEIVIA fornece um comando de diagnóstico somente leitura para listar projetos em JSON.
+8. O usuário executa e revisa o comando no terminal.
+9. O comando usa `cloudshell download geivia-projects.json` para baixar o resultado ao aparelho.
+10. O usuário seleciona o JSON no GEIVIA; o app valida e importa apenas ID, nome, número e estado dos projetos.
 10. Para operações de escrita, o GEIVIA sempre mostra o comando exato, projeto, impacto, custo possível e exige confirmação do usuário antes de copiar/executar.
 9. Para operações de escrita, o GEIVIA sempre mostra o comando exato, projeto, impacto, custo possível e exige confirmação do usuário antes de copiar/executar.
 
@@ -42,7 +43,7 @@ Essa arquitetura evita colocar client secret, chave de conta de serviço ou toke
 - Não usar `gcloud auth print-access-token` para transferir token ao GEIVIA. O comando pode ser usado internamente pelo próprio Cloud Shell quando necessário, mas o token não deve sair da sessão.
 - O Cloud Shell opera com a identidade e permissões do usuário autenticado; falta de IAM deve ser mostrada como falta de permissão, sem contornar.
 - A primeira etapa de diagnóstico é somente leitura: `gcloud auth list` e `gcloud projects list`.
-- Nenhum comando inicial cria projetos, ativa APIs, altera IAM, associa faturamento ou publica serviços.
+- O comando de diagnóstico inicial é somente leitura e não cria projetos, ativa APIs, altera IAM, associa faturamento ou publica serviços. A criação de projeto é uma ação opcional separada, apresentada com comando próprio e executada somente se o usuário decidir copiá-lo e executá-lo no Cloud Shell.
 - Modo custo zero bloqueia instruções que exijam ativar faturamento. A escolha de permitir custos não autoriza cobrança automaticamente.
 
 ## Próximas fases

@@ -692,6 +692,7 @@ cloudshell download geivia-projects.json"""
             set -e
             PROJECT_ID='$selectedProjectId'
             LOCATION='$firestoreLocation'
+            gcloud billing projects describe "§PROJECT_ID" --format=json | jq -e '.billingEnabled == false' >/dev/null
             gcloud services list --enabled --project="§PROJECT_ID" --format=json | jq -e 'any(.[]; ((.config.name // .name) == "firestore.googleapis.com"))' >/dev/null
             DATABASES=§(gcloud firestore databases list --project="§PROJECT_ID" --format=json)
             if printf '%s' "§DATABASES" | jq -e --arg project "§PROJECT_ID" 'any(.[]; (.name // "") == ("projects/" + §project + "/databases/(default)"))' >/dev/null; then

@@ -705,6 +705,15 @@ cloudshell download geivia-projects.json"""
                         ?: item.optString("name").takeIf { it.isNotBlank() }
                 }.toSet()
                 enabledFirebaseApis = enabledNames
+                val pendingFirestoreProject = prefs.getString("pending_firestore_project_id", null)
+                val hasDefaultFirestore = importedDatabaseIds?.contains("(default)") == true
+                if (pendingFirestoreProject == selectedProjectId && hasDefaultFirestore) {
+                    prefs.edit().remove("pending_firestore_project_id").remove("pending_firestore_location").remove("pending_firestore_created_at").apply()
+                    firestoreActionStatus = "Banco (default) localizado no diagnóstico do projeto. Nenhuma nova criação será preparada."
+                    addActionHistory("Firestore (default) localizado no diagnóstico • $selectedProjectId")
+                } else if (pendingFirestoreProject == selectedProjectId && importedDatabaseIds != null) {
+                    firestoreActionStatus = "O diagnóstico ainda não lista o banco (default). A pendência foi mantida; não repita a criação sem reconciliar o estado no Google Cloud."
+                }
                 val pendingApi = prefs.getString("pending_api_service", null)
                 val pendingProject = prefs.getString("pending_api_project_id", null)
                 val completedApi = if (pendingApi != null && pendingProject == selectedProjectId && pendingApi in enabledNames) pendingApi else null

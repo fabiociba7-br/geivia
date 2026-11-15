@@ -16,6 +16,7 @@ enum class WorkflowStepState {
     WAITING_CONFIRMATION,
     UNKNOWN,
     COMPLETED,
+    USER_CONFIRMED,
     FAILED
 }
 
@@ -79,6 +80,22 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
             operationId = operationId,
             message = message,
             evidence = ""
+        ))
+    }
+
+    /** Records a user's explicit attestation for a manual Console task; not a Google diagnostic. */
+    @Synchronized
+    fun confirmManualCompletion(projectId: String, stepId: String, userAttestation: String): WorkflowStepRecord {
+        require(userAttestation.isNotBlank()) { "Confirmação do usuário obrigatória." }
+        val current = get(projectId, stepId)
+        check(current.state == WorkflowStepState.IN_PROGRESS) {
+            "A etapa manual não está em andamento."
+        }
+        return save(current.copy(
+            state = WorkflowStepState.USER_CONFIRMED,
+            updatedAt = System.currentTimeMillis(),
+            message = "Usuário declarou a configuração concluída; não verificada por diagnóstico automático.",
+            evidence = "CONFIRMAÇÃO MANUAL: $userAttestation"
         ))
     }
 

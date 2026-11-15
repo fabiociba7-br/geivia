@@ -9,6 +9,8 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URI
+import java.io.InputStream
+import java.io.ByteArrayOutputStream
 import java.net.URLEncoder
 import java.security.KeyStore
 import java.security.SecureRandom
@@ -17,6 +19,22 @@ import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
+
+private fun readUtf8Limited(input: InputStream?, maxBytes: Int): String {
+    require(maxBytes > 0)
+    val stream = input ?: return ""
+    val output = ByteArrayOutputStream()
+    val buffer = ByteArray(8192)
+    var total = 0
+    while (true) {
+        val count = stream.read(buffer)
+        if (count < 0) break
+        total += count
+        require(total <= maxBytes) { "Resposta do GitHub excede o limite de segurança." }
+        output.write(buffer, 0, count)
+    }
+    return output.toString(Charsets.UTF_8.name())
+}
 
 data class GitHubRepository(
     val id: Long,
@@ -183,7 +201,7 @@ object GitHubAuthClient {
             connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val response = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            val response = readUtf8Limited(stream, 64 * 1024)
             if (status !in 200..299) {
                 throw IllegalStateException("Falha na autorização GitHub (HTTP $status).")
             }
@@ -215,7 +233,7 @@ object GitHubApiClient {
         try {
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val response = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            val response = readUtf8Limited(stream, 2 * 1024 * 1024)
             if (status == 401) throw IllegalStateException("A autorização expirou ou foi revogada. Conecte novamente.")
             if (status == 403) throw IllegalStateException("O GitHub negou o acesso ou aplicou um limite. Confira as permissões da GitHub App.")
             if (status !in 200..299) throw IllegalStateException("Não foi possível consultar o GitHub (HTTP $status).")

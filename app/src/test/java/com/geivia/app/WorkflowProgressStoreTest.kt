@@ -180,6 +180,18 @@ class WorkflowProgressStoreTest {
     }
 
     @Test
+    fun corruptedWorkflowStoreFailsClosedInsteadOfTreatingOperationsAsNotStarted() {
+        val preferences = InMemorySharedPreferences()
+        preferences.edit().putString("workflow_step_records_v1", "{invalid-json").apply()
+        val store = WorkflowProgressStore(preferences)
+
+        val error = org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+            store.get("project-protected", "project_creation")
+        }
+        assertTrue(error.message.orEmpty().contains("operações foram bloqueadas"))
+    }
+
+    @Test
     fun recordsAreIsolatedByProjectId() {
         val store = store()
         store.waitForConfirmation("project-a", "api", "Review A")

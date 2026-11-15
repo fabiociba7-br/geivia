@@ -47,7 +47,7 @@ export default {
       const target = new URL(APP_REDIRECT);
       target.searchParams.set("code", code);
       target.searchParams.set("state", state);
-      return Response.redirect(target.toString(), 302);
+      return new Response(null, { status: 302, headers: { "location": target.toString(), "cache-control": "no-store" } });
     }
 
     if (request.method === "POST" && url.pathname === "/exchange") {

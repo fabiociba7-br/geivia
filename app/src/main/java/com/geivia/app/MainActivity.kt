@@ -749,7 +749,7 @@ cloudshell download geivia-projects.json"""
             }.onSuccess {
                 importedProjects = it
                 val pendingId = prefs.getString("pending_project_creation_id", null).orEmpty()
-                if (pendingId.isNotBlank() && it.any { project -> project.projectId == pendingId }) {
+                if (pendingId.isNotBlank() && it.any { project -> project.projectId == pendingId && project.lifecycleState.equals("ACTIVE", ignoreCase = true) }) {
                     runCatching {
                         val current = workflowProgressStore.get(pendingId, "project_creation")
                         if (current.state == WorkflowStepState.IN_PROGRESS || current.state == WorkflowStepState.UNKNOWN) {

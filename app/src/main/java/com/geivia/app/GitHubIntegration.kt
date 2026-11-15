@@ -20,7 +20,7 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
-private fun readUtf8Limited(input: InputStream?, maxBytes: Int): String {
+internal fun readUtf8Limited(input: InputStream?, maxBytes: Int): String {
     require(maxBytes > 0)
     val stream = input ?: return ""
     val output = ByteArrayOutputStream()

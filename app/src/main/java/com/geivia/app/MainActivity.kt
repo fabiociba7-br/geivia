@@ -685,6 +685,20 @@ cloudshell download geivia-projects.json"""
             "cloudshell download geivia-diagnostic.json"
         ).joinToString("\n")
     }
+    val firestoreCreateCommand = remember(selectedProjectId, firestoreLocation) {
+        if (selectedProjectId.isBlank() || firestoreLocation.isBlank()) "" else """
+            set -e
+            PROJECT_ID='$selectedProjectId'
+            LOCATION='$firestoreLocation'
+            gcloud services list --enabled --project="§PROJECT_ID" --format=json | jq -e 'any(.[]; ((.config.name // .name) == "firestore.googleapis.com"))' >/dev/null
+            DATABASES=§(gcloud firestore databases list --project="§PROJECT_ID" --format=json)
+            if printf '%s' "§DATABASES" | jq -e --arg project "§PROJECT_ID" 'any(.[]; (.name // "") == ("projects/" + §project + "/databases/(default)"))' >/dev/null; then
+              echo "O banco (default) já existe. Nenhuma criação será feita."
+            else
+              gcloud firestore databases create --database="(default)" --location="§LOCATION" --edition=standard --type=firestore-native --delete-protection --project="§PROJECT_ID"
+            fi
+        """.trimIndent().replace('§', '$')
+    }
     val diagnosticLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             runCatching {

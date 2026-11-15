@@ -695,6 +695,9 @@ cloudshell download geivia-projects.json"""
                 val reportId = project.optString("projectId")
                 if (reportId != selectedProjectId || selectedProjectId.isBlank()) throw IllegalStateException("O relatório é de outro projeto. Selecione o mesmo Project ID antes de importar.")
                 val services = report.optJSONArray("enabledServices") ?: throw IllegalStateException("Relatório inválido: lista de APIs ausente.")
+                val databases = report.optJSONArray("firestoreDatabases")
+                val importedDatabaseIds = databases?.let { array -> (0 until array.length()).mapNotNull { index -> array.optJSONObject(index)?.optString("name")?.substringAfterLast("/databases/")?.takeIf { it.isNotBlank() } } }
+                firestoreDatabaseIds = importedDatabaseIds
                 val summary = "Último diagnóstico: $reportId • ${services.length()} API(s) habilitada(s)."
                 val enabledNames = (0 until services.length()).mapNotNull { index ->
                     val item = services.optJSONObject(index) ?: return@mapNotNull null

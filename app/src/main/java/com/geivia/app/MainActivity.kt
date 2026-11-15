@@ -650,6 +650,7 @@ private fun CloudShellSetupScreen(
             }.getOrNull()
         )
     }
+    val workflowProgressStore = remember(prefs) { WorkflowProgressStore(prefs) }
     var showFirestoreCreateDialog by remember { mutableStateOf(false) }
     var firestoreActionStatus by remember { mutableStateOf("") }
     var apiActionStatus by remember { mutableStateOf("") }
@@ -819,6 +820,16 @@ cloudshell download geivia-projects.json"""
                 val pendingFirestoreProject = prefs.getString("pending_firestore_project_id", null)
                 val hasDefaultFirestore = importedDatabaseIds?.contains("(default)") == true
                 if (pendingFirestoreProject == selectedProjectId && hasDefaultFirestore) {
+                    runCatching {
+                        val tracked = workflowProgressStore.get(selectedProjectId, "firestore_database")
+                        if (tracked.state == WorkflowStepState.IN_PROGRESS || tracked.state == WorkflowStepState.UNKNOWN) {
+                            workflowProgressStore.reconcileCompleted(
+                                selectedProjectId,
+                                "firestore_database",
+                                "Diagnóstico importado em ${System.currentTimeMillis()}: banco (default) listado para o mesmo Project ID."
+                            )
+                        }
+                    }
                     prefs.edit().remove("pending_firestore_project_id").remove("pending_firestore_location").remove("pending_firestore_created_at").apply()
                     firestoreActionStatus = "Banco (default) localizado no diagnóstico do projeto. Nenhuma nova criação será preparada."
                     addActionHistory("Firestore (default) localizado no diagnóstico • $selectedProjectId")
@@ -948,6 +959,18 @@ cloudshell download geivia-projects.json"""
             text = { Text("Será preparado um comando para criar somente o banco (default), edição Standard, na região $firestoreLocation, no projeto $selectedProjectId. O comando consulta os bancos existentes e não tenta criar outro se (default) já existir. A localização é uma decisão importante e não pode ser simplesmente trocada depois. O GEIVIA apenas copia o comando; você executará manualmente no Cloud Shell.") },
             confirmButton = {
                 TextButton(onClick = {
+                    runCatching {
+                        workflowProgressStore.confirmAndStart(
+                            selectedProjectId,
+                            "firestore_database",
+                            "firestore-default-${System.currentTimeMillis()}",
+                            "Comando preparado e copiado; aguardando execução manual e diagnóstico do mesmo projeto."
+                        )
+                    }.onFailure {
+                        firestoreActionStatus = it.message ?: "A etapa não foi liberada para confirmação."
+                        showFirestoreCreateDialog = false
+                        return@TextButton
+                    }
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     clipboard.setPrimaryClip(ClipData.newPlainText("GEIVIA criar Firestore", firestoreCreateCommand))
                     prefs.edit().putString("pending_firestore_project_id", selectedProjectId).putString("pending_firestore_location", firestoreLocation).putLong("pending_firestore_created_at", System.currentTimeMillis()).apply()
@@ -1208,7 +1231,14 @@ cloudshell download geivia-projects.json"""
                                     }
                                 }
                             }
-                            Button(onClick = { showFirestoreCreateDialog = true }, enabled = firestoreLocation.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Revisar criação do banco") }
+                            Button(onClick = {
+                                runCatching {
+                                    workflowProgressStore.waitForConfirmation(selectedProjectId, "firestore_database", "Região escolhida: $firestoreLocation. Revisar criação do banco (default).")
+                                    showFirestoreCreateDialog = true
+                                }.onFailure {
+                                    firestoreActionStatus = it.message ?: "Não foi possível abrir a confirmação desta etapa."
+                                }
+                            }, enabled = firestoreLocation.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Revisar criação do banco") }
                         }
                         Text("IMPORTANTE: criar o banco não configura regras de segurança. Antes de conectar o aplicativo, publique regras restritivas adequadas aos dados e aos usuários. Não use regras abertas de teste em produção.", color = Color(0xFF9A641B), fontSize = 10.sp, lineHeight = 14.sp)
                         if (firestoreActionStatus.isNotBlank()) Text(firestoreActionStatus, color = DeepBlue, fontSize = 11.sp, lineHeight = 16.sp)

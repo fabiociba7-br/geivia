@@ -322,8 +322,9 @@ private fun GoogleAccessScreen(onBack: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var pendingStage by remember { mutableIntStateOf(-1) }
 
+    val identityScopes = listOf("openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile")
     val stageScopes = listOf(
-        listOf("openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"),
+        identityScopes,
         listOf("https://www.googleapis.com/auth/firebase.readonly"),
         listOf("https://www.googleapis.com/auth/cloudplatformprojects.readonly"),
         listOf("https://www.googleapis.com/auth/cloud-platform.read-only"),
@@ -332,11 +333,6 @@ private fun GoogleAccessScreen(onBack: () -> Unit) {
 
     fun consumeAuthorization(stage: Int, result: AuthorizationResult) {
         val token = result.accessToken
-        val newlyGranted = result.grantedScopes.orEmpty().toSet()
-        val allGranted = (grantedScopes.toSet() + newlyGranted)
-        grantedScopes.clear()
-        grantedScopes.addAll(allGranted)
-        prefs.edit().putStringSet("granted_scopes", allGranted).apply()
         if (token.isNullOrBlank()) {
             status = "O Google não retornou um token de acesso. Nenhum dado foi consultado."
             return

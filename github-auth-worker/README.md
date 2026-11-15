@@ -9,7 +9,6 @@ No GitHub, abra **Settings → Developer settings → GitHub Apps → New GitHub
 Configure:
 - Nome: GEIVIA (ou outro nome disponível).
 - Homepage URL: página do projeto GEIVIA.
-- Callback URL: URL HTTPS do Worker terminada em `/callback`.
 - Configure o campo **Callback URL** com a URL HTTPS do Worker.
 - Não marque **Request user authorization (OAuth) during installation**: o GEIVIA inicia o fluxo web OAuth manualmente e informa explicitamente o `redirect_uri` para esse callback.
 - Permissões de repositório: **Metadata: Read-only**, **Contents: Read-only**, **Actions: Read-only**, **Pull requests: Read-only**.
@@ -50,7 +49,7 @@ Na tela GitHub do GEIVIA:
 
 As duas URLs precisam usar o mesmo domínio. Salve e toque em **Autorizar no GitHub**.
 
-O app usa Authorization Code + PKCE S256 e valida state e validade de 10 minutos. O código volta por deep link; o código é trocado pelo Worker e o token é criptografado no Android Keystore. O Worker não persiste nem registra tokens.
+O app usa Authorization Code + PKCE S256 e valida state e validade de 10 minutos. O código volta por deep link; o código é trocado pelo Worker e o token é criptografado no Android Keystore. O Worker não persiste nem registra tokens. O endpoint `/refresh` renova tokens expirando e devolve o refresh token rotacionado para armazenamento cifrado no aparelho.
 
 ## 4. Limitações da primeira entrega
 

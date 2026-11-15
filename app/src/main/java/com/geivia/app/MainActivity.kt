@@ -455,7 +455,7 @@ cloudshell download geivia-projects.json"""
                 for (index in 0 until array.length()) {
                     val item = array.optJSONObject(index) ?: continue
                     val id = item.optString("projectId").trim()
-                    if (id.isNotBlank()) {
+                    if (id.matches(Regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$"))) {
                         val name = item.optString("name").ifBlank { id }
                         val number = item.optString("projectNumber")
                         val state = item.optString("lifecycleState")
@@ -479,6 +479,41 @@ cloudshell download geivia-projects.json"""
                 importStatus = it.message ?: "Não foi possível importar o JSON."
             }
         }
+    }
+
+    var diagnosticSummary by remember { mutableStateOf(prefs.getString("cloud_project_diagnostic_summary", "").orEmpty()) }
+    val diagnosticCommand = remember(selectedProjectId) {
+        if (selectedProjectId.isBlank()) "" else listOf(
+            "set -e",
+            "PROJECT_ID='$selectedProjectId'",
+            'echo "Verificando o projeto exato: $PROJECT_ID"',
+            'gcloud projects describe "$PROJECT_ID" --format=json > geivia-project-details.json',
+            'gcloud services list --enabled --project="$PROJECT_ID" --format=json > geivia-enabled-apis.json',
+            'jq -n --slurpfile p geivia-project-details.json --slurpfile s geivia-enabled-apis.json \'{project:$p[0],enabledServices:$s[0]}\' > geivia-diagnostic.json',
+            "cloudshell download geivia-diagnostic.json"
+        ).joinToString("\n")
+    }
+    val diagnosticLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching {
+                val raw = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                    ?: throw IllegalStateException("Não foi possível abrir o relatório.")
+                val report = org.json.JSONObject(raw)
+                val project = report.optJSONObject("project") ?: throw IllegalStateException("Relatório inválido: dados do projeto ausentes.")
+                val reportId = project.optString("projectId")
+                if (reportId != selectedProjectId || selectedProjectId.isBlank()) throw IllegalStateException("O relatório é de outro projeto. Selecione o mesmo Project ID antes de importar.")
+                val services = report.optJSONArray("enabledServices") ?: throw IllegalStateException("Relatório inválido: lista de APIs ausente.")
+                val summary = "Último diagnóstico: $reportId • ${services.length()} API(s) habilitada(s)."
+                prefs.edit().putString("cloud_project_diagnostic_json", report.toString()).putString("cloud_project_diagnostic_summary", summary).apply()
+                summary
+            }.onSuccess { diagnosticSummary = it; importStatus = "Diagnóstico importado e vinculado ao projeto selecionado." }
+             .onFailure { importStatus = it.message ?: "Não foi possível importar o diagnóstico." }
+        }
+    }
+    fun copyDiagnosticCommand() {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("Diagnóstico somente leitura GEIVIA", diagnosticCommand))
+        Toast.makeText(context, "Comando copiado. Ele consulta somente o projeto selecionado.", Toast.LENGTH_LONG).show()
     }
 
     fun selectProject(project: CloudProject) {
@@ -608,6 +643,22 @@ cloudshell download geivia-projects.json"""
                             }
                         }
                     }
+                }
+            }
+        }
+        if (selectedProjectId.isNotBlank()) {
+            Spacer(Modifier.height(12.dp))
+            Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {
+                Column(Modifier.padding(15.dp)) {
+                    Text("ETAPA 5 — CONFERIR ESTE PROJETO (SOMENTE LEITURA)", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(6.dp))
+                    Text("O comando confirma se o projeto selecionado existe e lista as APIs habilitadas. Não cria projetos, não habilita APIs e não altera faturamento.", color = Ink, fontSize = 12.sp, lineHeight = 18.sp)
+                    Spacer(Modifier.height(9.dp))
+                    Text(diagnosticCommand, color = Color(0xFFDAEAF4), fontSize = 9.sp, lineHeight = 14.sp, modifier = Modifier.fillMaxWidth().background(Color(0xFF102B43), RoundedCornerShape(10.dp)).padding(11.dp))
+                    Spacer(Modifier.height(8.dp))
+                    Button(onClick = { copyDiagnosticCommand() }, modifier = Modifier.fillMaxWidth()) { Text("Copiar diagnóstico deste projeto") }
+                    OutlinedButton(onClick = { diagnosticLauncher.launch(arrayOf("application/json", "text/*", "*/*")) }, modifier = Modifier.fillMaxWidth()) { Text("Importar geivia-diagnostic.json") }
+                    if (diagnosticSummary.isNotBlank()) Text(diagnosticSummary, color = DeepBlue, fontSize = 11.sp)
                 }
             }
         }

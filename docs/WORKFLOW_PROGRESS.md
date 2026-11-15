@@ -25,3 +25,18 @@ Em particular:
 ## Próxima evolução
 
 Unificar os estados individuais das operações em um registro central de etapas com estados `NOT_STARTED`, `IN_PROGRESS`, `WAITING_CONFIRMATION`, `UNKNOWN`, `COMPLETED` e `FAILED`, sem substituir as verificações específicas de cada serviço.
+
+## Registro central de operações (v1)
+
+O arquivo `WorkflowProgress.kt` adiciona um registro persistente por combinação de Project ID + identificador da etapa. Cada registro guarda estado, horário, identificador da operação, mensagem e evidência de reconciliação. O histórico local é limitado às últimas 200 transições.
+
+Regras da máquina de estados:
+
+- `NOT_STARTED` pode aguardar confirmação; não executa nada por si só.
+- `WAITING_CONFIRMATION` só passa a `IN_PROGRESS` quando o chamador registra uma confirmação explícita e um identificador de operação.
+- `IN_PROGRESS` pode terminar em `COMPLETED` somente com evidência não vazia de diagnóstico externo; ou em `FAILED` quando a falha é conhecida.
+- Timeout, perda de conexão ou resposta ambígua devem resultar em `UNKNOWN`.
+- `UNKNOWN` não pode ser iniciado novamente. Só pode ser reconciliado com diagnóstico recente do mesmo Project ID: recurso encontrado = `COMPLETED`; recurso explicitamente ausente + confirmação do usuário = `FAILED`. A etapa não dispara nova operação automaticamente.
+- `COMPLETED` é terminal para essa etapa. Uma alteração futura deve ser modelada como nova operação/etapa, não apagando o registro anterior.
+
+**Importante:** este commit entrega o motor de estados e as regras de transição, mas ainda não conecta todos os botões e comandos existentes ao registro. Até essa integração, os estados atuais de APIs/Firestore continuam usando seus controles específicos. Não considerar o motor universal já aplicado a todas as operações.

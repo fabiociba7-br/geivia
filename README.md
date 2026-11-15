@@ -22,10 +22,10 @@ O GEIVIA será um produto independente do Zupi Gestão. Nesta primeira fase, o d
 ## Segurança
 
 - Segredos de servidor nunca serão incluídos no APK ou no repositório.
-- O app usará autorização OAuth incremental, contextual e granular; leitura e escrita serão separadas.
+- O fluxo inicial usa o navegador e Cloud Shell da própria conta do usuário; não coleta senha, token ou chave.
 - O fluxo inicial não exige OAuth próprio do GEIVIA: o usuário executa comandos de leitura na sessão autenticada do Cloud Shell.
-- Consulte [a arquitetura de acesso ao Google Cloud](docs/GOOGLE_AUTHORIZATION_ARCHITECTURE.md) para o fluxo híbrido e os limites de segurança.
-- Operações administrativas serão executadas com credenciais e arquitetura apropriadas, com registro das ações.
+- Consulte [a arquitetura de acesso ao Google Cloud](docs/GOOGLE_AUTHORIZATION_ARCHITECTURE.md) e a [política contra projetos duplicados](docs/PROJECT_CREATION_SAFETY.md).
+- Operações administrativas exigem confirmação explícita, registro de etapas e recuperação segura no mesmo projeto.
 - Nunca solicitar senha da conta Google ao usuário dentro do GEIVIA.
 
 ## Desenvolvimento

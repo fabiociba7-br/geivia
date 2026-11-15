@@ -1090,6 +1090,7 @@ cloudshell download geivia-projects.json"""
                         if ("firestore.googleapis.com" in enabledFirebaseApis && firestoreDatabaseIds != null && "(default)" !in firestoreDatabaseIds.orEmpty() && prefs.getString("pending_firestore_project_id", null) != selectedProjectId && firestoreBillingEnabled == false) {
                             Spacer(Modifier.height(8.dp))
                             Text("REGIÃO DO BANCO — ESCOLHA ANTES DE CRIAR", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text("A localização padrão do projeto pode já ter sido definida por outro recurso Google Cloud. Se o Google indicar incompatibilidade, pare e verifique a localização existente; não tente contornar criando outro projeto.", color = Color(0xFF9A641B), fontSize = 10.sp, lineHeight = 14.sp)
                             listOf("southamerica-east1" to "São Paulo, Brasil", "us-central1" to "Iowa, Estados Unidos", "nam5" to "Multirregião Estados Unidos").forEach { (region, label) ->
                                 Row(Modifier.fillMaxWidth().clickable { firestoreLocation = region; prefs.edit().putString("firestore_location", region).apply() }.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
                                     RadioButton(selected = firestoreLocation == region, onClick = { firestoreLocation = region; prefs.edit().putString("firestore_location", region).apply() })

@@ -98,3 +98,8 @@ Quando o diagnóstico confirma o banco `(default)`, a etapa de regras oferece um
 Quando a API Firebase Hosting está ativa, a etapa de publicação prepara um site estático demonstrativo no site padrão do mesmo Project ID. O script consulta o site pela API REST, cria somente quando a resposta é HTTP 404, interrompe em outros erros e não sobrescreve pastas locais que não tenham marcador GEIVIA. Antes de qualquer criação remota, também valida que o `firebase.json` local aponta para o site padrão do mesmo Project ID e para a pasta `public`; se o destino estiver alterado, interrompe. A etapa de regras Firestore aplica proteção equivalente, exigindo que `firebase.json` aponte para `firestore.rules`. O deploy é limitado a `hosting`, sem publicar Functions ou outros serviços. A página é um placeholder e precisa ser substituída pelo site real antes da divulgação.
 
 Os comandos são copiados para o Cloud Shell e executados pelo usuário. Eles não são executados pelo APK nem usam credenciais armazenadas no aplicativo.
+
+
+## Backup e preservação do histórico
+
+O painel permite exportar o histórico local em JSON. A exportação preserva literalmente os dados de progresso e auditoria, inclusive quando o JSON de progresso está corrompido, e inclui hashes SHA-256 para conferência. Exportar não altera o estado local. O backup não é restaurado automaticamente nem autoriza repetir operações; operações pendentes exigem reconciliação atual no mesmo Project ID. Consulte `docs/WORKFLOW_BACKUP_RECOVERY.md` para o procedimento seguro.

@@ -40,3 +40,19 @@ Regras da máquina de estados:
 - `COMPLETED` é terminal para essa etapa. Uma alteração futura deve ser modelada como nova operação/etapa, não apagando o registro anterior.
 
 **Importante:** este commit entrega o motor de estados e as regras de transição, mas ainda não conecta todos os botões e comandos existentes ao registro. Até essa integração, os estados atuais de APIs/Firestore continuam usando seus controles específicos. Não considerar o motor universal já aplicado a todas as operações.
+
+
+## Integração inicial com a interface
+
+A tela Dashboard agora exibe o catálogo inicial de etapas e o estado persistido para o Project ID selecionado. Cada projeto mantém seu próprio conjunto de registros.
+
+A etapa de criação do Firestore foi conectada ao motor central:
+1. Ao tocar em “Revisar criação do banco”, a etapa passa para `WAITING_CONFIRMATION`.
+2. Ao confirmar e copiar o comando manual, passa para `IN_PROGRESS`, com identificador local da operação.
+3. A cópia do comando não significa que o banco foi criado.
+4. Um diagnóstico posterior, importado para o mesmo Project ID e contendo `(default)`, reconcilia a etapa como `COMPLETED`.
+5. Se o banco não aparecer, a pendência continua bloqueada; não se oferece repetição automática.
+
+A reconciliação é tolerante com instalações que tinham uma pendência Firestore anterior à introdução do registro central. O histórico legado continua preservado.
+
+**Limitação atual:** o catálogo da Dashboard já mostra o estado central, mas as demais etapas (diagnóstico, habilitação de APIs, Authentication, Hosting e Storage) ainda precisam ser ligadas individualmente. Os botões existentes continuam com seus mecanismos de segurança específicos enquanto isso não é feito.

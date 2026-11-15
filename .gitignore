@@ -1,0 +1,32 @@
+# Gradle
+.gradle/
+**/build/
+
+# Android SDK / local machine configuration
+local.properties
+*.iml
+
+# Android Studio / IntelliJ
+.idea/
+.DS_Store
+
+# Signing material and private keys
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+*.mobileprovision
+
+# Local environment files and credentials
+.env
+.env.*
+!.env.example
+secrets.properties
+google-services.json
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp

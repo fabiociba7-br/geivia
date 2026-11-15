@@ -27,6 +27,10 @@ object FirebaseDeploymentCommands {
                 exit 5
               fi
             fi
+            if [ -e "§WORKDIR" ] && ! jq -e '.firestore.rules == "firestore.rules"' "§WORKDIR/firebase.json" >/dev/null 2>&1; then
+              echo "A configuração Firestore local não aponta para firestore.rules. Nada foi publicado."
+              exit 32
+            fi
             gcloud projects describe "§PROJECT_ID" --format=json >/dev/null
             gcloud services list --enabled --project="§PROJECT_ID" --format=json | jq -e 'any(.[]; ((.config.name // .name) == "firestore.googleapis.com"))' >/dev/null
             gcloud services list --enabled --project="§PROJECT_ID" --format=json | jq -e 'any(.[]; ((.config.name // .name) == "firebaserules.googleapis.com"))' >/dev/null
@@ -81,6 +85,10 @@ object FirebaseDeploymentCommands {
             }
             GEIVIA_FIRESTORE_RULES
             fi
+            if ! jq -e '.firestore.rules == "firestore.rules"' "§WORKDIR/firebase.json" >/dev/null 2>&1; then
+              echo "A configuração Firestore local não aponta para firestore.rules. Nada foi publicado."
+              exit 32
+            fi
             cd "§WORKDIR"
             firebase deploy --only firestore:rules --project "§PROJECT_ID" --non-interactive
             echo "Regras iniciais restritivas publicadas. Todas as leituras e gravações de clientes estão bloqueadas até personalizar e testar regras por coleção."
@@ -103,6 +111,10 @@ object FirebaseDeploymentCommands {
                 echo "A pasta de destino não corresponde exatamente à estrutura gerada pelo GEIVIA. Nada foi alterado."
                 exit 7
               fi
+            fi
+            if [ -e "§WORKDIR" ] && ! jq -e --arg id "§PROJECT_ID" '.hosting.site == §id and .hosting.public == "public"' "§WORKDIR/firebase.json" >/dev/null 2>&1; then
+              echo "A configuração Hosting local não corresponde ao site padrão deste projeto. Nada foi criado ou publicado."
+              exit 33
             fi
             gcloud projects describe "§PROJECT_ID" --format=json >/dev/null
             gcloud services list --enabled --project="§PROJECT_ID" --format=json | jq -e 'any(.[]; ((.config.name // .name) == "firebasehosting.googleapis.com"))' >/dev/null
@@ -200,6 +212,10 @@ object FirebaseDeploymentCommands {
             </main><script>document.getElementById('project').textContent='Project ID: ' + location.hostname.split('.')[0];</script></body>
             </html>
             GEIVIA_HOSTING_HTML
+            fi
+            if ! jq -e --arg id "§PROJECT_ID" '.hosting.site == §id and .hosting.public == "public"' "§WORKDIR/firebase.json" >/dev/null 2>&1; then
+              echo "A configuração Hosting local não corresponde ao site padrão deste projeto. Nada foi publicado."
+              exit 33
             fi
             cd "§WORKDIR"
             firebase deploy --only hosting --project "§PROJECT_ID" --non-interactive

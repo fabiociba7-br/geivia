@@ -11,7 +11,7 @@ Configure:
 - Homepage URL: página do projeto GEIVIA.
 - Callback URL: URL HTTPS do Worker terminada em `/callback`.
 - Ative a autorização do usuário (OAuth) durante a instalação.
-- Permissões de repositório: **Metadata: Read-only**, **Contents: Read-only**, **Actions: Read-only**.
+- Permissões de repositório: **Metadata: Read-only**, **Contents: Read-only**, **Actions: Read-only**, **Pull requests: Read-only**.
 - Não habilite permissões de escrita, administração, secrets ou workflows.
 - Webhooks: desativados nesta primeira fase.
 - Instale a App somente nos repositórios que deseja disponibilizar ao GEIVIA.

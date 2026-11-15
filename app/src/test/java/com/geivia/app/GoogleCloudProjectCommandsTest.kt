@@ -34,6 +34,8 @@ class GoogleCloudProjectCommandsTest {
     fun reconciliationOnlyDescribesTheOriginalProjectId() {
         val command = GoogleCloudProjectCommands.reconcile("geivia-demo-123")
         assertTrue(command.contains("gcloud projects describe 'geivia-demo-123'"))
+        assertTrue(command.contains("NOT_FOUND_CONFIRMED"))
+        assertTrue(command.contains("grep -Eq '(^|[[:space:]])NOT_FOUND:'"))
         assertFalse(command.contains("gcloud projects create"))
     }
 

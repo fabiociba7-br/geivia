@@ -38,6 +38,7 @@ Regras da máquina de estados:
 - Timeout, perda de conexão ou resposta ambígua devem resultar em `UNKNOWN`.
 - `UNKNOWN` não pode ser iniciado novamente. Só pode ser reconciliado com diagnóstico recente do mesmo Project ID: recurso encontrado = `COMPLETED`; recurso explicitamente ausente + confirmação do usuário = `FAILED`. A etapa não dispara nova operação automaticamente.
 - `COMPLETED` é terminal para essa etapa. Uma alteração futura deve ser modelada como nova operação/etapa, não apagando o registro anterior.
+- Se o JSON persistido de progresso estiver corrompido, o GEIVIA falha de forma fechada: bloqueia a leitura/início das operações e não interpreta o histórico como vazio. Isso evita que uma criação anterior pareça nunca ter sido iniciada e seja repetida por engano.
 
 
 

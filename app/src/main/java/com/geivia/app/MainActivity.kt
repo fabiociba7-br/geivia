@@ -755,7 +755,19 @@ cloudshell download geivia-projects.json"""
                 projects
             }.onSuccess {
                 importedProjects = it
-                importStatus = "Importação concluída: ${it.size} projeto(s) lido(s). A seleção anterior foi preservada."
+                val pendingId = prefs.getString("pending_project_creation_id", null).orEmpty()
+                if (pendingId.isNotBlank() && it.any { project -> project.projectId == pendingId }) {
+                    runCatching {
+                        val current = workflowProgressStore.get(pendingId, "project_creation")
+                        if (current.state == WorkflowStepState.IN_PROGRESS || current.state == WorkflowStepState.UNKNOWN) {
+                            workflowProgressStore.reconcileCompleted(pendingId, "project_creation", "Project ID localizado em inventário importado: $pendingId.")
+                        }
+                    }
+                    prefs.edit().remove("pending_project_creation_id").remove("pending_project_creation_name").apply()
+                    importStatus = "Projeto $pendingId localizado. Operação reconciliada; selecione-o explicitamente na lista."
+                } else {
+                    importStatus = "Importação concluída: ${it.size} projeto(s) lido(s). A seleção anterior foi preservada."
+                }
             }.onFailure {
                 importStatus = it.message ?: "Não foi possível importar o JSON."
             }

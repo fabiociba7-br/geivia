@@ -635,6 +635,10 @@ private fun CloudShellSetupScreen(
     var newProjectName by rememberSaveable { mutableStateOf(prefs.getString("new_project_name", "").orEmpty()) }
     var showProjectCreateDialog by remember { mutableStateOf(false) }
     var projectCreationStatus by remember { mutableStateOf("") }
+    var showFirestoreRulesDialog by remember { mutableStateOf(false) }
+    var firestoreRulesStatus by remember { mutableStateOf("") }
+    var showHostingDeployDialog by remember { mutableStateOf(false) }
+    var hostingDeployStatus by remember { mutableStateOf("") }
     var firestoreDatabaseIds by remember {
         mutableStateOf(
             runCatching {

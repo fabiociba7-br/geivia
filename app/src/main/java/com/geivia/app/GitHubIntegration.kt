@@ -51,8 +51,9 @@ object GitHubOAuth {
         val exchange = URI(exchangeUrl)
         callback.scheme == "https" && exchange.scheme == "https" &&
             callback.host != null && callback.host == exchange.host &&
-            callback.port == exchange.port && callback.path.endsWith("/callback") &&
-            exchange.path.endsWith("/exchange")
+            callback.port == exchange.port && callback.path == "/callback" &&
+            exchange.path == "/exchange" && callback.rawUserInfo == null && exchange.rawUserInfo == null &&
+            callback.rawQuery == null && exchange.rawQuery == null && callback.rawFragment == null && exchange.rawFragment == null
     }.getOrDefault(false)
 
     fun authorizationUrl(clientId: String, callbackUrl: String, state: String, verifier: String): String {

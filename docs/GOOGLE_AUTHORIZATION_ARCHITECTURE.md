@@ -4,7 +4,7 @@
 
 O GEIVIA terá integração Google completa e progressiva. A conta conectada será sempre escolhida pelo usuário final. Nenhuma conta pessoal do desenvolvedor, projeto Firebase pessoal ou credencial pessoal será usada para operar projetos de clientes.
 
-O usuário nunca informa a senha Google dentro do GEIVIA. Login e consentimento acontecem nas telas oficiais do Google.
+O usuário nunca informa a senha Google dentro do GEIVIA. A seleção da conta e o consentimento acontecem na interface oficial de autorização do Google Play services.
 
 ## Princípios obrigatórios
 
@@ -15,6 +15,12 @@ O usuário nunca informa a senha Google dentro do GEIVIA. Login e consentimento 
 5. Guardar somente dados necessários; nunca registrar tokens, códigos OAuth ou conteúdo sensível nos logs.
 6. Oferecer desconexão, limpeza de dados locais de sessão e instruções para revogar o acesso na Conta Google.
 7. Nenhuma operação que possa gerar custo será executada sem confirmação específica imediatamente antes dela.
+
+## Estado da implementação
+
+O aplicativo usa o Google Play services Authorization API para solicitar cada conjunto de escopos por ação do usuário. Os tokens de acesso são usados somente em memória para a chamada imediata e não são gravados em preferências. A tela registra localmente apenas os escopos concedidos, o perfil mínimo e os resultados das consultas. A implementação não solicita acesso offline nem refresh token.
+
+As chamadas de leitura são feitas diretamente do aparelho por HTTPS. O aplicativo precisa da permissão Android INTERNET. Até que o cliente OAuth Android do produto esteja registrado com o package e a SHA-1 da assinatura utilizada, o fluxo poderá falhar na etapa de autorização; o modo offline continua disponível.
 
 ## Fluxo do usuário
 

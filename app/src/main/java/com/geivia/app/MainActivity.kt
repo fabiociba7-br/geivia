@@ -705,22 +705,22 @@ cloudshell download geivia-projects.json"""
             set -euo pipefail
             PROJECT_ID='$id'
             PROJECT_NAME="$(printf '%s' '$encodedName' | base64 -d)"
-            if gcloud projects describe "$PROJECT_ID" --format=json > geivia-project-preflight.json 2> geivia-project-preflight.err; then
+            if gcloud projects describe "§PROJECT_ID" --format=json > geivia-project-preflight.json 2> geivia-project-preflight.err; then
               echo "Projeto já existe e está acessível. Nenhuma criação será feita."
             else
               if grep -Eqi 'NOT_FOUND|not found|does not exist' geivia-project-preflight.err; then
                 echo "Project ID não encontrado. Enviando uma única solicitação de criação."
-                gcloud projects create "$PROJECT_ID" --name="$PROJECT_NAME" --format=json > geivia-project-create-response.json
+                gcloud projects create "§PROJECT_ID" --name="§PROJECT_NAME" --format=json > geivia-project-create-response.json
               else
                 cat geivia-project-preflight.err
                 echo "Consulta inconclusiva. Nenhuma criação foi enviada."
                 exit 2
               fi
             fi
-            gcloud projects describe "$PROJECT_ID" --format=json > geivia-project-result.json
+            gcloud projects describe "§PROJECT_ID" --format=json > geivia-project-result.json
             jq '[{projectId:.projectId,name:.name,projectNumber:(.projectNumber|tostring),lifecycleState:.lifecycleState}]' geivia-project-result.json > geivia-projects.json
             cloudshell download geivia-projects.json
-        """.trimIndent()
+        """.trimIndent().replace("§", "$")
     }
     val projectReconcileCommand = remember(pendingCreationId) {
         if (!pendingCreationId.matches(Regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$"))) "" else """

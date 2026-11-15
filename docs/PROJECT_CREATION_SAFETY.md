@@ -102,3 +102,11 @@ O comando é copiado para execução manual no Cloud Shell. O aplicativo não ex
 ## Limites conhecidos
 
 A saída de erro do Google Cloud CLI pode variar entre versões e idiomas. Se o texto não for reconhecido como ausência explícita, o comando falha de forma conservadora e não cria. Nesse caso, o usuário deve verificar o Project ID no Console e não alterar o identificador para contornar o erro.
+
+## Proveniência dos arquivos importados
+
+Os JSONs importados pelo aplicativo são arquivos fornecidos pelo próprio usuário. O GEIVIA valida a estrutura e compara o Project ID com a operação pendente, mas **não consegue comprovar criptograficamente que o arquivo foi produzido pelo Google Cloud**. Um JSON pode ser editado ou forjado fora do aplicativo.
+
+Por isso, o marcador `NOT_FOUND_CONFIRMED` não deve ser descrito como prova autenticada do Google. Ao importar esse marcador para o mesmo ID pendente, o app exige uma confirmação adicional: o usuário declara que acabou de gerar o arquivo executando o comando de reconciliação do GEIVIA no Cloud Shell, na conta Google correta. Se não tiver certeza da origem, deve cancelar e manter o bloqueio.
+
+Essa confirmação reduz liberações acidentais, mas continua sendo uma declaração do usuário, não uma validação criptográfica. A criação real permanece protegida pelo pré-teste do comando, que consulta novamente o ID exato antes de qualquer solicitação de criação.

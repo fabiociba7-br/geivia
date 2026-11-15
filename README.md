@@ -27,8 +27,9 @@ A geração de APK e os testes automatizados são realizados pelo GitHub Actions
 
 ## Integração com GitHub
 
-A integração com GitHub está planejada como uma conexão por GitHub App, com autorização da própria conta do usuário, permissões mínimas e leitura inicial de repositórios e GitHub Actions. Não serão usados tokens pessoais compartilhados nem segredos dentro do APK. A arquitetura está em [docs/GITHUB_INTEGRATION_ARCHITECTURE.md](docs/GITHUB_INTEGRATION_ARCHITECTURE.md). O aplicativo já inclui o fluxo Android de autorização PKCE, armazenamento do token com Android Keystore e leitura inicial de repositórios. O serviço HTTPS de troca do código está em [github-auth-worker](github-auth-worker/README.md) e precisa ser publicado e configurado pelo proprietário antes de conectar a conta.
+A primeira fase da integração já está implementada no Android: GitHub App Authorization Code + PKCE S256, token cifrado com Android Keystore e renovação automática, listagem paginada de repositórios, perfil, branches, commits, pull requests, GitHub Actions, jobs e metadados de artefatos. A conexão é somente leitura; o GEIVIA não faz push, commit, merge ou alteração de workflows.
 
+O proprietário ainda precisa registrar a própria GitHub App e publicar/configurar o Cloudflare Worker que protege o Client Secret. O passo a passo está em [github-auth-worker/README.md](github-auth-worker/README.md), e a arquitetura completa em [docs/GITHUB_INTEGRATION_ARCHITECTURE.md](docs/GITHUB_INTEGRATION_ARCHITECTURE.md). Não envie Client Secret, tokens ou senhas ao chat nem os coloque no APK ou no repositório.
 ## Segurança
 
 - Segredos de servidor nunca serão incluídos no APK ou no repositório.

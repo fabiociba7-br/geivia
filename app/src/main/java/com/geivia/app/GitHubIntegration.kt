@@ -8,6 +8,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URI
 import java.net.URLEncoder
 import java.security.KeyStore
 import java.security.SecureRandom
@@ -45,7 +46,7 @@ object GitHubOAuth {
         return Base64.encodeToString(digest, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
     }
 
-    fun authorizationUrl(clientId: String, callbackUrl: String, state: String, verifier: String): String {
+    fun validEndpoints(callbackUrl: String, exchangeUrl: String): Boolean = runCatching {\n        val callback = URI(callbackUrl)\n        val exchange = URI(exchangeUrl)\n        callback.scheme == "https" && exchange.scheme == "https" &&\n            callback.host != null && callback.host == exchange.host &&\n            callback.port == exchange.port && callback.path.endsWith("/callback") &&\n            exchange.path.endsWith("/exchange")\n    }.getOrDefault(false)\n\n    fun authorizationUrl(clientId: String, callbackUrl: String, state: String, verifier: String): String {
         require(clientId.isNotBlank()) { "Informe o Client ID da GitHub App." }
         require(callbackUrl.startsWith("https://")) { "A URL de callback precisa usar HTTPS." }
         val params = linkedMapOf(
@@ -127,7 +128,7 @@ class GitHubTokenStore(context: Context) {
 
 object GitHubAuthClient {
     fun exchangeCode(exchangeUrl: String, clientId: String, callbackUrl: String, code: String, verifier: String): String {
-        require(exchangeUrl.startsWith("https://")) { "O serviço de autorização precisa usar HTTPS." }
+        require(exchangeUrl.startsWith("https://") && GitHubOAuth.validEndpoints(callbackUrl, exchangeUrl)) { "Callback e serviço de autorização devem usar HTTPS no mesmo domínio." }
         val connection = (URL(exchangeUrl).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = 15_000

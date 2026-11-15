@@ -61,6 +61,15 @@ test("exchange rejects mismatched client configuration before contacting GitHub"
   }
 });
 
+test("exchange rejects declared oversized request before parsing", async () => {
+  const response = await worker.fetch(new Request("https://worker.example/exchange", {
+    method: "POST",
+    headers: { "content-type": "application/json", "content-length": "16385" },
+    body: "{}"
+  }), env);
+  assert.equal(response.status, 413);
+});
+
 test("exchange validates PKCE verifier before contacting GitHub", async () => {
   const originalFetch = globalThis.fetch;
   let called = false;

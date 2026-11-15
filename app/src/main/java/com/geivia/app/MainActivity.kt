@@ -648,7 +648,7 @@ cloudshell download geivia-projects.json"""
     val firebaseApiChecks = listOf(
         "firebase.googleapis.com" to "Firebase Management API",
         "firestore.googleapis.com" to "Cloud Firestore API",
-        "identitytoolkit.googleapis.com" to "Firebase Authentication",
+        "identitytoolkit.googleapis.com" to "Identity Toolkit API (não configura provedores)",
         "firebasestorage.googleapis.com" to "Cloud Storage for Firebase",
         "firebasehosting.googleapis.com" to "Firebase Hosting",
         "cloudbuild.googleapis.com" to "Cloud Build"
@@ -656,7 +656,7 @@ cloudshell download geivia-projects.json"""
     val requestedApis = buildList {
         add("firebase.googleapis.com" to "Firebase Management API")
         if (answers["login"].orEmpty().isNotBlank() && !answers["login"].orEmpty().contains("Não precisa")) {
-            add("identitytoolkit.googleapis.com" to "Firebase Authentication")
+            add("identitytoolkit.googleapis.com" to "Identity Toolkit API (pré-requisito técnico; não ativa login)")
         }
         if (answers["data"].orEmpty().isNotBlank() && !answers["data"].orEmpty().contains("Não vai guardar")) {
             add("firestore.googleapis.com" to "Cloud Firestore")
@@ -1102,6 +1102,20 @@ cloudshell download geivia-projects.json"""
                             Button(onClick = { showFirestoreCreateDialog = true }, enabled = firestoreLocation.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Revisar criação do banco") }
                         }
                         if (firestoreActionStatus.isNotBlank()) Text(firestoreActionStatus, color = DeepBlue, fontSize = 11.sp, lineHeight = 16.sp)
+                        if (answers["login"].orEmpty().isNotBlank() && !answers["login"].orEmpty().contains("Não precisa")) {
+                            Spacer(Modifier.height(14.dp))
+                            Divider(color = Color(0xFFE1EAF0))
+                            Spacer(Modifier.height(10.dp))
+                            Text("ETAPA 9 — FIREBASE AUTHENTICATION (PLANO SPARK)", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text("A autenticação básica do Firebase oferece métodos sem custo no plano Spark. Configure os provedores diretamente no Console Firebase. Não faça upgrade para Identity Platform e não habilite login por telefone/SMS no fluxo custo zero.", color = Muted, fontSize = 11.sp, lineHeight = 16.sp)
+                            Spacer(Modifier.height(8.dp))
+                            if (selectedProjectId.isNotBlank()) {
+                                Button(onClick = { openGoogleCloud("https://console.firebase.google.com/project/$selectedProjectId/authentication/providers") }, modifier = Modifier.fillMaxWidth()) {
+                                    Text("Abrir provedores de autenticação")
+                                }
+                            }
+                            Text("No Console: abra Método de login e ative somente os provedores necessários, como e-mail/senha ou Google. A ativação da Identity Toolkit API, isoladamente, não configura nenhum provedor.", color = Ink, fontSize = 11.sp, lineHeight = 16.sp)
+                        }
                         if (actionHistory.isNotEmpty()) {
                             Spacer(Modifier.height(12.dp))
                             Divider(color = Color(0xFFE1EAF0))

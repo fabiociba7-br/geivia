@@ -2046,7 +2046,7 @@ private fun GitHubScreen(
                 Text("BRANCHES", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 if (branches.isEmpty() && !detailsLoading) Text("Nenhuma branch retornada.", color = Muted, fontSize = 11.sp)
                 branches.forEach { branch ->
-                    Text(branch.name + if (branch.protected) " • protegida" else "", color = Ink, fontSize = 10.sp, modifier = Modifier.padding(vertical = 2.dp))
+                    Text(branch.name + if (branch.isProtected) " • protegida" else "", color = Ink, fontSize = 10.sp, modifier = Modifier.padding(vertical = 2.dp))
                 }
                 Spacer(Modifier.height(10.dp))
                 Text("GITHUB ACTIONS", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)

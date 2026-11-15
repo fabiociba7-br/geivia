@@ -48,6 +48,29 @@ class WorkflowProgressStoreTest {
     }
 
     @Test
+    fun retryMustUseANewOperationIdEvenAfterSeparateConfirmation() {
+        val store = store()
+        store.waitForConfirmation("project-operation-id", "firestore_rules", "First review")
+        store.confirmAndStart("project-operation-id", "firestore_rules", "same-operation", "First attempt")
+        store.markFailed("project-operation-id", "firestore_rules", "Known failure")
+
+        store.waitForConfirmation("project-operation-id", "firestore_rules", "Review retry")
+        org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+            store.confirmAndStart("project-operation-id", "firestore_rules", "same-operation", "Must use a new ID")
+        }
+        assertEquals(WorkflowStepState.WAITING_CONFIRMATION, store.get("project-operation-id", "firestore_rules").state)
+
+        val retry = store.confirmAndStart(
+            "project-operation-id",
+            "firestore_rules",
+            "new-operation",
+            "Explicit retry with unique ID"
+        )
+        assertEquals("new-operation", retry.operationId)
+        assertEquals(WorkflowStepState.IN_PROGRESS, retry.state)
+    }
+
+    @Test
     fun unknownAndCompletedOperationsCannotReturnToConfirmation() {
         val store = store()
         store.waitForConfirmation("project-guard", "step-unknown", "Review")

@@ -63,3 +63,8 @@ Esta política deve ser aplicada a toda a cadeia de configuração, não apenas 
 ## Estado da versão atual
 
 Na versão atual do aplicativo, a criação de projetos está deliberadamente desabilitada: a interface não fornece comando de criação. O usuário pode importar a lista de projetos existentes. A criação só deverá ser reintroduzida quando o fluxo persistente de estados, pré-verificação, confirmação explícita e reconciliação de operações estiver implementado e testado. A lista importada e o ambiente GEIVIA devem permanecer salvos ao reiniciar o app; nenhum reinício pode limpar silenciosamente o projeto selecionado.
+## Seleção persistente de projeto existente
+
+A tela de acesso ao Google Cloud importa a lista JSON e permite selecionar explicitamente um projeto existente. Ao selecionar, o app persiste localmente `selected_project_id`, `selected_project_name` e `selected_project_number`. Reimportar a lista não altera a seleção. Se o projeto selecionado não aparecer na lista mais recente, o app mantém o ID e alerta o usuário; nunca escolhe outro automaticamente. O painel mostra o destino atual ou informa que nenhum projeto foi selecionado.
+
+A seleção persistente identifica o destino escolhido, mas ainda não significa que o GEIVIA esteja executando operações de provisionamento diretamente. Antes de qualquer alteração futura no Cloud, a rotina deverá validar o acesso ao mesmo Project ID e usar esse ID em todas as chamadas; nenhuma etapa poderá inferir um novo projeto a partir do nome do ambiente GEIVIA.

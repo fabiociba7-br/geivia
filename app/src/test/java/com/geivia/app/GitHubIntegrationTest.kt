@@ -3,6 +3,8 @@ package com.geivia.app
 import java.io.ByteArrayInputStream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GitHubIntegrationTest {
@@ -32,5 +34,14 @@ class GitHubIntegrationTest {
         assertThrows(IllegalArgumentException::class.java) {
             readUtf8Limited(ByteArrayInputStream(byteArrayOf()), 0)
         }
+    }
+
+    @Test
+    fun tokenRefreshDecisionUsesTwoMinuteSafetyWindow() {
+        val savedAt = 1_000_000L
+        assertFalse(shouldRefreshGitHubToken(28_800L, savedAt, savedAt + 28_800_000L - 180_000L))
+        assertTrue(shouldRefreshGitHubToken(28_800L, savedAt, savedAt + 28_800_000L - 60_000L))
+        assertTrue(shouldRefreshGitHubToken(28_800L, 0L, savedAt))
+        assertFalse(shouldRefreshGitHubToken(0L, savedAt, savedAt + 99_999_999L))
     }
 }

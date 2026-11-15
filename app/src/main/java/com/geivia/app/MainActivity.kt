@@ -65,11 +65,11 @@ private fun GeiviaApp() {
         }
     }
     val workspaceId = remember {
-        prefs.getString("workspace_id", null) ?: ("GEIVIA-" + UUID.randomUUID().toString().replace("-", "").take(8).uppercase()).also {
+        prefs.getString("workspace_id", null) ?: ("GEIVIA-" + UUID.randomUUID().toString().replace("-", "").take(10).uppercase()).also {
             prefs.edit().putString("workspace_id", it).apply()
         }
     }
-    var workspaceName by rememberSaveable { mutableStateOf(prefs.getString("workspace_name", "") ?: "") }
+    var workspaceName by rememberSaveable { mutableStateOf(prefs.getString("workspace_name", "GEIVIA-" + workspaceId.removePrefix("GEIVIA-")) ?: ("GEIVIA-" + workspaceId.removePrefix("GEIVIA-"))) }
     var page by rememberSaveable {
         mutableStateOf(if (prefs.getBoolean("cloud_setup_completed", false)) "welcome" else "workspace_setup")
     }
@@ -518,7 +518,7 @@ cloudshell download geivia-projects.json"""
                 Spacer(Modifier.height(10.dp))
                 Button(onClick = { copyCommand() }, modifier = Modifier.fillMaxWidth()) { Text("Copiar comando de diagnóstico") }
                 Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/json", "text/json")) }, modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = { importLauncher.launch(arrayOf("*/*")) }, modifier = Modifier.fillMaxWidth()) {
                     Text("Importar geivia-projects.json")
                 }
                 if (importStatus.isNotBlank()) {

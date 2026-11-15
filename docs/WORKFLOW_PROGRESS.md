@@ -56,3 +56,21 @@ A etapa de criação do Firestore foi conectada ao motor central:
 A reconciliação é tolerante com instalações que tinham uma pendência Firestore anterior à introdução do registro central. O histórico legado continua preservado.
 
 **Limitação atual:** o catálogo da Dashboard já mostra o estado central, mas as demais etapas (diagnóstico, habilitação de APIs, Authentication, Hosting e Storage) ainda precisam ser ligadas individualmente. Os botões existentes continuam com seus mecanismos de segurança específicos enquanto isso não é feito.
+
+
+## Integração das etapas manuais (Authentication e Hosting)
+
+Firebase Authentication e Firebase Hosting agora usam o registro central de progresso:
+- Ao iniciar, o GEIVIA registra o estado IN_PROGRESS e abre o painel do projeto existente no Console Firebase.
+- Depois da configuração, o usuário pode registrar uma confirmação manual.
+- Essa confirmação recebe o estado USER_CONFIRMED, distinto de COMPLETED.
+- O painel deixa explícito que a configuração foi declarada pelo usuário e não verificada automaticamente pelo Google.
+- Se o estado estiver UNKNOWN ou FAILED, o fluxo não reinicia automaticamente.
+
+O Hosting declarado configurado ainda não significa que o código foi publicado nem que o endereço público foi testado. O deploy e a validação do site são etapas separadas.
+
+## Cloud Storage e custo zero
+
+O Storage permanece bloqueado no modo custo zero. A documentação oficial do Firebase informa que o plano Blaze é necessário para provisionar novos buckets padrão e para manter acesso aos recursos do Cloud Storage for Firebase; o uso sem custo dentro de cotas não elimina a exigência de vincular uma conta de faturamento. Portanto, o GEIVIA não oferece criação de bucket nem upgrade automático no modo custo zero.
+
+Referência oficial: https://firebase.google.com/docs/storage/faqs-storage-changes-announced-sept-2024

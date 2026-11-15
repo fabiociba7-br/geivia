@@ -69,10 +69,8 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
     fun confirmAndStart(projectId: String, stepId: String, operationId: String, message: String): WorkflowStepRecord {
         require(operationId.isNotBlank()) { "Identificador da operação obrigatório." }
         val current = get(projectId, stepId)
-        check(current.state == WorkflowStepState.WAITING_CONFIRMATION ||
-            current.state == WorkflowStepState.FAILED ||
-            current.state == WorkflowStepState.NOT_STARTED) {
-            "A etapa não está liberada para iniciar. Estado atual: ${current.state}."
+        check(current.state == WorkflowStepState.WAITING_CONFIRMATION) {
+            "A etapa exige uma nova confirmação explícita antes de iniciar. Estado atual: ${current.state}."
         }
         return save(current.copy(
             state = WorkflowStepState.IN_PROGRESS,

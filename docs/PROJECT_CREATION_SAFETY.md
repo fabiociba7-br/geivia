@@ -62,7 +62,7 @@ Um teste automatizado deve simular timeout logo após a solicitação de criaç�
 Esta política deve ser aplicada a toda a cadeia de configuração, não apenas à tela inicial de criação.
 ## Estado da versão atual
 
-Na versão atual do aplicativo, a criação de projetos está deliberadamente desabilitada: a interface não fornece comando de criação. O usuário pode importar a lista de projetos existentes. A criação só deverá ser reintroduzida quando o fluxo persistente de estados, pré-verificação, confirmação explícita e reconciliação de operações estiver implementado e testado. A lista importada e o ambiente GEIVIA devem permanecer salvos ao reiniciar o app; nenhum reinício pode limpar silenciosamente o projeto selecionado.
+A criação/reutilização assistida está disponível no app, mas o comando é executado manualmente pelo usuário no Cloud Shell. Antes de copiar o comando, o GEIVIA persiste o Project ID pendente e registra a etapa como em andamento; enquanto houver esse ID pendente, a interface bloqueia outra criação. O comando é gerado por `GoogleCloudProjectCommands` e tem testes unitários. A execução real na conta Google e a recuperação após interrupção ainda precisam ser validadas em dispositivo/conta de teste.
 ## Seleção persistente de projeto existente
 
 A tela de acesso ao Google Cloud importa a lista JSON e permite selecionar explicitamente um projeto existente. Ao selecionar, o app persiste localmente `selected_project_id`, `selected_project_name` e `selected_project_number`. Reimportar a lista não altera a seleção. Se o projeto selecionado não aparecer na lista mais recente, o app mantém o ID e alerta o usuário; nunca escolhe outro automaticamente. O painel mostra o destino atual ou informa que nenhum projeto foi selecionado.
@@ -82,14 +82,20 @@ Esta etapa é diagnóstico assistido pelo usuário no Cloud Shell. Ainda não é
 
 A etapa de criação/reutilização está disponível na tela Cloud Shell:
 - o usuário escolhe e confirma explicitamente o Project ID e o nome;
-- o comando consulta primeiro o mesmo ID com `gcloud projects describe`;
-- somente uma resposta reconhecível de `NOT_FOUND` permite uma chamada de criação;
-- falhas de permissão, rede ou qualquer erro não reconhecido encerram o script sem criar;
-- após a solicitação, o aplicativo mantém o ID pendente e não oferece outra criação;
-- a reconciliação consulta apenas o ID original e gera um inventário JSON para importação;
-- o estado local só é reconciliado quando o inventário importado contém o mesmo Project ID.
+- antes de copiar o comando, o app grava o ID pendente e registra a operação como `IN_PROGRESS`;
+- o comando consulta primeiro o ID exato com `gcloud projects describe`;
+- somente o marcador explícito `NOT_FOUND:` permite enviar uma única chamada de criação; mensagens genéricas como "not found" não são aceitas;
+- falhas de permissão, rede, resposta desconhecida ou qualquer erro não reconhecido encerram o script sem criar;
+- se a solicitação de criação falhar ou ficar ambígua, o script manda não repetir e encerra; o app mantém o mesmo ID pendente;
+- após a criação, o script exige `lifecycleState == ACTIVE` antes de exportar o inventário;
+- a reconciliação consulta somente o ID original e não contém comando de criação;
+- a importação só conclui a etapa quando o mesmo Project ID aparece com estado `ACTIVE`.
 
-O comando é copiado para execução manual no Cloud Shell. O aplicativo não executa operações de nuvem remotamente. Repetir manualmente o mesmo comando também é protegido pela pré-consulta: se o projeto já existir e estiver acessível, nenhuma segunda criação é enviada.
+O comando é copiado para execução manual no Cloud Shell. O aplicativo não executa operações de nuvem remotamente. Mesmo que o usuário execute novamente o comando por engano, a pré-consulta reutiliza o projeto existente e não envia nova criação se ele estiver acessível.
+
+## Testes automatizados
+
+`GoogleCloudProjectCommandsTest` verifica a validação do ID, a exigência de marcador exato `NOT_FOUND:`, a presença de apenas uma chamada de criação, a interrupção em resultado ambíguo, a exigência de projeto `ACTIVE` e a reconciliação somente leitura. `WorkflowProgressStoreTest` verifica que uma operação desconhecida não pode ser reiniciada antes de reconciliação e que as etapas manuais permanecem distintas das conclusões por diagnóstico.
 
 ## Limites conhecidos
 

@@ -11,7 +11,8 @@ Conectar a conta GitHub do próprio usuário, listar os repositórios autorizado
 - Callback Android `geivia://github/callback`.
 - Cloudflare Worker em `github-auth-worker/src/index.js` guarda o Client Secret como segredo e troca o código por token.
 - Worker não persiste nem registra tokens.
-- Token e dados temporários PKCE criptografados com AES-GCM e chave do Android Keystore.\n- Renovação automática de tokens de usuário expirando, com rotação e armazenamento cifrado do novo refresh token.
+- Token e dados temporários PKCE criptografados com AES-GCM e chave do Android Keystore.
+- Renovação automática de tokens de usuário expirando, com rotação e armazenamento cifrado do novo refresh token.
 - Consulta de até 100 repositórios via `GET /user/repos`.
 - Detalhes por repositório: até 20 commits, 15 execuções recentes do Actions e 20 pull requests abertos.
 - Desconexão local remove token, dados PKCE e chave do Android Keystore.

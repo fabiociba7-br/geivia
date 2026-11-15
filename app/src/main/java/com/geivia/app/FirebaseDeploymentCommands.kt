@@ -22,7 +22,7 @@ object FirebaseDeploymentCommands {
               exit 30
             fi
             if [ -e "§WORKDIR" ]; then
-              if [ ! -d "§WORKDIR" ] || [ ! -f "§WORKDIR/.geivia-generated" ] || [ -L "§WORKDIR/.geivia-generated" ] || [ "$(cat "§WORKDIR/.geivia-generated" 2>/dev/null)" != "GEIVIA_FIRESTORE_RULES_STARTER_V1" ]; then
+              if [ ! -d "§WORKDIR" ] || [ ! -f "§WORKDIR/.geivia-generated" ] || [ -L "§WORKDIR/.geivia-generated" ] || [ "$(cat "§WORKDIR/.geivia-generated" 2>/dev/null)" != "GEIVIA_FIRESTORE_RULES_STARTER_V1" ] || [ ! -f "§WORKDIR/firebase.json" ] || [ -L "§WORKDIR/firebase.json" ] || [ ! -f "§WORKDIR/firestore.rules" ] || [ -L "§WORKDIR/firestore.rules" ]; then
                 echo "A pasta de destino não corresponde exatamente à estrutura gerada pelo GEIVIA. Nada foi alterado."
                 exit 5
               fi
@@ -99,7 +99,7 @@ object FirebaseDeploymentCommands {
               exit 31
             fi
             if [ -e "§WORKDIR" ]; then
-              if [ ! -d "§WORKDIR" ] || [ ! -f "§WORKDIR/.geivia-generated" ] || [ -L "§WORKDIR/.geivia-generated" ] || [ "$(cat "§WORKDIR/.geivia-generated" 2>/dev/null)" != "GEIVIA_HOSTING_STARTER_V1" ]; then
+              if [ ! -d "§WORKDIR" ] || [ ! -f "§WORKDIR/.geivia-generated" ] || [ -L "§WORKDIR/.geivia-generated" ] || [ "$(cat "§WORKDIR/.geivia-generated" 2>/dev/null)" != "GEIVIA_HOSTING_STARTER_V1" ] || [ ! -f "§WORKDIR/firebase.json" ] || [ -L "§WORKDIR/firebase.json" ] || [ ! -d "§WORKDIR/public" ] || [ -L "§WORKDIR/public" ] || [ ! -f "§WORKDIR/public/index.html" ] || [ -L "§WORKDIR/public/index.html" ]; then
                 echo "A pasta de destino não corresponde exatamente à estrutura gerada pelo GEIVIA. Nada foi alterado."
                 exit 7
               fi

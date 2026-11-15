@@ -1,7 +1,6 @@
 package com.geivia.app
 
 import android.content.Context
-import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -12,7 +11,7 @@ import java.util.UUID
 @RunWith(RobolectricTestRunner::class)
 class WorkflowProgressStoreTest {
     private fun store(): WorkflowProgressStore {
-        val context = ApplicationProvider.getApplicationContext<Context>()
+        val context: Context = org.robolectric.RuntimeEnvironment.getApplication()
         return WorkflowProgressStore(
             context.getSharedPreferences("workflow-test-${UUID.randomUUID()}", Context.MODE_PRIVATE)
         )

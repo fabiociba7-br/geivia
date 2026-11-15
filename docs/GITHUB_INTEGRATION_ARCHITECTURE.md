@@ -2,86 +2,74 @@
 
 ## Objetivo
 
-Permitir que o usuário conecte a própria conta GitHub e escolha quais repositórios o GEIVIA pode consultar para acompanhar código, commits, branches, pull requests e execuções do GitHub Actions. A conexão não deve depender da conta GitHub do desenvolvedor do GEIVIA.
+Conectar a conta GitHub do próprio usuário, listar os repositórios que a GitHub App pode acessar e, por etapas, acompanhar commits, pull requests e execuções do GitHub Actions. A integração não depende da conta GitHub do mantenedor do GEIVIA.
 
-## Decisão técnica
+## Implementação já presente no repositório
 
-A integração deve usar uma **GitHub App**, não um Personal Access Token compartilhado e não credenciais pessoais do mantenedor.
+- Tela GitHub no dashboard do Android.
+- Autorização oficial GitHub App por Authorization Code + PKCE S256.
+- Validação local do parâmetro `state` e prazo de 10 minutos para o retorno.
+- Callback Android por `geivia://github/callback`.
+- Serviço Cloudflare Worker em `github-auth-worker/src/index.js`, que guarda o Client Secret no ambiente Cloudflare e troca o código por token.
+- O Worker não persiste nem registra tokens.
+- O token recebido é criptografado com AES-GCM usando chave criada no Android Keystore.
+- Consulta inicial de até 100 repositórios pelo endpoint `GET /user/repos`.
+- Desconexão local remove o token cifrado e a chave do Android Keystore.
+- CI valida sintaxe do Worker com `node --check`, executa testes Kotlin e gera APK.
 
-Para autenticação em nome do usuário, a arquitetura de produção recomendada é:
-1. Registrar uma GitHub App pertencente à operação do GEIVIA.
-2. Habilitar autorização do usuário (OAuth) e fluxo Authorization Code com PKCE S256.
-3. Usar um serviço mínimo de backend para guardar o Client Secret e realizar a troca do código por tokens. O segredo nunca pode estar no APK, no Git ou em arquivos de configuração distribuídos.
-4. O usuário instala/autoriza a GitHub App e escolhe explicitamente os repositórios permitidos.
-5. O aplicativo Android recebe apenas o token de usuário necessário, armazena-o com proteção baseada no Android Keystore e nunca o grava em logs, relatórios, backups de workflow ou preferências em texto puro.
-6. O usuário pode desconectar a conta; a desconexão apaga os tokens locais e orienta a revogação da autorização na página oficial do GitHub.
+A integração ainda depende de o proprietário registrar a GitHub App e publicar/configurar o Worker. Até isso ser feito, a conexão real não pode ser concluída. Consulte `github-auth-worker/README.md`.
 
-O GitHub recomenda GitHub Apps por oferecer permissões granulares e tokens de curta duração. A documentação também recomenda PKCE S256. O Device Flow existe, mas não é a primeira escolha para o GEIVIA porque o aplicativo Android dispõe de navegador; a própria documentação alerta para riscos de phishing quando Device Flow é habilitado sem necessidade.
+## Arquitetura
 
-## Permissões mínimas por fase
+1. O usuário registra uma GitHub App e instala a App somente nos repositórios que deseja autorizar.
+2. A GitHub App habilita autorização do usuário (OAuth) e usa a URL HTTPS do Worker como callback.
+3. O Android gera verifier e state aleatórios, calcula o challenge S256 e abre o navegador no GitHub.
+4. O GitHub retorna um código ao Worker; o Worker redireciona apenas código e state para o deep link Android.
+5. O app valida state e idade da solicitação, envia o código e verifier ao Worker.
+6. O Worker troca o código no GitHub usando o Client Secret armazenado como Secret no Cloudflare.
+7. O Worker devolve a resposta do token diretamente ao app sem persistir ou registrar credenciais.
+8. O app cifra a resposta completa do token com Android Keystore e consulta a API do GitHub.
 
-### Fase 1 — somente leitura (primeira entrega)
-- Repository metadata: read
-- Repository contents: read
-- Actions: read
-- Pull requests: read, somente se a tela de PRs entrar nesta fase
+PKCE protege o código de autorização contra interceptação por outro aplicativo. O segredo da GitHub App nunca é distribuído no APK.
 
-Com isso, o GEIVIA pode:
-- listar apenas repositórios que o usuário autorizou e consegue acessar;
-- mostrar nome, descrição, branch padrão e atividade recente;
-- consultar commits e arquivos sem modificá-los;
-- mostrar status e histórico de GitHub Actions e links para os logs/artifacts no GitHub;
-- acompanhar o build do próprio GEIVIA e de outros projetos sem iniciar execuções.
+## Permissões da GitHub App
 
-Não solicitar permissões de escrita, administração, secrets, variables, deployments ou workflows nesta fase.
+Para a primeira fase:
+- Metadata: Read-only (obrigatória para consultar repositórios).
+- Contents: Read-only (preparada para leitura de conteúdo na próxima etapa).
+- Actions: Read-only (preparada para consultar workflows na próxima etapa).
 
-### Fase 2 — alterações controladas (somente após a fase de leitura)
-- Contents: write, apenas se necessário para criar uma branch e preparar alterações.
-- Pull requests: write, para propor mudanças por pull request.
-- Workflows: write, somente se houver requisito explícito de criar ou alterar arquivos em `.github/workflows`.
+Não habilitar escrita, administração, secrets, variables, deployments ou alteração de workflows. O usuário deve instalar a App somente nos repositórios selecionados, nunca em todos por padrão.
 
-O padrão será criar uma branch e abrir um pull request. Não fazer push direto em `main`, não alterar configurações do repositório e não iniciar workflows sem confirmação específica do usuário.
+## Limitações atuais
+
+- A tela lista até 100 repositórios por consulta; paginação ainda não foi implementada.
+- Commits, pull requests, Actions, jobs e artefatos ainda não têm telas próprias.
+- A primeira fase não altera arquivos, branches, workflows, configurações ou conteúdo dos repositórios.
+- A renovação automática de tokens de usuário expirados ainda não foi implementada. Não habilite a opção de expiração de tokens de usuário na GitHub App até essa funcionalidade existir; se o token for revogado ou expirar, será necessário reconectar.
+- O Worker usa endpoints públicos e não mantém banco de dados. O plano gratuito da Cloudflare pode atender o uso pessoal inicial, sujeito aos limites e termos vigentes.
+- O usuário precisa criar a GitHub App, publicar o Worker e preencher Client ID e URLs HTTPS na tela do GEIVIA.
 
 ## Segurança obrigatória
 
-- Nunca solicitar ou aceitar senha do GitHub.
-- Nunca pedir que o usuário cole Personal Access Tokens no chat ou em campos de texto do GEIVIA.
-- Nunca incluir Client Secret, chave privada de GitHub App, token ou refresh token no APK, no repositório ou nos logs.
-- Não usar permissões `repo` amplas de OAuth quando uma GitHub App com permissões granulares resolve o caso.
-- Não pedir acesso a todos os repositórios por padrão; selecionar repositórios específicos.
-- Não copiar tokens para o backup do histórico do GEIVIA.
-- Tratar HTTP 401 como sessão expirada/revogada e 403 como falta de permissão ou limite; nenhum desses erros autoriza ações alternativas ou mudanças automáticas.
-- A desconexão deve limpar credenciais locais. A revogação no GitHub continua sendo controlada pelo usuário.
-- Não executar comandos, fazer commits, criar repositórios ou publicar código sem consentimento explícito e revisão do diff.
+- Nunca solicitar senha ou Personal Access Token.
+- Nunca incluir Client Secret ou chave privada no APK, Git ou logs.
+- Nunca copiar tokens para o backup do histórico do GEIVIA.
+- Nunca registrar tokens ou códigos de autorização nos logs do Worker.
+- Exigir HTTPS e mesmo domínio para callback e endpoint de troca.
+- Tratar 401 como autorização expirada/revogada e 403 como permissão insuficiente/limite.
+- Desconectar apaga as credenciais locais; a revogação completa é feita nas configurações GitHub pelo usuário.
+- Não executar commits, push, merge, deploy ou alterações sem consentimento explícito e revisão do diff.
 
-## Telas planejadas
+## Próximas entregas
 
-1. **Conectar GitHub** — explica o acesso solicitado e abre a autorização oficial.
-2. **Selecionar repositórios** — lista somente os repositórios disponíveis para a instalação/autorização.
-3. **Painel do repositório** — branch padrão, commits recentes, estado do último workflow e links para GitHub.
-4. **Histórico de builds** — workflows, jobs, conclusão e data; não baixa artefatos automaticamente.
-5. **Alterações propostas** — fase futura; mostra diff, branch e pull request antes de enviar.
-
-## Dependências e bloqueios antes de codificar OAuth
-
-A integração não pode ser ativada de ponta a ponta até que existam:
-- GitHub App registrada e configurada;
-- Client ID e URLs de callback públicas;
-- backend HTTPS mínimo para guardar o Client Secret e trocar o authorization code;
-- política de privacidade e tela clara de permissões;
-- configuração segura de armazenamento e revogação no Android.
-
-Esses itens não podem ser simulados com um botão "Conectar". Até estarem prontos, a interface deve mostrar a integração como planejada, sem declarar conta conectada.
-
-## Entrega incremental recomendada
-
-1. Manter o GitHub Actions atual como CI do GEIVIA.
-2. Melhorar os testes e a validação do APK no repositório.
-3. Implementar o modelo local de repositórios e estados de conexão sem credenciais reais.
-4. Registrar e configurar a GitHub App e o backend.
-5. Implementar OAuth com PKCE, armazenamento seguro e desconexão.
-6. Liberar leitura de repositórios e Actions.
-7. Só depois avaliar criação de branches e pull requests.
+1. Completar testes de segurança do fluxo OAuth e validação do Worker.
+2. Adicionar paginação de repositórios.
+3. Exibir perfil conectado, branches e commits recentes.
+4. Exibir workflows, jobs, status e links de artefatos.
+5. Exibir pull requests e detalhes de alterações.
+6. Implementar renovação segura de tokens antes de habilitar expiração.
+7. Só então avaliar criação de branches e pull requests. Escrita deverá continuar desativada por padrão e usar PR em vez de push direto em `main`.
 
 ## Referências oficiais
 

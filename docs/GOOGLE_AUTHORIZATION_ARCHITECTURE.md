@@ -104,3 +104,7 @@ O app mantém no armazenamento local do aparelho um histórico limitado das últ
 Esse histórico é informativo e local: não é um log oficial do Google Cloud, não prova quem executou o comando e não é sincronizado com outros dispositivos. Trocar o projeto limpa os indicadores visuais do diagnóstico anterior, mas preserva o histórico para consulta, sempre identificado pelo Project ID.
 
 O fluxo mantém apenas uma habilitação pendente por vez para cada aparelho/projeto. Enquanto houver uma ação aguardando diagnóstico para o projeto atual, o app não oferece a preparação de outra API. Isso evita sobrescrever o identificador da ação pendente antes de verificar seu resultado. Se o serviço não aparecer no diagnóstico, a ação permanece pendente e deve ser analisada antes de qualquer nova tentativa.
+
+### Resolução explícita de acompanhamento pendente
+
+Ao importar um diagnóstico atualizado do mesmo projeto, se a API pendente ainda não aparecer na lista de serviços habilitados, o GEIVIA mantém a pendência e informa que não repetirá o comando automaticamente. O usuário pode encerrar somente o acompanhamento local após uma confirmação explícita. Essa ação remove os metadados locais da pendência e registra o encerramento no histórico, mas não desabilita serviços, não exclui recursos, não altera o projeto Google Cloud e não afirma que o comando falhou. Se o comando já tiver sido executado, a orientação é importar um novo diagnóstico antes de encerrar o acompanhamento.

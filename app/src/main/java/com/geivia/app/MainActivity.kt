@@ -431,8 +431,10 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
             "api_firebasehosting_googleapis_com" to "Firebase Hosting API",
             "api_cloudbuild_googleapis_com" to "Cloud Build API",
             "firestore_database" to "Banco Firestore (default)",
+            "firestore_rules" to "Regras de segurança Firestore",
             "authentication" to "Firebase Authentication",
             "hosting" to "Firebase Hosting",
+            "hosting_deploy" to "Publicação do site",
             "storage" to "Cloud Storage"
         )
         val workflowRecords = workflowStore.allForProject(chosenProjectId).associateBy { it.stepId }

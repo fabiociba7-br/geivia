@@ -1857,6 +1857,35 @@ private fun GitHubScreen(
         }
     }
 
+    LaunchedEffect(connected, selectedRepository?.fullName, refreshCounter) {
+        val repository = selectedRepository ?: return@LaunchedEffect
+        val token = tokenStore.accessToken() ?: return@LaunchedEffect
+        detailsLoading = true
+        val result = withContext(Dispatchers.IO) {
+            runCatching {
+                Triple(
+                    GitHubApiClient.listCommits(token, repository.fullName),
+                    GitHubApiClient.listWorkflowRuns(token, repository.fullName),
+                    GitHubApiClient.listPullRequests(token, repository.fullName)
+                )
+            }
+        }
+        result.onSuccess {
+            commits = it.first
+            workflowRuns = it.second
+            pullRequests = it.third
+            error = null
+        }.onFailure {
+            error = it.message ?: "Não foi possível carregar os detalhes do repositório."
+            if (error.orEmpty().contains("expirou") || error.orEmpty().contains("revogada")) {
+                tokenStore.clear()
+                localConnected = false
+                onConnectedChanged(false)
+            }
+        }
+        detailsLoading = false
+    }
+
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("GEIVIA", color = DeepBlue, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
@@ -1941,8 +1970,8 @@ private fun GitHubScreen(
             }
             repositories.forEach { repo ->
                 Card(Modifier.fillMaxWidth().padding(vertical = 5.dp).clickable {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(repo.htmlUrl)))
-                }, colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(12.dp)) {
+                    selectedRepository = repo
+                }, colors = CardDefaults.cardColors(containerColor = if (selectedRepository?.fullName == repo.fullName) Color(0xFFE8F4FA) else Color.White), shape = RoundedCornerShape(12.dp)) {
                     Column(Modifier.padding(13.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(repo.fullName, color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
@@ -1951,6 +1980,43 @@ private fun GitHubScreen(
                         repo.description?.let { Text(it, color = Muted, fontSize = 11.sp, lineHeight = 15.sp) }
                         Text("Branch: ${repo.defaultBranch}", color = Muted, fontSize = 10.sp)
                     }
+                }
+            }
+            selectedRepository?.let { selected ->
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("DETALHES: ${selected.fullName}", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(selected.htmlUrl))) }) { Text("Abrir") }
+                }
+                if (detailsLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                Text("COMMITS RECENTES", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                if (commits.isEmpty() && !detailsLoading) Text("Nenhum commit retornado.", color = Muted, fontSize = 11.sp)
+                commits.forEach { commit ->
+                    Column(Modifier.fillMaxWidth().clickable { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(commit.htmlUrl))) }.padding(vertical = 5.dp)) {
+                        Text(commit.message, color = Ink, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text(listOfNotNull(commit.author, commit.date).joinToString(" • "), color = Muted, fontSize = 9.sp)
+                    }
+                    Divider(color = Color(0xFFE7EEF2))
+                }
+                Spacer(Modifier.height(10.dp))
+                Text("GITHUB ACTIONS", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                if (workflowRuns.isEmpty() && !detailsLoading) Text("Nenhuma execução encontrada ou sem permissão Actions: read.", color = Muted, fontSize = 11.sp)
+                workflowRuns.forEach { run ->
+                    Column(Modifier.fillMaxWidth().clickable { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(run.htmlUrl))) }.padding(vertical = 5.dp)) {
+                        Text(run.name, color = Ink, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text("${run.status} • ${run.conclusion ?: "sem conclusão"} • ${run.branch.orEmpty()}", color = Muted, fontSize = 9.sp)
+                    }
+                    Divider(color = Color(0xFFE7EEF2))
+                }
+                Spacer(Modifier.height(10.dp))
+                Text("PULL REQUESTS ABERTOS", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                if (pullRequests.isEmpty() && !detailsLoading) Text("Nenhum pull request aberto ou sem permissão Pull requests: read.", color = Muted, fontSize = 11.sp)
+                pullRequests.forEach { pr ->
+                    Column(Modifier.fillMaxWidth().clickable { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(pr.htmlUrl))) }.padding(vertical = 5.dp)) {
+                        Text("#${pr.number} ${pr.title}", color = Ink, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text("por ${pr.author.orEmpty()} • ${pr.state}", color = Muted, fontSize = 9.sp)
+                    }
+                    Divider(color = Color(0xFFE7EEF2))
                 }
             }
             Spacer(Modifier.height(12.dp))
@@ -1966,7 +2032,7 @@ private fun GitHubScreen(
         }
         error?.takeIf { !localConnected }?.let { Text(it, color = Color(0xFF9A5B13), fontSize = 11.sp, lineHeight = 16.sp) }
         Spacer(Modifier.height(16.dp))
-        Text("Permissões iniciais recomendadas: Metadata (read), Contents (read) e Actions (read). O GEIVIA não pede escrita, administração, secrets ou alteração de workflows nesta primeira fase.", color = Muted, fontSize = 11.sp, lineHeight = 16.sp)
+        Text("Permissões iniciais recomendadas: Metadata (read), Contents (read), Actions (read) e Pull requests (read). O GEIVIA não pede escrita, administração, secrets ou alteração de workflows nesta primeira fase.", color = Muted, fontSize = 11.sp, lineHeight = 16.sp)
     }
 }
 

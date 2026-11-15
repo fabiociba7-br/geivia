@@ -711,7 +711,12 @@ cloudshell download geivia-projects.json"""
             .putString("selected_project_name", project.name)
             .putString("selected_project_number", project.projectNumber)
             .apply()
-        if (selectedProjectId != project.projectId) diagnosticSummary = ""
+        if (selectedProjectId != project.projectId) {
+            diagnosticSummary = ""
+            enabledFirebaseApis = emptySet()
+            apiActionStatus = ""
+            selectedApiForConfirmation = null
+        }
         selectedProjectId = project.projectId
         selectedProjectName = project.name
         selectedProjectNumber = project.projectNumber

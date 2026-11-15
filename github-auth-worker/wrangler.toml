@@ -1,0 +1,6 @@
+name = "geivia-github-auth"
+main = "src/index.js"
+compatibility_date = "2026-11-15"
+
+# Configure GITHUB_CLIENT_ID and GITHUB_CALLBACK_URL as variables.
+# Configure GITHUB_CLIENT_SECRET with: npx wrangler secret put GITHUB_CLIENT_SECRET

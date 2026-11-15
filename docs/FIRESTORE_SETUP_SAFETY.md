@@ -63,3 +63,10 @@ O plano Spark fornece cotas sem custo para Firestore; ao exceder a cota, o servi
 
 Referência:
 - https://firebase.google.com/docs/projects/billing/firebase-pricing-plans
+
+## Regras de segurança
+
+A criação do banco não publica regras de segurança. Antes de conectar clientes Android ou web, revisar e publicar regras restritivas alinhadas ao modelo de dados e à identidade dos usuários. Não usar regras abertas de teste em produção. O GEIVIA ainda não gera regras específicas automaticamente, porque isso depende da estrutura real dos documentos e das permissões de cada aplicação.
+
+Referência:
+- https://firebase.google.com/docs/firestore/security/get-started

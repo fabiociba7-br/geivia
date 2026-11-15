@@ -1102,6 +1102,7 @@ cloudshell download geivia-projects.json"""
                             }
                             Button(onClick = { showFirestoreCreateDialog = true }, enabled = firestoreLocation.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Revisar criação do banco") }
                         }
+                        Text("IMPORTANTE: criar o banco não configura regras de segurança. Antes de conectar o aplicativo, publique regras restritivas adequadas aos dados e aos usuários. Não use regras abertas de teste em produção.", color = Color(0xFF9A641B), fontSize = 10.sp, lineHeight = 14.sp)
                         if (firestoreActionStatus.isNotBlank()) Text(firestoreActionStatus, color = DeepBlue, fontSize = 11.sp, lineHeight = 16.sp)
                         if (answers["login"].orEmpty().isNotBlank() && !answers["login"].orEmpty().contains("Não precisa")) {
                             Spacer(Modifier.height(14.dp))

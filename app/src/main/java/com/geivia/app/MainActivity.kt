@@ -245,14 +245,52 @@ private fun CostOption(id: String, title: String, description: String, selected:
     }
 }
 
+private data class ApiRequirement(
+    val api: String,
+    val title: String,
+    val reason: String,
+    val required: Boolean = true,
+    val paidRisk: Boolean = false
+)
+
 @Composable
 private fun SummaryScreen(answers: Map<String, String>, costMode: String, onBack: () -> Unit, onEdit: () -> Unit, onFinish: () -> Unit) {
-    val services = buildList {
-        if (answers["login"]?.contains("Não precisa") == false) add("Firebase Authentication — método de acesso a avaliar")
-        if (answers["data"].orEmpty().isNotBlank() && !answers["data"].orEmpty().contains("Não vai guardar")) add("Cloud Firestore — estrutura de dados a avaliar")
-        if (answers["files"].orEmpty().let { it.isNotBlank() && !it.startsWith("Não terá") }) add("Armazenamento de arquivos — verificar limites e requisitos atuais")
-        if (answers["platform"].orEmpty().let { it.contains("web") || it.contains("Site") || it.contains("Android e web") }) add("Firebase Hosting — verificar limites e requisitos atuais")
-        if (answers["extras"].orEmpty().let { it.contains("Processamentos") || it.contains("programadas") }) add("Recursos de servidor — podem exigir plano com faturamento")
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
+    val selectedProjectId = prefs.getString("selected_project_id", null).orEmpty()
+    val enabledApis = remember(selectedProjectId) {
+        runCatching {
+            val report = org.json.JSONObject(prefs.getString("cloud_project_diagnostic_json", null) ?: return@runCatching emptySet<String>())
+            val reportId = report.optJSONObject("project")?.optString("projectId").orEmpty()
+            if (reportId.isBlank() || reportId != selectedProjectId) return@runCatching emptySet<String>()
+            val services = report.optJSONArray("enabledServices") ?: return@runCatching emptySet<String>()
+            (0 until services.length()).mapNotNull { index ->
+                val item = services.optJSONObject(index) ?: return@mapNotNull null
+                item.optJSONObject("config")?.optString("name")?.takeIf { it.isNotBlank() }
+                    ?: item.optString("name").takeIf { it.isNotBlank() }
+            }.toSet()
+        }.getOrDefault(emptySet())
+    }
+    val requirements = buildList {
+        add(ApiRequirement("firebase.googleapis.com", "Firebase Management API", "Necessária para operações de gerenciamento e associação do Firebase ao projeto."))
+        if (answers["login"].orEmpty().let { it.isNotBlank() && !it.contains("Não precisa") }) {
+            add(ApiRequirement("identitytoolkit.googleapis.com", "Firebase Authentication", "Sua resposta indica que haverá autenticação de usuários."))
+        }
+        if (answers["data"].orEmpty().let { it.isNotBlank() && !it.contains("Não vai guardar") }) {
+            add(ApiRequirement("firestore.googleapis.com", "Cloud Firestore", "Sua resposta indica armazenamento de cadastros, movimentações ou dados."))
+        }
+        if (answers["files"].orEmpty().let { it.isNotBlank() && !it.startsWith("Não terá") }) {
+            add(ApiRequirement("firebasestorage.googleapis.com", "Cloud Storage for Firebase", "Sua resposta indica uso de fotos, documentos ou outros arquivos.", paidRisk = true))
+        }
+        if (answers["platform"].orEmpty().let { it.contains("web") || it.contains("Site") || it.contains("Android e web") }) {
+            add(ApiRequirement("firebasehosting.googleapis.com", "Firebase Hosting", "Sua plataforma inclui uma experiência web ou publicação de site."))
+        }
+        if (answers["extras"].orEmpty().let { it.contains("Processamentos automáticos") || it.contains("programadas") }) {
+            add(ApiRequirement("cloudbuild.googleapis.com", "Cloud Build", "Pode ser necessário em fluxos de implantação e processamento no servidor.", required = false, paidRisk = true))
+        }
+    }
+    val services = requirements.map { requirement ->
+        Triple(requirement, requirement.api in enabledApis, costMode == "zero" && requirement.paidRisk)
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp)) {
         Text("ANÁLISE INICIAL", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
@@ -265,8 +303,42 @@ private fun SummaryScreen(answers: Map<String, String>, costMode: String, onBack
             Column(Modifier.padding(16.dp)) {
                 Text("RECURSOS A AVALIAR", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(10.dp))
-                if (services.isEmpty()) Text("A configuração ainda será definida com base nos detalhes do projeto.", color = Muted, fontSize = 13.sp)
-                services.forEach { Text("• " + it, color = Ink, fontSize = 13.sp, lineHeight = 20.sp); Spacer(Modifier.height(7.dp)) }
+                if (services.isEmpty()) Text("Nenhuma API específica foi identificada pelas respostas.", color = Muted, fontSize = 13.sp)
+                if (selectedProjectId.isBlank()) {
+                    Text("Selecione um projeto Google Cloud para comparar esta lista com as APIs já habilitadas.", color = Color(0xFF9A5B13), fontSize = 12.sp)
+                } else {
+                    Text("Projeto analisado: $selectedProjectId", color = Muted, fontSize = 10.sp)
+                }
+                services.forEach { (requirement, active, blockedByCost) ->
+                    Column(Modifier.fillMaxWidth().padding(vertical = 7.dp)) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(requirement.title, color = Ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                Text(requirement.api, color = Muted, fontSize = 10.sp)
+                            }
+                            Text(
+                                when {
+                                    selectedProjectId.isBlank() -> "Sem projeto"
+                                    active -> "Ativa"
+                                    blockedByCost -> "Bloqueada no custo zero"
+                                    else -> "Pendente"
+                                },
+                                color = when {
+                                    active -> Color(0xFF238653)
+                                    blockedByCost -> Color(0xFF9A5B13)
+                                    else -> Color(0xFF9A641B)
+                                },
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(Modifier.height(3.dp))
+                        Text(requirement.reason, color = Muted, fontSize = 11.sp, lineHeight = 16.sp)
+                        if (blockedByCost) Text("Não habilitar nesta configuração. Avaliar alternativa sem faturamento antes de qualquer mudança.", color = Color(0xFF9A5B13), fontSize = 10.sp)
+                        if (!requirement.required) Text("Serviço opcional: confirmar necessidade antes de considerar habilitação.", color = Muted, fontSize = 10.sp)
+                    }
+                    Divider(color = Color(0xFFE7EEF2))
+                }
             }
         }
         Spacer(Modifier.height(14.dp))

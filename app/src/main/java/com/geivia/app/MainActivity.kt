@@ -813,7 +813,7 @@ cloudshell download geivia-projects.json"""
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             runCatching {
-                val raw = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                val raw = context.contentResolver.openInputStream(uri)?.use { readUtf8Limited(it) }
                     ?: throw IllegalStateException("Não foi possível abrir o arquivo selecionado.")
                 val array = JSONArray(raw)
                 val clean = JSONArray()
@@ -971,7 +971,7 @@ cloudshell download geivia-projects.json"""
     val diagnosticLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             runCatching {
-                val raw = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                val raw = context.contentResolver.openInputStream(uri)?.use { readUtf8Limited(it) }
                     ?: throw IllegalStateException("Não foi possível abrir o relatório.")
                 val report = org.json.JSONObject(raw)
                 val project = report.optJSONObject("project") ?: throw IllegalStateException("Relatório inválido: dados do projeto ausentes.")

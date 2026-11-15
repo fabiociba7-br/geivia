@@ -60,3 +60,6 @@ O Project ID escolhido nunca muda automaticamente durante uma operação. O nome
 Um teste automatizado deve simular timeout logo após a solicitação de criação. Ao retomar, o GEIVIA deve consultar o mesmo Project ID e não pode emitir uma segunda solicitação de criação nem inventar um novo ID.
 
 Esta política deve ser aplicada a toda a cadeia de configuração, não apenas à tela inicial de criação.
+## Estado da versão atual
+
+Na versão atual do aplicativo, a criação de projetos está deliberadamente desabilitada: a interface não fornece comando de criação. O usuário pode importar a lista de projetos existentes. A criação só deverá ser reintroduzida quando o fluxo persistente de estados, pré-verificação, confirmação explícita e reconciliação de operações estiver implementado e testado. A lista importada e o ambiente GEIVIA devem permanecer salvos ao reiniciar o app; nenhum reinício pode limpar silenciosamente o projeto selecionado.

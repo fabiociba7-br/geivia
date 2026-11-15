@@ -74,6 +74,8 @@ class FirebaseDeploymentCommandsTest {
         assertTrue(firebaseRegistration > localGuard)
         assertTrue(rulesPublish > firebaseRegistration)
         assertTrue(command.contains("[ -L \"\$WORKDIR/.geivia-generated\" ]"))
+        assertTrue(command.contains("[ -L \"\$WORKDIR/firebase.json\" ]"))
+        assertTrue(command.contains("[ -L \"\$WORKDIR/firestore.rules\" ]"))
         assertTrue(command.contains("GEIVIA_FIRESTORE_RULES_STARTER_V1"))
         assertTrue(command.contains("mkdir \"\$WORKDIR\""))
     }
@@ -88,6 +90,9 @@ class FirebaseDeploymentCommandsTest {
         assertTrue(siteCreate > localGuard)
         assertTrue(hostingDeploy > siteCreate)
         assertTrue(command.contains("[ -L \"\$WORKDIR/.geivia-generated\" ]"))
+        assertTrue(command.contains("[ -L \"\$WORKDIR/firebase.json\" ]"))
+        assertTrue(command.contains("[ -L \"\$WORKDIR/public\" ]"))
+        assertTrue(command.contains("[ -L \"\$WORKDIR/public/index.html\" ]"))
         assertTrue(command.contains("GEIVIA_HOSTING_STARTER_V1"))
         assertTrue(command.contains("mkdir \"\$WORKDIR\""))
     }

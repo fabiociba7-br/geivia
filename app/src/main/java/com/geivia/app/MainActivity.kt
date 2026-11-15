@@ -89,11 +89,12 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
     LaunchedEffect(githubCallbackUri) {
         val callback = githubCallbackUri ?: return@LaunchedEffect
         if (callback.scheme != "geivia" || callback.host != "github" || callback.path != "/callback") return@LaunchedEffect
-        val expectedState = prefs.getString("github_oauth_state", null)
-        val verifier = prefs.getString("github_oauth_verifier", null)
+        val pendingAuthorization = githubTokenStore.readPendingAuthorization()
+        val expectedState = pendingAuthorization?.optString("state")
+        val verifier = pendingAuthorization?.optString("verifier")
         val receivedState = callback.getQueryParameter("state")
         val code = callback.getQueryParameter("code")
-        val startedAt = prefs.getLong("github_oauth_started_at", 0L)
+        val startedAt = pendingAuthorization?.optLong("startedAt") ?: 0L
         val callbackError = callback.getQueryParameter("error")
         try {
             require(expectedState != null && receivedState == expectedState) { "A validação de segurança da autorização falhou. Inicie a conexão novamente." }
@@ -112,7 +113,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
         } catch (error: Exception) {
             githubCallbackMessage = error.message ?: "Não foi possível concluir a autorização GitHub."
         } finally {
-            prefs.edit().remove("github_oauth_state").remove("github_oauth_verifier").remove("github_oauth_started_at").apply()
+            githubTokenStore.clearPendingAuthorization()
         }
         page = "github"
     }
@@ -1948,10 +1949,8 @@ private fun GitHubScreen(
                         val authUrl = GitHubOAuth.authorizationUrl(clientId, callbackUrl, state, verifier)
                         prefs.edit().putString("github_client_id", clientId)
                             .putString("github_callback_url", callbackUrl)
-                            .putString("github_exchange_url", exchangeUrl)
-                            .putString("github_oauth_verifier", verifier)
-                            .putString("github_oauth_state", state)
-                            .putLong("github_oauth_started_at", System.currentTimeMillis()).apply()
+                            .putString("github_exchange_url", exchangeUrl).apply()
+                        tokenStore.savePendingAuthorization(verifier, state, System.currentTimeMillis())
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(authUrl)))
                     }.onFailure { error = it.message ?: "Não foi possível iniciar a conexão." }
                 },
@@ -2027,7 +2026,7 @@ private fun GitHubScreen(
             Spacer(Modifier.height(12.dp))
             OutlinedButton(onClick = {
                 tokenStore.clear()
-                prefs.edit().remove("github_oauth_state").remove("github_oauth_verifier").apply()
+                tokenStore.clearPendingAuthorization()
                 repositories = emptyList()
                 localConnected = false
                 onConnectedChanged(false)

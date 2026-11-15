@@ -14,7 +14,7 @@ Conectar a conta GitHub do próprio usuário, listar os repositórios autorizado
 - Token e dados temporários PKCE criptografados com AES-GCM e chave do Android Keystore.
 - Renovação automática de tokens de usuário expirando, com rotação e armazenamento cifrado do novo refresh token.
 - Consulta de até 100 repositórios via `GET /user/repos`.
-- Detalhes por repositório: até 20 commits, 15 execuções recentes do Actions e 20 pull requests abertos.
+- Detalhes por repositório: branches, até 20 commits, 15 execuções recentes do Actions, jobs da execução selecionada, metadados de artefatos e até 20 pull requests abertos.
 - Desconexão local remove token, dados PKCE e chave do Android Keystore.
 - CI executa testes Node do Worker, testes Kotlin, build APK e upload do artefato.
 

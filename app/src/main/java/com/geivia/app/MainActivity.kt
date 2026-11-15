@@ -1551,6 +1551,23 @@ cloudshell download geivia-projects.json"""
                                     WorkflowStepState.COMPLETED -> Text("Etapa confirmada por diagnóstico.", color = Color(0xFF236342), fontSize = 10.sp)
                                     WorkflowStepState.UNKNOWN, WorkflowStepState.FAILED -> Text("Etapa bloqueada até reconciliar o estado anterior. Não reinicie automaticamente.", color = Color(0xFF9A5B13), fontSize = 10.sp)
                                 }
+                                Spacer(Modifier.height(8.dp))
+                                Text("ETAPA 10B — PUBLICAR UMA PÁGINA INICIAL", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Text("O GEIVIA prepara um site estático demonstrativo. Substitua a página pelos arquivos reais do seu produto antes de divulgar o endereço.", color = Muted, fontSize = 10.sp, lineHeight = 14.sp)
+                                val deployRecord = workflowProgressStore.get(selectedProjectId, "hosting_deploy")
+                                when (deployRecord.state) {
+                                    WorkflowStepState.NOT_STARTED, WorkflowStepState.WAITING_CONFIRMATION -> Button(onClick = { showHostingDeployDialog = true }, enabled = "firebasehosting.googleapis.com" in enabledFirebaseApis && hostingStarterCommand.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Revisar e publicar página inicial") }
+                                    WorkflowStepState.IN_PROGRESS -> Button(onClick = {
+                                        runCatching {
+                                            workflowProgressStore.confirmManualCompletion(selectedProjectId, "hosting_deploy", "O usuário confirmou que executou o deploy e testou a URL HTTPS.")
+                                            addActionHistory("Hosting inicial declarado publicado e testado • $selectedProjectId")
+                                        }.onFailure { hostingDeployStatus = it.message ?: "Não foi possível registrar a confirmação." }
+                                    }, modifier = Modifier.fillMaxWidth()) { Text("Já publiquei e testei — confirmar") }
+                                    WorkflowStepState.USER_CONFIRMED -> Text("Deploy e teste declarados pelo usuário. URL padrão: https://$selectedProjectId.web.app", color = Color(0xFF236342), fontSize = 10.sp)
+                                    WorkflowStepState.COMPLETED -> Text("Deploy confirmado por diagnóstico.", color = Color(0xFF236342), fontSize = 10.sp)
+                                    WorkflowStepState.UNKNOWN, WorkflowStepState.FAILED -> Text("Etapa bloqueada até reconciliar a publicação anterior. Não repita automaticamente.", color = Color(0xFF9A5B13), fontSize = 10.sp)
+                                }
+                                if (hostingDeployStatus.isNotBlank()) Text(hostingDeployStatus, color = DeepBlue, fontSize = 10.sp, lineHeight = 14.sp)
                             } else Text("Selecione um projeto existente para configurar o Hosting.", color = Color(0xFF9A641B), fontSize = 10.sp)
                         }
                         if (answers["files"].orEmpty().isNotBlank() && !answers["files"].orEmpty().startsWith("Não terá")) {

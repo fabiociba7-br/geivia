@@ -1,51 +1,30 @@
-# Configuração OAuth do GEIVIA
+# OAuth e autenticação no GEIVIA
 
 ## Decisão atual
 
-O GEIVIA deve integrar com a conta Google escolhida por cada usuário, mas não pode depender de uma conta Google pessoal do desenvolvedor. O cliente OAuth pertence ao produto/publicador e é separado das contas pessoais dos usuários.
+A primeira versão do GEIVIA não exige que o usuário crie um cliente OAuth próprio. Também não usa credenciais OAuth ou contas pessoais do desenvolvedor.
 
-O usuário final não precisa criar projeto Google Cloud. A configuração OAuth institucional do produto, entretanto, precisa existir antes que o Google possa identificar o aplicativo e emitir tokens. Esse cadastro não é uma publicação na Play Store.
+O acesso inicial ao Google Cloud acontece no navegador e no Cloud Shell, com a própria conta do usuário. O GEIVIA abre os endereços oficiais e fornece comandos que o usuário revisa e executa no Cloud Shell. O aplicativo não recebe senha, cookie, token ou chave de serviço.
 
-## Estado do código neste momento
+## Por que não configurar um OAuth individual automaticamente
 
-O APK contém a tela de integração e o fluxo de autorização incremental baseado no Google Play services Authorization API, além das chamadas de leitura para perfil, projetos Firebase, projetos Cloud, serviços habilitados e estado de faturamento. A autorização real depende de um cliente OAuth Android registrado para o package e a SHA-1 da assinatura do APK. Até esse cadastro existir, o modo offline permanece disponível e a tela informa a pendência sem simular uma conta conectada.
+O Google determina que clientes OAuth sejam criados e alterados manualmente no Cloud Console. Clientes Android são associados ao package e ao certificado SHA-1 do aplicativo. A autorização de apps instalados tem requisitos próprios; não se deve aplicar ao Android o fluxo de app para computador nem presumir que um APK possa alternar com segurança entre clientes OAuth de projetos diferentes.
 
-## Antes de ativar OAuth real
+Fontes oficiais:
+- https://developers.google.com/identity/protocols/oauth2/resources/best-practices
+- https://developers.google.com/identity/protocols/oauth2/native-app
+- https://developer.android.com/identity/authorization
 
-O responsável institucional pelo produto deverá:
-1. Definir a organização/publicador responsável pelo GEIVIA.
-2. Manter um projeto Google Cloud de publicação/OAuth sob essa responsabilidade (não um projeto pessoal de cliente).
-3. Configurar a tela de consentimento com nome, marca, domínios verificados, política de privacidade e termos.
-4. Registrar o cliente OAuth Android com o package `com.geivia.app` e a impressão digital SHA-1 do certificado de assinatura de distribuição.
-5. Habilitar apenas as APIs necessárias ao escopo aprovado.
-6. Verificar as exigências de verificação OAuth do Google para os escopos sensíveis/restritos usados pelo produto.
-7. Publicar política de privacidade que explique dados coletados, finalidade, retenção, compartilhamento, exclusão e contato.
+## Quando OAuth direto será reconsiderado
 
-## Autorização progressiva
+Somente se uma função exigir acesso direto do APK e houver um fluxo Android suportado, seguro e verificável para esse caso. Antes disso:
+- não solicitar senha Google no GEIVIA;
+- não pedir tokens ao usuário;
+- não importar cookies;
+- não armazenar refresh tokens;
+- não colocar client secrets ou chaves de conta de serviço no APK;
+- não habilitar OAuth falso ou simular conta conectada.
 
-Seguir a matriz e as etapas de `docs/GOOGLE_AUTHORIZATION_ARCHITECTURE.md`. Não solicitar todos os escopos no primeiro login. A conexão inicial pede apenas identidade básica. Firebase, Cloud Resource Manager, Service Usage e Cloud Billing são solicitados em momentos separados, quando o usuário iniciar a função correspondente.
+## Distribuição
 
-## Distribuição fora da Play Store e estado OAuth
-
-O status OAuth `Testing` ou `In production` é independente da publicação do APK na Google Play. O GEIVIA pode ser distribuído diretamente por APK e, ainda assim, usar OAuth em produção.
-
-- Em `Testing`, usuários que precisem dos escopos adicionais devem estar na lista de testadores (até 100). Autorizações de teste para escopos além de identidade básica têm tokens de atualização com validade limitada, normalmente 7 dias.
-- A exceção de identidade básica (`openid`, `email`, `profile`) não exige lista de testadores.
-- Em `In production`, o acesso pode ser oferecido a contas Google em geral. Porém, escopos sensíveis/restritos não aprovados podem gerar avisos e limite de 100 usuários no total. Para uso público sem esse limite, submeter marca e escopos exigidos à verificação Google.
-- `In production` não significa publicar o APK na Play Store.
-
-A política do Google recomenda projetos OAuth separados para desenvolvimento/teste e produção.
-
-## Assinatura Android
-
-O OAuth Android vincula o cliente ao package e ao certificado SHA-1. Não usar uma chave debug efêmera do GitHub Actions para produção. Definir a assinatura de distribuição estável e protegê-la fora do repositório antes de registrar o cliente.
-
-## Segurança
-
-- Nunca solicitar senha Google dentro do app.
-- Nunca commitar client secrets, service-account keys, tokens ou keystores.
-- Nunca usar credenciais pessoais do desenvolvedor para acessar projetos de usuários.
-- Nunca solicitar `cloud-platform` por conveniência.
-- Não confundir OAuth scope com permissão IAM no projeto do usuário.
-- Nenhum consentimento de leitura autoriza operações de escrita ou faturamento.
-- Modo custo zero bloqueia operações que exigem faturamento.
+O APK pode continuar sendo distribuído diretamente. O uso do Cloud Shell depende de uma conta Google com acesso ao Google Cloud e das permissões IAM correspondentes. O GEIVIA não exige ativação de faturamento para o diagnóstico inicial.

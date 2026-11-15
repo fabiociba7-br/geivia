@@ -72,6 +72,9 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
         check(current.state == WorkflowStepState.WAITING_CONFIRMATION) {
             "A etapa exige uma nova confirmação explícita antes de iniciar. Estado atual: ${current.state}."
         }
+        check(operationId != current.operationId) {
+            "Cada tentativa precisa de um identificador de operação novo."
+        }
         return save(current.copy(
             state = WorkflowStepState.IN_PROGRESS,
             updatedAt = System.currentTimeMillis(),

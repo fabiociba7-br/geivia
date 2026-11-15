@@ -34,6 +34,9 @@ A criação assistida só fica disponível quando:
 6. o usuário escolhe explicitamente a região e confirma a preparação do comando.
 
 O comando copiado:
+- confere que a pasta local é a estrutura GEIVIA esperada e recusa links simbólicos;
+- confere que `firebase.json` aponta para `firestore.rules`;
+- compara o conteúdo local de `firestore.rules` com o modelo deny-all exato antes de qualquer alteração na nuvem e novamente antes do deploy; se o arquivo foi editado, interrompe sem publicar;
 - confere novamente que o faturamento está desabilitado;
 - confere novamente que a API Firestore está habilitada;
 - lista os bancos existentes;

@@ -1826,11 +1826,17 @@ private fun GitHubScreen(
     var clientId by rememberSaveable { mutableStateOf(prefs.getString("github_client_id", "").orEmpty()) }
     var callbackUrl by rememberSaveable { mutableStateOf(prefs.getString("github_callback_url", "").orEmpty()) }
     var exchangeUrl by rememberSaveable { mutableStateOf(prefs.getString("github_exchange_url", "").orEmpty()) }
+    var authenticatedLogin by remember { mutableStateOf("") }
     var repositories by remember { mutableStateOf<List<GitHubRepository>>(emptyList()) }
     var selectedRepository by remember { mutableStateOf<GitHubRepository?>(null) }
+    var selectedWorkflowRun by remember { mutableStateOf<GitHubWorkflowRun?>(null) }
     var commits by remember { mutableStateOf<List<GitHubCommit>>(emptyList()) }
+    var branches by remember { mutableStateOf<List<GitHubBranch>>(emptyList()) }
     var workflowRuns by remember { mutableStateOf<List<GitHubWorkflowRun>>(emptyList()) }
     var pullRequests by remember { mutableStateOf<List<GitHubPullRequest>>(emptyList()) }
+    var jobs by remember { mutableStateOf<List<GitHubJob>>(emptyList()) }
+    var artifacts by remember { mutableStateOf<List<GitHubArtifact>>(emptyList()) }
+    var jobsLoading by remember { mutableStateOf(false) }
     var detailsLoading by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
     var refreshCounter by remember { mutableIntStateOf(0) }
@@ -1843,10 +1849,11 @@ private fun GitHubScreen(
         if (token != null) {
             loading = true
             val result = withContext(Dispatchers.IO) {
-                runCatching { GitHubApiClient.listRepositories(token) }
+                runCatching { Pair(GitHubApiClient.authenticatedLogin(token), GitHubApiClient.listRepositories(token)) }
             }
             result.onSuccess {
-                repositories = it
+                authenticatedLogin = it.first
+                repositories = it.second
                 error = null
             }.onFailure {
                 repositories = emptyList()
@@ -1872,14 +1879,18 @@ private fun GitHubScreen(
                 Triple(
                     GitHubApiClient.listCommits(token, repository.fullName),
                     GitHubApiClient.listWorkflowRuns(token, repository.fullName),
-                    GitHubApiClient.listPullRequests(token, repository.fullName)
+                    Pair(
+                        GitHubApiClient.listPullRequests(token, repository.fullName),
+                        GitHubApiClient.listBranches(token, repository.fullName)
+                    )
                 )
             }
         }
         result.onSuccess {
             commits = it.first
             workflowRuns = it.second
-            pullRequests = it.third
+            pullRequests = it.third.first
+            branches = it.third.second
             error = null
         }.onFailure {
             error = it.message ?: "Não foi possível carregar os detalhes do repositório."
@@ -1890,6 +1901,29 @@ private fun GitHubScreen(
             }
         }
         detailsLoading = false
+    }
+
+    LaunchedEffect(connected, selectedRepository?.fullName, selectedWorkflowRun?.id, refreshCounter) {
+        val repository = selectedRepository ?: return@LaunchedEffect
+        val run = selectedWorkflowRun ?: return@LaunchedEffect
+        val token = tokenStore.accessToken() ?: return@LaunchedEffect
+        jobsLoading = true
+        val result = withContext(Dispatchers.IO) {
+            runCatching {
+                Pair(
+                    GitHubApiClient.listJobs(token, repository.fullName, run.id),
+                    GitHubApiClient.listArtifacts(token, repository.fullName, run.id)
+                )
+            }
+        }
+        result.onSuccess {
+            jobs = it.first
+            artifacts = it.second
+            error = null
+        }.onFailure {
+            error = it.message ?: "Não foi possível consultar jobs e artefatos."
+        }
+        jobsLoading = false
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp)) {
@@ -1912,6 +1946,9 @@ private fun GitHubScreen(
         callbackMessage?.let {
             Spacer(Modifier.height(8.dp))
             Text(it, color = Muted, fontSize = 12.sp)
+        }
+        if (localConnected && authenticatedLogin.isNotBlank()) {
+            Text("Conta conectada: @$authenticatedLogin", color = DeepBlue, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
         }
         if (!localConnected) {
             Spacer(Modifier.height(18.dp))
@@ -1975,6 +2012,9 @@ private fun GitHubScreen(
             repositories.forEach { repo ->
                 Card(Modifier.fillMaxWidth().padding(vertical = 5.dp).clickable {
                     selectedRepository = repo
+                    selectedWorkflowRun = null
+                    jobs = emptyList()
+                    artifacts = emptyList()
                 }, colors = CardDefaults.cardColors(containerColor = if (selectedRepository?.fullName == repo.fullName) Color(0xFFE8F4FA) else Color.White), shape = RoundedCornerShape(12.dp)) {
                     Column(Modifier.padding(13.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2003,14 +2043,38 @@ private fun GitHubScreen(
                     Divider(color = Color(0xFFE7EEF2))
                 }
                 Spacer(Modifier.height(10.dp))
+                Text("BRANCHES", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                if (branches.isEmpty() && !detailsLoading) Text("Nenhuma branch retornada.", color = Muted, fontSize = 11.sp)
+                branches.forEach { branch ->
+                    Text(branch.name + if (branch.protected) " • protegida" else "", color = Ink, fontSize = 10.sp, modifier = Modifier.padding(vertical = 2.dp))
+                }
+                Spacer(Modifier.height(10.dp))
                 Text("GITHUB ACTIONS", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 if (workflowRuns.isEmpty() && !detailsLoading) Text("Nenhuma execução encontrada ou sem permissão Actions: read.", color = Muted, fontSize = 11.sp)
                 workflowRuns.forEach { run ->
-                    Column(Modifier.fillMaxWidth().clickable { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(run.htmlUrl))) }.padding(vertical = 5.dp)) {
+                    Column(Modifier.fillMaxWidth().clickable { selectedWorkflowRun = run }.padding(vertical = 5.dp)) {
                         Text(run.name, color = Ink, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         Text("${run.status} • ${run.conclusion ?: "sem conclusão"} • ${run.branch.orEmpty()}", color = Muted, fontSize = 9.sp)
                     }
                     Divider(color = Color(0xFFE7EEF2))
+                }
+                selectedWorkflowRun?.let { selectedRun ->
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("JOBS: ${selectedRun.name}", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(selectedRun.htmlUrl))) }) { Text("Abrir execução") }
+                    }
+                    if (jobsLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    if (jobs.isEmpty() && !jobsLoading) Text("Nenhum job retornado.", color = Muted, fontSize = 10.sp)
+                    jobs.forEach { job ->
+                        Text("${job.name} • ${job.status} • ${job.conclusion ?: "sem conclusão"}", color = Ink, fontSize = 10.sp, modifier = Modifier.padding(vertical = 3.dp))
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text("ARTEFATOS", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    if (artifacts.isEmpty() && !jobsLoading) Text("Nenhum artefato nesta execução.", color = Muted, fontSize = 10.sp)
+                    artifacts.forEach { artifact ->
+                        Text("${artifact.name} • ${artifact.sizeBytes / 1024 / 1024} MB • ${if (artifact.expired) "expirado" else "disponível"}", color = Muted, fontSize = 10.sp, modifier = Modifier.padding(vertical = 2.dp))
+                    }
                 }
                 Spacer(Modifier.height(10.dp))
                 Text("PULL REQUESTS ABERTOS", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)

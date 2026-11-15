@@ -49,7 +49,7 @@ data class GitHubRepository(
 data class GitHubCommit(val sha: String, val message: String, val author: String?, val date: String?, val htmlUrl: String)
 data class GitHubWorkflowRun(val id: Long, val name: String, val status: String, val conclusion: String?, val branch: String?, val createdAt: String?, val htmlUrl: String)
 data class GitHubPullRequest(val number: Int, val title: String, val state: String, val author: String?, val createdAt: String?, val htmlUrl: String)
-data class GitHubBranch(val name: String, val protected: Boolean)
+data class GitHubBranch(val name: String, val isProtected: Boolean)
 data class GitHubJob(val id: Long, val name: String, val status: String, val conclusion: String?)
 data class GitHubArtifact(val id: Long, val name: String, val sizeBytes: Long, val expired: Boolean, val expiresAt: String?)
 

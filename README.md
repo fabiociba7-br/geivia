@@ -27,7 +27,7 @@ A geração de APK e os testes automatizados são realizados pelo GitHub Actions
 
 ## Integração com GitHub
 
-A integração com GitHub está planejada como uma conexão por GitHub App, com autorização da própria conta do usuário, permissões mínimas e leitura inicial de repositórios e GitHub Actions. Não serão usados tokens pessoais compartilhados nem segredos dentro do APK. A arquitetura e as etapas de implementação estão em [docs/GITHUB_INTEGRATION_ARCHITECTURE.md](docs/GITHUB_INTEGRATION_ARCHITECTURE.md). A conexão real depende do registro da GitHub App e de um backend HTTPS para proteger o Client Secret; até isso existir, o app não deve exibir uma conexão simulada.
+A integração com GitHub está planejada como uma conexão por GitHub App, com autorização da própria conta do usuário, permissões mínimas e leitura inicial de repositórios e GitHub Actions. Não serão usados tokens pessoais compartilhados nem segredos dentro do APK. A arquitetura está em [docs/GITHUB_INTEGRATION_ARCHITECTURE.md](docs/GITHUB_INTEGRATION_ARCHITECTURE.md). O aplicativo já inclui o fluxo Android de autorização PKCE, armazenamento do token com Android Keystore e leitura inicial de repositórios. O serviço HTTPS de troca do código está em [github-auth-worker](github-auth-worker/README.md) e precisa ser publicado e configurado pelo proprietário antes de conectar a conta.
 
 ## Segurança
 

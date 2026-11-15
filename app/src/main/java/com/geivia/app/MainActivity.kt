@@ -793,6 +793,9 @@ cloudshell download geivia-projects.json"""
         if (selectedProjectId != project.projectId) {
             diagnosticSummary = ""
             enabledFirebaseApis = emptySet()
+            firestoreDatabaseIds = null
+            firestoreBillingEnabled = null
+            firestoreActionStatus = ""
             apiActionStatus = ""
             selectedApiForConfirmation = null
         }

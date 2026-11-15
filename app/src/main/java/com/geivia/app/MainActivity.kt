@@ -91,7 +91,8 @@ private fun GeiviaApp() {
                     onContinue = { page = "summary" })
                 "summary" -> SummaryScreen(answers.toMap(), costMode,
                     onBack = { page = "cost" }, onEdit = { page = "questions"; index = 0 }, onFinish = { page = "dashboard" })
-                else -> DashboardScreen(answers.toMap(), costMode) {
+                "google_access" -> GoogleAccessScreen(onBack = { page = "dashboard" })
+                else -> DashboardScreen(answers.toMap(), costMode, onGoogleAccess = { page = "google_access" }) {
                     answers.clear(); prefs.edit().clear().apply(); costMode = ""; index = 0; page = "welcome"
                 }
             }
@@ -234,7 +235,7 @@ private fun SummaryScreen(answers: Map<String, String>, costMode: String, onBack
 }
 
 @Composable
-private fun DashboardScreen(answers: Map<String, String>, costMode: String, onRestart: () -> Unit) {
+private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGoogleAccess: () -> Unit, onRestart: () -> Unit) {
     val context = LocalContext.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp)) {
         BrandMark()
@@ -284,10 +285,56 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onRe
                 Modifier.padding(15.dp), color = Color(0xFF77501A), fontSize = 13.sp, lineHeight = 19.sp
             )
         }
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
+        OutlinedButton(onClick = onGoogleAccess, modifier = Modifier.fillMaxWidth()) { Text("Integração com Google e permissões") }
+        Spacer(Modifier.height(8.dp))
         Button(onClick = { shareProjectPlan(context = context, answers = answers, costMode = costMode) }, modifier = Modifier.fillMaxWidth()) { Text("Compartilhar plano do projeto") }
         Spacer(Modifier.height(8.dp))
         OutlinedButton(onClick = onRestart, modifier = Modifier.fillMaxWidth()) { Text("Refazer questionário") }
+    }
+}
+
+@Composable
+private fun GoogleAccessScreen(onBack: () -> Unit) {
+    val stages = listOf(
+        Triple("1. Identidade Google", "Nome, e-mail e identificador básico da conta para identificar a sessão.", "openid · userinfo.email · userinfo.profile"),
+        Triple("2. Projetos Firebase", "Listar somente os projetos Firebase que a conta conectada pode acessar. Nenhuma configuração será alterada.", "firebase.readonly"),
+        Triple("3. Projetos Google Cloud", "Localizar projetos Cloud acessíveis à conta, inclusive projetos sem Firebase ativado.", "cloudplatformprojects.readonly"),
+        Triple("4. Serviços e APIs", "Consultar quais APIs estão habilitadas no projeto selecionado. A conta também precisa da permissão IAM de leitura.", "cloud-platform.read-only"),
+        Triple("5. Diagnóstico de faturamento", "Consultar somente informações de faturamento que a conta tenha permissão para visualizar. Não altera plano nem associa pagamento.", "cloud-billing.readonly")
+    )
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp)) {
+        Text("GEIVIA", color = DeepBlue, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+        Spacer(Modifier.height(24.dp))
+        Text("Sua conta Google, suas permissões.", color = Ink, fontSize = 25.sp, lineHeight = 31.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        Text("A conexão será feita com a conta que você escolher. Cada acesso será solicitado separadamente, somente quando você usar a função correspondente.", color = Muted, fontSize = 14.sp, lineHeight = 21.sp)
+        Spacer(Modifier.height(16.dp))
+        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF5E6)), shape = RoundedCornerShape(14.dp)) {
+            Column(Modifier.padding(15.dp)) {
+                Text("CONEXÃO AINDA NÃO ATIVADA", color = Color(0xFF77501A), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Spacer(Modifier.height(6.dp))
+                Text("O GEIVIA ainda precisa do cadastro OAuth institucional do produto. Por isso, esta tela explica as permissões, mas não solicita login nem finge que a conta está conectada.", color = Color(0xFF77501A), fontSize = 13.sp, lineHeight = 19.sp)
+            }
+        }
+        Spacer(Modifier.height(20.dp))
+        stages.forEach { stage ->
+            Card(Modifier.fillMaxWidth().padding(bottom = 10.dp), colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {
+                Column(Modifier.padding(15.dp)) {
+                    Text(stage.first, color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(6.dp))
+                    Text(stage.second, color = Muted, fontSize = 13.sp, lineHeight = 19.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Text("Permissão planejada: " + stage.third, color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF6EF)), shape = RoundedCornerShape(14.dp)) {
+            Text("Segurança: consultar dados não autoriza alterações. Criar projetos, ativar APIs, publicar ou modificar faturamento exigirá uma autorização adicional e uma confirmação específica dentro do GEIVIA.", Modifier.padding(15.dp), color = Color(0xFF236342), fontSize = 13.sp, lineHeight = 19.sp)
+        }
+        Spacer(Modifier.height(18.dp))
+        Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Voltar ao painel") }
     }
 }
 

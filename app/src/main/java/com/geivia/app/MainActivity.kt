@@ -404,6 +404,8 @@ private fun CloudShellSetupScreen(
         )
     }
     var importStatus by remember { mutableStateOf("") }
+    val suggestedProjectId = "geivia-" + workspaceId.removePrefix("GEIVIA-").lowercase()
+    val createProjectCommand = "gcloud projects create $suggestedProjectId --name=GEIVIA-$suggestedProjectId"
     val cloudShellCommand = """echo 'GEIVIA - diagnóstico inicial'
 gcloud auth list --filter=status:ACTIVE --format='table(account,status)'
 echo
@@ -464,7 +466,7 @@ cloudshell download geivia-projects.json"""
         Text("Ambiente: $workspaceName", color = DeepBlue, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         Text("Código: $workspaceId", color = Muted, fontSize = 11.sp)
         Spacer(Modifier.height(14.dp))
-        Text("O GEIVIA não vai usar sua conta nem credenciais do desenvolvedor. Você entrará diretamente no Google Cloud com sua própria conta.", color = Muted, fontSize = 14.sp, lineHeight = 21.sp)
+        Text("O GEIVIA não usa nenhuma conta do desenvolvedor. O Cloud Shell acessa os recursos com a sua conta Google, autenticada diretamente no navegador.", color = Muted, fontSize = 14.sp, lineHeight = 21.sp)
         Spacer(Modifier.height(16.dp))
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF4FA)), shape = RoundedCornerShape(14.dp)) {
             Column(Modifier.padding(15.dp)) {
@@ -492,7 +494,23 @@ cloudshell download geivia-projects.json"""
         Spacer(Modifier.height(12.dp))
         Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {
             Column(Modifier.padding(15.dp)) {
-                Text("ETAPA 3 — TESTE A CONEXÃO", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text("ETAPA 3 — CRIAR UM PROJETO (OPCIONAL)", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(6.dp))
+                Text("Se você ainda não tem um projeto para este ambiente, copie e execute este comando. Ele cria o projeto na sua conta e não associa uma conta de faturamento. Se já possui um projeto, pule esta etapa.", color = Ink, fontSize = 13.sp, lineHeight = 19.sp)
+                Spacer(Modifier.height(8.dp))
+                Text(createProjectCommand, color = Color(0xFFDAEAF4), fontSize = 10.sp, lineHeight = 15.sp, modifier = Modifier.fillMaxWidth().background(Color(0xFF102B43), RoundedCornerShape(10.dp)).padding(12.dp))
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = {
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("Criar projeto GEIVIA", createProjectCommand))
+                    Toast.makeText(context, "Comando copiado. Revise antes de executar no Cloud Shell.", Toast.LENGTH_LONG).show()
+                }, modifier = Modifier.fillMaxWidth()) { Text("Copiar comando de criação") }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {
+            Column(Modifier.padding(15.dp)) {
+                Text("ETAPA 4 — DIAGNÓSTICO DA SUA CONTA", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(6.dp))
                 Text("No terminal do Cloud Shell, cole o comando abaixo. Ele apenas identifica a conta ativa, lista projetos que ela já pode visualizar e baixa um JSON para o aparelho. Não cria recursos, não ativa APIs e não altera faturamento.", color = Ink, fontSize = 13.sp, lineHeight = 19.sp)
                 Spacer(Modifier.height(10.dp))

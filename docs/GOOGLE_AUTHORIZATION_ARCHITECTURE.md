@@ -34,7 +34,7 @@ Essa arquitetura evita colocar client secret, chave de conta de serviço ou toke
 9. O usuário seleciona o JSON no GEIVIA; o app valida e importa apenas ID, nome, número e estado dos projetos.
 10. O usuário seleciona explicitamente um projeto existente; o GEIVIA persiste o Project ID exato e mantém a escolha mesmo após nova importação ou reinício.
 11. Para o projeto selecionado, o GEIVIA gera um diagnóstico somente leitura (`gcloud projects describe` e `gcloud services list --enabled`) e importa o relatório apenas se o Project ID corresponder exatamente ao destino salvo.
-12. A criação de projetos permanece desabilitada nesta versão. Só será reintroduzida como ação separada, confirmada e com reconciliação segura de operações ambíguas.
+12. A criação assistida de projeto pode ser iniciada como ação separada, opcional e confirmada. O comando é executado manualmente no Cloud Shell e aplica pré-verificação do ID exato, bloqueio após resposta ambígua e reconciliação somente leitura do mesmo ID, conforme `PROJECT_CREATION_SAFETY.md`.
 13. Para futuras operações de escrita, o GEIVIA deverá sempre mostrar o comando exato, projeto, impacto e custo possível, exigindo confirmação do usuário antes de copiar/executar.
 
 ## Limites e segurança
@@ -45,7 +45,7 @@ Essa arquitetura evita colocar client secret, chave de conta de serviço ou toke
 - Nunca pedir ao usuário para copiar tokens de acesso, cookies, senha, arquivos de credenciais ou chaves JSON de conta de serviço para dentro do app.
 - Não usar `gcloud auth print-access-token` para transferir token ao GEIVIA. O comando pode ser usado internamente pelo próprio Cloud Shell quando necessário, mas o token não deve sair da sessão.
 - O Cloud Shell opera com a identidade e permissões do usuário autenticado; falta de IAM deve ser mostrada como falta de permissão, sem contornar.
-- A primeira etapa de diagnóstico é somente leitura: `gcloud auth list` e `gcloud projects list`.
+- A consulta inicial de identidade e inventário é somente leitura. A criação assistida, quando escolhida explicitamente, é uma etapa separada e não deve ser confundida com o diagnóstico.
 - O comando de diagnóstico inicial é somente leitura e não cria projetos, ativa APIs, altera IAM, associa faturamento ou publica serviços. A criação de projeto é uma ação opcional separada, apresentada com comando próprio e executada somente se o usuário decidir copiá-lo e executá-lo no Cloud Shell.
 - Modo custo zero bloqueia instruções que exijam ativar faturamento. A escolha de permitir custos não autoriza cobrança automaticamente.
 

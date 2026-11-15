@@ -192,6 +192,23 @@ class WorkflowProgressStoreTest {
     }
 
     @Test
+    fun corruptedWorkflowStoreExposesHealthErrorAndKeepsMutationsBlocked() {
+        val preferences = InMemorySharedPreferences()
+        preferences.edit().putString("workflow_step_records_v1", "{invalid-json").apply()
+        val store = WorkflowProgressStore(preferences)
+
+        val message = store.healthError()
+        assertTrue(message.orEmpty().contains("operações foram bloqueadas"))
+        org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+            store.waitForConfirmation("project-protected", "hosting", "Must not start")
+        }
+        org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+            store.allForProject("project-protected")
+        }
+        assertEquals("{invalid-json", preferences.getString("workflow_step_records_v1", null))
+    }
+
+    @Test
     fun recordsAreIsolatedByProjectId() {
         val store = store()
         store.waitForConfirmation("project-a", "api", "Review A")

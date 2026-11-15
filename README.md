@@ -10,8 +10,8 @@ O GEIVIA será um produto independente do Zupi Gestão. Nesta primeira fase, o d
 
 ## Escopo planejado
 
-- Conectar a conta Google escolhida pelo usuário, com autorização incremental e escopos mínimos.
-- Adaptar questionário e recomendações ao perfil, projetos, serviços e permissões que o usuário autorizar.
+- Preparar um ambiente local exclusivo por usuário e acessar o Google Cloud pelo navegador e Cloud Shell da própria conta.
+- Importar inventários de projetos e diagnósticos gerados no Cloud Shell, sem transferir tokens ou senhas.
 - Criar e selecionar projetos Google Cloud/Firebase.
 - Orientar e automatizar a habilitação das APIs necessárias.
 - Configurar Firebase Authentication e Cloud Firestore.
@@ -23,8 +23,8 @@ O GEIVIA será um produto independente do Zupi Gestão. Nesta primeira fase, o d
 
 - Segredos de servidor nunca serão incluídos no APK ou no repositório.
 - O app usará autorização OAuth incremental, contextual e granular; leitura e escrita serão separadas.
-- A identidade OAuth será do produto/publicador, independente de contas pessoais do desenvolvedor e dos usuários.
-- Consulte [a arquitetura de autorização Google](docs/GOOGLE_AUTHORIZATION_ARCHITECTURE.md) para a matriz de escopos e o fluxo de consentimento.
+- O fluxo inicial não exige OAuth próprio do GEIVIA: o usuário executa comandos de leitura na sessão autenticada do Cloud Shell.
+- Consulte [a arquitetura de acesso ao Google Cloud](docs/GOOGLE_AUTHORIZATION_ARCHITECTURE.md) para o fluxo híbrido e os limites de segurança.
 - Operações administrativas serão executadas com credenciais e arquitetura apropriadas, com registro das ações.
 - Nunca solicitar senha da conta Google ao usuário dentro do GEIVIA.
 

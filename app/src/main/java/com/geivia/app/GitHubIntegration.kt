@@ -202,10 +202,10 @@ object GitHubAuthClient {
     fun ensureFreshAccessToken(exchangeUrl: String, clientId: String, callbackUrl: String, tokenStore: GitHubTokenStore): String? {
         val current = tokenStore.accessToken() ?: return null
         if (!tokenStore.needsRefresh()) return current
-        val refreshToken = tokenStore.refreshTokenValue()
+        val refreshCredential = tokenStore.refreshTokenValue()
             ?: throw IllegalStateException("A autorização expirou e não há refresh token. Conecte novamente.")
         val refreshUrl = exchangeUrl.removeSuffix("/exchange") + "/refresh"
-        val refreshed = refreshToken(refreshUrl, clientId, callbackUrl, refreshToken)
+        val refreshed = refreshToken(refreshUrl, clientId, callbackUrl, refreshCredential)
         tokenStore.save(refreshed)
         return tokenStore.accessToken()
             ?: throw IllegalStateException("O GitHub não retornou um novo token válido.")

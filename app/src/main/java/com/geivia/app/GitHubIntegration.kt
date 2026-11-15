@@ -43,10 +43,19 @@ object GitHubOAuth {
     fun codeChallenge(verifier: String): String {
         require(verifier.length in 43..128) { "PKCE verifier inválido." }
         val digest = MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray(Charsets.US_ASCII))
-        return Base64.encodeToString(digest, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+        return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(digest)
     }
 
-    fun validEndpoints(callbackUrl: String, exchangeUrl: String): Boolean = runCatching {\n        val callback = URI(callbackUrl)\n        val exchange = URI(exchangeUrl)\n        callback.scheme == "https" && exchange.scheme == "https" &&\n            callback.host != null && callback.host == exchange.host &&\n            callback.port == exchange.port && callback.path.endsWith("/callback") &&\n            exchange.path.endsWith("/exchange")\n    }.getOrDefault(false)\n\n    fun authorizationUrl(clientId: String, callbackUrl: String, state: String, verifier: String): String {
+    fun validEndpoints(callbackUrl: String, exchangeUrl: String): Boolean = runCatching {
+        val callback = URI(callbackUrl)
+        val exchange = URI(exchangeUrl)
+        callback.scheme == "https" && exchange.scheme == "https" &&
+            callback.host != null && callback.host == exchange.host &&
+            callback.port == exchange.port && callback.path.endsWith("/callback") &&
+            exchange.path.endsWith("/exchange")
+    }.getOrDefault(false)
+
+    fun authorizationUrl(clientId: String, callbackUrl: String, state: String, verifier: String): String {
         require(clientId.isNotBlank()) { "Informe o Client ID da GitHub App." }
         require(callbackUrl.startsWith("https://")) { "A URL de callback precisa usar HTTPS." }
         val params = linkedMapOf(

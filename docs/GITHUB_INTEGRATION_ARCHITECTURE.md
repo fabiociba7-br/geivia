@@ -44,7 +44,7 @@ Não habilitar escrita, administração, secrets, variables, deployments ou alte
 ## Limitações atuais
 
 - A tela lista até 100 repositórios por consulta; paginação ainda não foi implementada.
-- Commits, pull requests, Actions, jobs e artefatos ainda não têm telas próprias.
+- Commits recentes, pull requests abertos e execuções recentes do Actions já aparecem no detalhe de cada repositório; jobs individuais e artefatos ainda não têm telas próprias.
 - A primeira fase não altera arquivos, branches, workflows, configurações ou conteúdo dos repositórios.
 - A renovação automática de tokens de usuário expirados ainda não foi implementada. Não habilite a opção de expiração de tokens de usuário na GitHub App até essa funcionalidade existir; se o token for revogado ou expirar, será necessário reconectar.
 - O Worker usa endpoints públicos e não mantém banco de dados. O plano gratuito da Cloudflare pode atender o uso pessoal inicial, sujeito aos limites e termos vigentes.

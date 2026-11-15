@@ -24,7 +24,7 @@ object GoogleCloudProjectCommands {
             if gcloud projects describe "§PROJECT_ID" --format=json > geivia-project-preflight.json 2> geivia-project-preflight.err; then
               echo "Projeto já existe e está acessível. Nenhuma criação será feita."
             else
-              if grep -Eq '^ERROR: \\(gcloud\\.projects\\.describe\\) NOT_FOUND:' geivia-project-preflight.err; then
+              if grep -Eq '^ERROR: \(gcloud\.projects\.describe\\) NOT_FOUND:' geivia-project-preflight.err; then
                 echo "O Google confirmou NOT_FOUND para o ID exato. Enviando uma única solicitação."
                 if ! gcloud projects create "§PROJECT_ID" --name="§PROJECT_NAME" --format=json > geivia-project-create-response.json 2> geivia-project-create.err; then
                   cat geivia-project-create.err
@@ -58,7 +58,7 @@ object GoogleCloudProjectCommands {
             if gcloud projects describe '$projectId' --format=json > geivia-project-result.json 2> geivia-project-reconcile.err; then
               jq '[{projectId:.projectId,name:.name,projectNumber:(.projectNumber|tostring),lifecycleState:.lifecycleState}]' geivia-project-result.json > geivia-projects.json
             else
-              if grep -Eq '^ERROR: \\(gcloud\\.projects\\.describe\\) NOT_FOUND:' geivia-project-reconcile.err; then
+              if grep -Eq '^ERROR: \(gcloud\.projects\.describe\\) NOT_FOUND:' geivia-project-reconcile.err; then
                 jq -n --arg id '$projectId' '[{projectId:§id,name:§id,projectNumber:"",lifecycleState:"NOT_FOUND_CONFIRMED"}]' > geivia-projects.json
                 echo "O Google confirmou NOT_FOUND para este Project ID. Nenhum projeto foi criado."
               else

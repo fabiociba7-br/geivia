@@ -36,4 +36,32 @@ class FirebaseDeploymentCommandsTest {
     fun invalidProjectIdIsRejectedBeforeGeneratingCommands() {
         FirebaseDeploymentCommands.hostingStarterDeploy("Not A Valid ID")
     }
+
+    @Test
+    fun firestoreRulesCommandStopsOnAmbiguousHttpStatusAndProtectsExistingFolder() {
+        val command = FirebaseDeploymentCommands.firestoreRulesBootstrap("geivia-sample-123")
+        assertTrue(command.contains("[ \"\$RULES_HTTP\" = \"200\" ]"))
+        assertTrue(command.contains("[ \"\$RULES_HTTP\" != \"404\" ]"))
+        assertTrue(command.contains("exit 25"))
+        assertTrue(command.contains("if [ -e \"\$WORKDIR\" ]; then"))
+        assertTrue(command.contains("! -f \"\$WORKDIR/.geivia-generated\""))
+        assertTrue(command.contains("Nada foi sobrescrito."))
+    }
+
+    @Test
+    fun hostingCommandCreatesOnlyAfterExactNotFoundAndStopsOnOtherStatuses() {
+        val command = FirebaseDeploymentCommands.hostingStarterDeploy("geivia-sample-123")
+        assertTrue(command.contains("[ \"\$SITE_HTTP\" = \"404\" ]"))
+        assertTrue(command.contains("[ \"\$SITE_HTTP\" != \"200\" ]"))
+        assertTrue(command.contains("exit 6"))
+        assertTrue(command.contains("projects/\$PROJECT_ID/sites?siteId=\$SITE_ID"))
+        assertTrue(command.contains("O site ainda não propagou. Não crie outro site"))
+        assertTrue(command.contains("if [ -e \"\$WORKDIR\" ]; then"))
+        assertTrue(command.contains("! -f \"\$WORKDIR/.geivia-generated\""))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun invalidProjectIdIsRejectedForFirestoreRulesCommand() {
+        FirebaseDeploymentCommands.firestoreRulesBootstrap("invalid;touch-pwned")
+    }
 }

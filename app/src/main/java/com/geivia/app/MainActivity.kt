@@ -680,7 +680,8 @@ cloudshell download geivia-projects.json"""
             "echo \"Verificando o projeto exato: \$PROJECT_ID\"",
             "gcloud projects describe \"\$PROJECT_ID\" --format=json > geivia-project-details.json",
             "gcloud services list --enabled --project=\"\$PROJECT_ID\" --format=json > geivia-enabled-apis.json",
-            "jq -n --slurpfile p geivia-project-details.json --slurpfile s geivia-enabled-apis.json '{project:\$p[0],enabledServices:\$s[0]}' > geivia-diagnostic.json",
+            "if jq -e 'any(.[]; ((.config.name // .name) == \"firestore.googleapis.com\"))' geivia-enabled-apis.json >/dev/null; then gcloud firestore databases list --project=\"\$PROJECT_ID\" --format=json > geivia-firestore-databases.json; else printf '[]\\n' > geivia-firestore-databases.json; fi",
+            "jq -n --slurpfile p geivia-project-details.json --slurpfile s geivia-enabled-apis.json --slurpfile d geivia-firestore-databases.json '{project:\$p[0],enabledServices:\$s[0],firestoreDatabases:\$d[0]}' > geivia-diagnostic.json",
             "cloudshell download geivia-diagnostic.json"
         ).joinToString("\n")
     }

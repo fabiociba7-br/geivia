@@ -201,8 +201,19 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
         return record
     }
 
-    private fun readRecords(): JSONObject =
-        runCatching { JSONObject(prefs.getString(KEY_RECORDS, "{}")) }.getOrDefault(JSONObject())
+    private fun readRecords(): JSONObject {
+        val raw = prefs.getString(KEY_RECORDS, "{}") ?: "{}"
+        return try {
+            JSONObject(raw)
+        } catch (error: Exception) {
+            // Never interpret corrupted progress as an empty workflow: that could
+            // make an unfinished cloud operation appear safe to start again.
+            throw IllegalStateException(
+                "O histórico local do GEIVIA está inválido. As operações foram bloqueadas para evitar duplicidade. Preserve os dados e faça a recuperação antes de continuar.",
+                error
+            )
+        }
+    }
 
     private fun recordKey(projectId: String, stepId: String) = "$projectId::$stepId"
 

@@ -76,3 +76,21 @@ Depois da seleção, o app gera um comando Cloud Shell usando o Project ID exato
 Ao importar o relatório, o app exige que `project.projectId` corresponda exatamente ao projeto selecionado. Relatórios de outro projeto são rejeitados. Ao trocar de projeto, o resumo do diagnóstico anterior deixa de ser exibido, evitando associar resultados antigos ao novo destino.
 
 Esta etapa é diagnóstico assistido pelo usuário no Cloud Shell. Ainda não é automação direta de alterações na nuvem.
+
+
+## Implementação assistida no aplicativo
+
+A etapa de criação/reutilização está disponível na tela Cloud Shell:
+- o usuário escolhe e confirma explicitamente o Project ID e o nome;
+- o comando consulta primeiro o mesmo ID com `gcloud projects describe`;
+- somente uma resposta reconhecível de `NOT_FOUND` permite uma chamada de criação;
+- falhas de permissão, rede ou qualquer erro não reconhecido encerram o script sem criar;
+- após a solicitação, o aplicativo mantém o ID pendente e não oferece outra criação;
+- a reconciliação consulta apenas o ID original e gera um inventário JSON para importação;
+- o estado local só é reconciliado quando o inventário importado contém o mesmo Project ID.
+
+O comando é copiado para execução manual no Cloud Shell. O aplicativo não executa operações de nuvem remotamente. Repetir manualmente o mesmo comando também é protegido pela pré-consulta: se o projeto já existir e estiver acessível, nenhuma segunda criação é enviada.
+
+## Limites conhecidos
+
+A saída de erro do Google Cloud CLI pode variar entre versões e idiomas. Se o texto não for reconhecido como ausência explícita, o comando falha de forma conservadora e não cria. Nesse caso, o usuário deve verificar o Project ID no Console e não alterar o identificador para contornar o erro.

@@ -555,6 +555,21 @@ private fun CloudShellSetupScreen(
     var selectedProjectNumber by remember { mutableStateOf(prefs.getString("selected_project_number", null).orEmpty()) }
     var selectedApiForConfirmation by remember { mutableStateOf<Pair<String, String>?>(null) }
     var apiActionStatus by remember { mutableStateOf("") }
+    var actionHistory by remember {
+        mutableStateOf(
+            runCatching {
+                val saved = JSONArray(prefs.getString("api_action_history", "[]") ?: "[]")
+                (0 until saved.length()).mapNotNull { saved.optString(it).takeIf { value -> value.isNotBlank() } }.takeLast(30)
+            }.getOrDefault(emptyList())
+        )
+    }
+    fun addActionHistory(entry: String) {
+        val updated = (actionHistory + entry).takeLast(30)
+        actionHistory = updated
+        val json = JSONArray()
+        updated.forEach { json.put(it) }
+        prefs.edit().putString("api_action_history", json.toString()).apply()
+    }
 
     val cloudShellCommand = """echo 'GEIVIA - diagnóstico inicial'
 gcloud auth list --filter=status:ACTIVE --format='table(account,status)'
@@ -636,7 +651,9 @@ cloudshell download geivia-projects.json"""
                 if (id != selectedProjectId) return@runCatching emptySet<String>()
                 val services = report.optJSONArray("enabledServices") ?: return@runCatching emptySet<String>()
                 (0 until services.length()).mapNotNull { index ->
-                    services.optJSONObject(index)?.optJSONObject("config")?.optString("name")?.takeIf { it.isNotBlank() }
+                    val item = services.optJSONObject(index) ?: return@mapNotNull null
+                    item.optJSONObject("config")?.optString("name")?.takeIf { it.isNotBlank() }
+                        ?: item.optString("name").takeIf { it.isNotBlank() }
                 }.toSet()
             }.getOrDefault(emptySet())
         )
@@ -692,6 +709,7 @@ cloudshell download geivia-projects.json"""
                         .remove("pending_api_project_id")
                         .remove("pending_api_created_at")
                     apiActionStatus = "Confirmado pelo novo diagnóstico: $completedApi está ativa neste projeto."
+                    addActionHistory("Confirmada pelo diagnóstico • $selectedProjectId • $completedApi")
                 }
                 editor.apply()
                 summary
@@ -762,6 +780,7 @@ cloudshell download geivia-projects.json"""
                         .putLong("pending_api_created_at", System.currentTimeMillis())
                         .apply()
                     apiActionStatus = "Comando copiado para $selectedProjectId. Execute no Cloud Shell e importe um novo diagnóstico para confirmar."
+                    addActionHistory("Comando preparado; aguardando diagnóstico • $selectedProjectId • $api")
                     Toast.makeText(context, "Comando copiado. Execute manualmente no Cloud Shell.", Toast.LENGTH_LONG).show()
                     selectedApiForConfirmation = null
                 }) { Text("Confirmar e copiar") }
@@ -938,6 +957,16 @@ cloudshell download geivia-projects.json"""
                         if (apiActionStatus.isNotBlank()) {
                             Spacer(Modifier.height(8.dp))
                             Text(apiActionStatus, color = DeepBlue, fontSize = 11.sp, lineHeight = 16.sp)
+                        }
+                        if (actionHistory.isNotEmpty()) {
+                            Spacer(Modifier.height(12.dp))
+                            Divider(color = Color(0xFFE1EAF0))
+                            Spacer(Modifier.height(8.dp))
+                            Text("HISTÓRICO DE AÇÕES", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            actionHistory.asReversed().forEach { entry ->
+                                Text("• $entry", color = Muted, fontSize = 10.sp, lineHeight = 15.sp, modifier = Modifier.padding(vertical = 2.dp))
+                            }
+                            Text("Histórico local deste aparelho; não é um registro emitido pelo Google Cloud.", color = Muted, fontSize = 9.sp, lineHeight = 13.sp)
                         }
                     }
                 }

@@ -714,6 +714,8 @@ cloudshell download geivia-projects.json"""
                 val databases = report.optJSONArray("firestoreDatabases")
                 val importedDatabaseIds = databases?.let { array -> (0 until array.length()).mapNotNull { index -> array.optJSONObject(index)?.optString("name")?.substringAfterLast("/databases/")?.takeIf { it.isNotBlank() } } }
                 firestoreDatabaseIds = importedDatabaseIds
+                val billing = report.optJSONObject("billing")
+                firestoreBillingEnabled = if (billing != null && billing.has("billingEnabled") && !billing.isNull("billingEnabled")) billing.optBoolean("billingEnabled") else null
                 val summary = "Último diagnóstico: $reportId • ${services.length()} API(s) habilitada(s)."
                 val enabledNames = (0 until services.length()).mapNotNull { index ->
                     val item = services.optJSONObject(index) ?: return@mapNotNull null

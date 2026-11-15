@@ -496,7 +496,7 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
                 Spacer(Modifier.height(8.dp))
                 Text(if (costMode == "zero") "Modo custo zero: não habilitar recursos que possam exigir faturamento. Storage e processamento avançado ficam sujeitos a verificação específica; se houver exigência de plano pago, a etapa será interrompida." else "Recursos pagos continuam dependendo de análise de custo e autorização separada. A escolha deste modo não ativa faturamento.", color = if (costMode == "zero") Color(0xFF77501A) else Muted, fontSize = 11.sp, lineHeight = 17.sp)
                 Spacer(Modifier.height(8.dp))
-                Text("Nesta versão, o plano é informativo: ainda não executa alterações nem habilita APIs. A próxima etapa será adicionar confirmação por serviço, revisão do comando e registro do resultado antes de avançar.", color = Muted, fontSize = 11.sp, lineHeight = 17.sp)
+                Text("As alterações na nuvem são assistidas: o GEIVIA prepara comandos específicos, registra a operação e exige execução manual no Cloud Shell. Diagnósticos novos confirmam o resultado; o app não executa comandos remotamente.", color = Muted, fontSize = 11.sp, lineHeight = 17.sp)
             }
         }
         Spacer(Modifier.height(22.dp))
@@ -1165,7 +1165,7 @@ cloudshell download geivia-projects.json"""
         }
         Spacer(Modifier.height(12.dp))
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF5E6)), shape = RoundedCornerShape(14.dp)) {
-            Text("Por segurança, esta versão não cria projetos automaticamente nem fornece comandos de criação. Primeiro identifique e importe seus projetos existentes. A criação será liberada em uma etapa própria, com confirmação explícita e recuperação segura em caso de erro.", Modifier.padding(15.dp), color = Color(0xFF77501A), fontSize = 12.sp, lineHeight = 18.sp)
+            Text("A criação de projeto está disponível como ação opcional e manual. O comando consulta primeiro o Project ID exato; resultado ambíguo bloqueia novas tentativas e exige reconciliação do mesmo ID.", Modifier.padding(15.dp), color = Color(0xFF77501A), fontSize = 12.sp, lineHeight = 18.sp)
         }
         Spacer(Modifier.height(12.dp))
         Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {
@@ -1252,7 +1252,7 @@ cloudshell download geivia-projects.json"""
                     OutlinedTextField(value = newProjectId, onValueChange = { value ->
                         newProjectId = value.lowercase().filter { it.isLetterOrDigit() || it == '-' }.take(30)
                         prefs.edit().putString("new_project_id", newProjectId).apply()
-                    }, label = { Text("Project ID escolhido por você") }, supportingText = { Text("5–30 caracteres; letras minúsculas, números e hífen.") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    }, label = { Text("Project ID escolhido por você") }, supportingText = { Text("6–30 caracteres; letras minúsculas, números e hífen.") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(6.dp))
                     OutlinedTextField(value = newProjectName, onValueChange = { value ->
                         newProjectName = value.take(30)

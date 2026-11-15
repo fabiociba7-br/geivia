@@ -481,7 +481,16 @@ cloudshell download geivia-projects.json"""
         }
     }
 
-    var diagnosticSummary by remember { mutableStateOf(prefs.getString("cloud_project_diagnostic_summary", "").orEmpty()) }
+    var diagnosticSummary by remember {
+        mutableStateOf(
+            runCatching {
+                val report = org.json.JSONObject(prefs.getString("cloud_project_diagnostic_json", null) ?: return@runCatching "")
+                val id = report.optJSONObject("project")?.optString("projectId").orEmpty()
+                val count = report.optJSONArray("enabledServices")?.length() ?: 0
+                if (id == selectedProjectId && id.isNotBlank()) "Último diagnóstico: $id • $count API(s) habilitada(s)." else ""
+            }.getOrDefault("")
+        )
+    }
     val diagnosticCommand = remember(selectedProjectId) {
         if (selectedProjectId.isBlank() || !selectedProjectId.matches(Regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$"))) "" else listOf(
             "set -e",
@@ -522,6 +531,7 @@ cloudshell download geivia-projects.json"""
             .putString("selected_project_name", project.name)
             .putString("selected_project_number", project.projectNumber)
             .apply()
+        if (selectedProjectId != project.projectId) diagnosticSummary = ""
         selectedProjectId = project.projectId
         selectedProjectName = project.name
         selectedProjectNumber = project.projectNumber

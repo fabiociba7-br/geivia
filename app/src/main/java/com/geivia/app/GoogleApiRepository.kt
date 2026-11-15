@@ -64,24 +64,33 @@ object GoogleApiRepository {
     suspend fun listEnabledServices(accessToken: String, projectNumber: String): List<String> {
         require(projectNumber.isNotBlank()) { "O projeto selecionado não possui número disponível para a consulta." }
         val parent = encode("projects/$projectNumber")
-        val json = getJson(
-            "https://serviceusage.googleapis.com/v1/$parent/services?filter=state%3AENABLED&pageSize=200",
-            accessToken
-        )
-        val services = json.optJSONArray("services") ?: return emptyList()
-        return (0 until services.length()).mapNotNull { index ->
-            services.optJSONObject(index)?.optString("config")?.let { config ->
-                JSONObject(config).optString("name").takeIf { it.isNotBlank() }
+        val output = mutableListOf<String>()
+        var pageToken: String? = null
+        do {
+            val suffix = pageToken?.let { "&pageToken=" + encode(it) }.orEmpty()
+            val json = getJson(
+                "https://serviceusage.googleapis.com/v1/$parent/services?filter=state%3AENABLED&pageSize=200$suffix",
+                accessToken
+            )
+            val services = json.optJSONArray("services")
+            if (services != null) {
+                for (index in 0 until services.length()) {
+                    val resourceName = services.optJSONObject(index)?.optString("name").orEmpty()
+                    if (resourceName.isNotBlank()) output.add(resourceName.substringAfterLast("/"))
+                }
             }
-        }
+            pageToken = json.optString("nextPageToken").takeIf { it.isNotBlank() }
+        } while (pageToken != null)
+        return output
     }
 
     suspend fun getBillingInfo(accessToken: String, projectId: String): String {
         val json = getJson("https://cloudbilling.googleapis.com/v1/projects/${encode(projectId)}/billingInfo", accessToken)
+        if (!json.has("billingEnabled")) throw IOException("O Google não retornou o estado de faturamento. A conta pode não ter permissão para consultar este projeto.")
         return if (json.optBoolean("billingEnabled")) {
             "Há uma conta de faturamento associada a este projeto."
         } else {
-            "A consulta retornou que não há faturamento associado a este projeto."
+            "A consulta confirmou que não há faturamento associado a este projeto."
         }
     }
 

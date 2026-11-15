@@ -28,8 +28,8 @@ object FirebaseDeploymentCommands {
               fi
             fi
             EXPECTED_RULES_FILE="$(mktemp)"
-            trap 'rm -f "$EXPECTED_RULES_FILE"' EXIT
-            cat > "$EXPECTED_RULES_FILE" <<'GEIVIA_EXPECTED_RULES'
+            trap 'rm -f "§EXPECTED_RULES_FILE"' EXIT
+            cat > "§EXPECTED_RULES_FILE" <<'GEIVIA_EXPECTED_RULES'
             rules_version = '2';
             service cloud.firestore {
               match /databases/{database}/documents {

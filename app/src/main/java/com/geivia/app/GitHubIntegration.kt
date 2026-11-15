@@ -48,7 +48,7 @@ data class GitHubRepository(
 
 data class GitHubCommit(val sha: String, val message: String, val author: String?, val date: String?, val htmlUrl: String)
 data class GitHubWorkflowRun(val id: Long, val name: String, val status: String, val conclusion: String?, val branch: String?, val createdAt: String?, val htmlUrl: String)
-data class GitHubPullRequest(val number: Int, val title: String, val state: String, val author: String?, val createdAt: String?, val htmlUrl: String)
+data class GitHubPullRequest(val number: Int, val title: String, val state: String, val author: String?, val createdAt: String?, val htmlUrl: String)\ndata class GitHubBranch(val name: String, val protected: Boolean)\ndata class GitHubJob(val id: Long, val name: String, val status: String, val conclusion: String?)\ndata class GitHubArtifact(val id: Long, val name: String, val sizeBytes: Long, val expired: Boolean, val expiresAt: String?)
 
 object GitHubOAuth {
     private val random = SecureRandom()
@@ -243,20 +243,67 @@ object GitHubApiClient {
         }
     }
 
+    fun authenticatedLogin(accessToken: String): String =
+        JSONObject(getJson(accessToken, "/user")).optString("login").takeIf { it.isNotBlank() }
+            ?: throw IllegalStateException("O GitHub não retornou o usuário autenticado.")
+
     fun listRepositories(accessToken: String): List<GitHubRepository> {
-        val json = JSONArray(getJson(accessToken, "/user/repos?visibility=all&affiliation=owner,collaborator,organization_member&sort=updated&per_page=100"))
+        val result = mutableListOf<GitHubRepository>()
+        for (page in 1..10) {
+            val json = JSONArray(getJson(accessToken, "/user/repos?visibility=all&affiliation=owner,collaborator,organization_member&sort=updated&per_page=100&page=$page"))
+            val current = (0 until json.length()).mapNotNull { index ->
+                val item = json.optJSONObject(index) ?: return@mapNotNull null
+                val name = item.optString("full_name")
+                if (name.isBlank()) return@mapNotNull null
+                GitHubRepository(
+                    id = item.optLong("id"),
+                    fullName = name,
+                    description = item.optString("description").takeIf { it != "null" && it.isNotBlank() },
+                    isPrivate = item.optBoolean("private"),
+                    defaultBranch = item.optString("default_branch"),
+                    htmlUrl = item.optString("html_url"),
+                    updatedAt = item.optString("updated_at").takeIf { it != "null" && it.isNotBlank() }
+                )
+            }
+            result += current
+            if (json.length() < 100) break
+        }
+        return result
+    }
+
+    fun listBranches(accessToken: String, repository: String): List<GitHubBranch> {
+        val json = JSONArray(getJson(accessToken, "/repos/${repositoryPath(repository)}/branches?per_page=100"))
         return (0 until json.length()).mapNotNull { index ->
             val item = json.optJSONObject(index) ?: return@mapNotNull null
-            val name = item.optString("full_name")
-            if (name.isBlank()) return@mapNotNull null
-            GitHubRepository(
+            item.optString("name").takeIf { it.isNotBlank() }?.let { GitHubBranch(it, item.optBoolean("protected")) }
+        }
+    }
+
+    fun listJobs(accessToken: String, repository: String, runId: Long): List<GitHubJob> {
+        val jobs = JSONObject(getJson(accessToken, "/repos/${repositoryPath(repository)}/actions/runs/$runId/jobs?per_page=100"))
+            .optJSONArray("jobs") ?: JSONArray()
+        return (0 until jobs.length()).mapNotNull { index ->
+            val item = jobs.optJSONObject(index) ?: return@mapNotNull null
+            GitHubJob(
                 id = item.optLong("id"),
-                fullName = name,
-                description = item.optString("description").takeIf { it != "null" && it.isNotBlank() },
-                isPrivate = item.optBoolean("private"),
-                defaultBranch = item.optString("default_branch"),
-                htmlUrl = item.optString("html_url"),
-                updatedAt = item.optString("updated_at").takeIf { it != "null" && it.isNotBlank() }
+                name = item.optString("name"),
+                status = item.optString("status"),
+                conclusion = item.optString("conclusion").takeIf { it.isNotBlank() && it != "null" }
+            )
+        }
+    }
+
+    fun listArtifacts(accessToken: String, repository: String, runId: Long): List<GitHubArtifact> {
+        val artifacts = JSONObject(getJson(accessToken, "/repos/${repositoryPath(repository)}/actions/runs/$runId/artifacts?per_page=100"))
+            .optJSONArray("artifacts") ?: JSONArray()
+        return (0 until artifacts.length()).mapNotNull { index ->
+            val item = artifacts.optJSONObject(index) ?: return@mapNotNull null
+            GitHubArtifact(
+                id = item.optLong("id"),
+                name = item.optString("name"),
+                sizeBytes = item.optLong("size_in_bytes"),
+                expired = item.optBoolean("expired"),
+                expiresAt = item.optString("expires_at").takeIf { it.isNotBlank() && it != "null" }
             )
         }
     }

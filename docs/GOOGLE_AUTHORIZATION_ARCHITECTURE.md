@@ -68,3 +68,10 @@ Essa arquitetura evita colocar client secret, chave de conta de serviço ou toke
 Depois do diagnóstico do projeto, o app interpreta a lista de serviços habilitados e apresenta o estado de APIs comuns: Firebase Management, Cloud Firestore, Firebase Authentication (Identity Toolkit), Cloud Storage for Firebase, Firebase Hosting e Cloud Build.
 
 Esse painel é informativo: uma API não listada não significa automaticamente que o projeto esteja incorreto, pois a necessidade depende das escolhas do questionário. A versão atual não ativa APIs, não altera IAM e não associa faturamento. O resultado é vinculado ao Project ID exato do relatório importado; ao trocar o projeto, o resumo anterior não é tratado como diagnóstico do novo destino.
+## Cruzamento do questionário com APIs
+
+A tela de análise agora deriva uma lista de APIs a partir das respostas: Authentication quando há login; Firestore quando há dados; Storage quando há arquivos; Hosting quando a plataforma inclui web; Cloud Build como possibilidade opcional para fluxos avançados de implantação/processamento. Firebase Management API aparece como requisito de gerenciamento do Firebase.
+
+Quando existe diagnóstico importado do mesmo Project ID selecionado, cada item é comparado com os serviços habilitados no relatório e marcado como ativo ou pendente. Sem projeto selecionado ou sem diagnóstico correspondente, o app não presume o estado das APIs.
+
+No modo custo zero, Storage e Cloud Build com risco de exigir faturamento são destacados como bloqueados para configuração automática. A classificação é conservadora e não substitui a verificação dos limites e preços vigentes do serviço. Nenhuma API é ativada por esta análise; ela apenas prepara a lista de trabalho.

@@ -726,6 +726,7 @@ cloudshell download geivia-projects.json"""
                 val array = JSONArray(raw)
                 val clean = JSONArray()
                 val projects = mutableListOf<CloudProject>()
+                var confirmedAbsentProjectId = ""
                 for (index in 0 until array.length()) {
                     val item = array.optJSONObject(index) ?: continue
                     val id = item.optString("projectId").trim()
@@ -733,6 +734,10 @@ cloudshell download geivia-projects.json"""
                         val name = item.optString("name").ifBlank { id }
                         val number = item.optString("projectNumber")
                         val state = item.optString("lifecycleState")
+                        if (state == "NOT_FOUND_CONFIRMED") {
+                            confirmedAbsentProjectId = id
+                            continue
+                        }
                         val safe = org.json.JSONObject().apply {
                             put("projectId", id)
                             put("name", name)
@@ -743,23 +748,60 @@ cloudshell download geivia-projects.json"""
                         projects.add(CloudProject(id, name, number, state))
                     }
                 }
-                if (projects.isEmpty()) throw IllegalStateException("O JSON não contém projetos com projectId.")
+                if (projects.isEmpty() && confirmedAbsentProjectId.isBlank()) {
+                    throw IllegalStateException("O JSON não contém projetos válidos nem confirmação NOT_FOUND.")
+                }
                 prefs.edit().putString("cloud_projects_json", clean.toString()).apply()
-                projects
-            }.onSuccess {
-                importedProjects = it
+                projects to confirmedAbsentProjectId
+            }.onSuccess { result ->
+                importedProjects = result.first
+                val confirmedAbsentId = result.second
                 val pendingId = prefs.getString("pending_project_creation_id", null).orEmpty()
-                if (pendingId.isNotBlank() && it.any { project -> project.projectId == pendingId && project.lifecycleState.equals("ACTIVE", ignoreCase = true) }) {
-                    runCatching {
-                        val current = workflowProgressStore.get(pendingId, "project_creation")
-                        if (current.state == WorkflowStepState.IN_PROGRESS || current.state == WorkflowStepState.UNKNOWN) {
-                            workflowProgressStore.reconcileCompleted(pendingId, "project_creation", "Project ID localizado em inventário importado: $pendingId.")
+                val activeProjectFound = pendingId.isNotBlank() &&
+                    result.first.any { project -> project.projectId == pendingId && project.lifecycleState.equals("ACTIVE", ignoreCase = true) }
+                when {
+                    activeProjectFound -> {
+                        val reconciled = runCatching {
+                            val current = workflowProgressStore.get(pendingId, "project_creation")
+                            if (current.state == WorkflowStepState.IN_PROGRESS || current.state == WorkflowStepState.UNKNOWN) {
+                                workflowProgressStore.reconcileCompleted(pendingId, "project_creation", "Project ID localizado em inventário importado com estado ACTIVE: $pendingId.")
+                            } else {
+                                throw IllegalStateException("A operação não está aguardando reconciliação.")
+                            }
+                        }
+                        if (reconciled.isSuccess) {
+                            prefs.edit().remove("pending_project_creation_id").remove("pending_project_creation_name").apply()
+                            importStatus = "Projeto $pendingId confirmado como ACTIVE. Operação reconciliada; selecione-o explicitamente na lista."
+                        } else {
+                            importStatus = reconciled.exceptionOrNull()?.message ?: "Não foi possível reconciliar a criação."
                         }
                     }
-                    prefs.edit().remove("pending_project_creation_id").remove("pending_project_creation_name").apply()
-                    importStatus = "Projeto $pendingId localizado. Operação reconciliada; selecione-o explicitamente na lista."
-                } else {
-                    importStatus = "Importação concluída: ${it.size} projeto(s) lido(s). A seleção anterior foi preservada."
+                    pendingId.isNotBlank() && confirmedAbsentId == pendingId -> {
+                        val reconciled = runCatching {
+                            val current = workflowProgressStore.get(pendingId, "project_creation")
+                            if (current.state == WorkflowStepState.IN_PROGRESS) {
+                                workflowProgressStore.markUnknown(pendingId, "project_creation", "Reconciliação manual consultou o mesmo Project ID.")
+                            }
+                            workflowProgressStore.reconcileAbsent(
+                                pendingId,
+                                "project_creation",
+                                "Cloud Shell retornou NOT_FOUND explícito para o mesmo Project ID: $pendingId.",
+                                userAcknowledged = true
+                            )
+                        }
+                        if (reconciled.isSuccess) {
+                            prefs.edit().remove("pending_project_creation_id").remove("pending_project_creation_name").apply()
+                            importStatus = "O Google confirmou que $pendingId não existe. A operação anterior foi encerrada; uma nova tentativa exige outra confirmação explícita."
+                        } else {
+                            importStatus = reconciled.exceptionOrNull()?.message ?: "Não foi possível reconciliar a ausência."
+                        }
+                    }
+                    pendingId.isNotBlank() -> {
+                        importStatus = "Inventário importado, mas a operação $pendingId continua pendente. Somente o mesmo ID pode ser reconciliado; não inicie outra criação."
+                    }
+                    else -> {
+                        importStatus = "Importação concluída: ${result.first.size} projeto(s) lido(s). A seleção anterior foi preservada."
+                    }
                 }
             }.onFailure {
                 importStatus = it.message ?: "Não foi possível importar o JSON."

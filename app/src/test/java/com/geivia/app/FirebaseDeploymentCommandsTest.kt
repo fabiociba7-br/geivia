@@ -45,7 +45,7 @@ class FirebaseDeploymentCommandsTest {
         assertTrue(command.contains("exit 25"))
         assertTrue(command.contains("if [ -e \"\$WORKDIR\" ]; then"))
         assertTrue(command.contains("! -f \"\$WORKDIR/.geivia-generated\""))
-        assertTrue(command.contains("Nada foi sobrescrito."))
+        assertTrue(command.contains("A pasta de destino não corresponde exatamente à estrutura gerada pelo GEIVIA. Nada foi alterado."))
     }
 
     @Test

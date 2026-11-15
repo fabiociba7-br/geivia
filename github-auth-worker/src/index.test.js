@@ -95,6 +95,63 @@ test("exchange validates PKCE verifier before contacting GitHub", async () => {
   }
 });
 
+test("refresh rejects invalid refresh token before contacting GitHub", async () => {
+  const originalFetch = globalThis.fetch;
+  let called = false;
+  globalThis.fetch = async () => {
+    called = true;
+    return new Response("{}", { status: 200 });
+  };
+  try {
+    const response = await worker.fetch(new Request("https://worker.example/refresh", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_id: env.GITHUB_CLIENT_ID,
+        callback_url: env.GITHUB_CALLBACK_URL,
+        refresh_token: "short"
+      })
+    }), env);
+    assert.equal(response.status, 400);
+    assert.equal(called, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("refresh rotates the user token through GitHub and returns the new pair", async () => {
+  const originalFetch = globalThis.fetch;
+  let sentBody;
+  globalThis.fetch = async (url, init) => {
+    assert.equal(url, "https://github.com/login/oauth/access_token");
+    sentBody = JSON.parse(init.body);
+    return new Response(JSON.stringify({
+      access_token: "ghu_rotated_access",
+      refresh_token: "ghr_rotated_refresh",
+      expires_in: 28800
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  try {
+    const response = await worker.fetch(new Request("https://worker.example/refresh", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client_id: env.GITHUB_CLIENT_ID,
+        callback_url: env.GITHUB_CALLBACK_URL,
+        refresh_token: "ghr_original_refresh_token_value"
+      })
+    }), env);
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.access_token, "ghu_rotated_access");
+    assert.equal(payload.refresh_token, "ghr_rotated_refresh");
+    assert.equal(sentBody.grant_type, "refresh_token");
+    assert.equal(sentBody.client_secret, env.GITHUB_CLIENT_SECRET);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("exchange returns GitHub token response and never logs or stores it", async () => {
   const originalFetch = globalThis.fetch;
   let sentBody;

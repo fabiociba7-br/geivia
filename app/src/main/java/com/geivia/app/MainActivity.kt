@@ -70,11 +70,28 @@ private fun GeiviaApp() {
         }
     }
     var workspaceName by rememberSaveable { mutableStateOf(prefs.getString("workspace_name", "GEIVIA-" + workspaceId.removePrefix("GEIVIA-")) ?: ("GEIVIA-" + workspaceId.removePrefix("GEIVIA-"))) }
-    var page by rememberSaveable {
-        mutableStateOf(if (prefs.getBoolean("cloud_setup_completed", false)) "welcome" else "workspace_setup")
+    val validWorkflowPages = setOf("workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "google_access")
+    val savedCheckpoint = remember {
+        prefs.getString("workflow_checkpoint", null)?.takeIf { it in validWorkflowPages }
+            ?: if (prefs.getBoolean("cloud_setup_completed", false)) "questions" else "workspace_setup"
     }
-    var index by rememberSaveable { mutableIntStateOf(0) }
+    var page by rememberSaveable { mutableStateOf("welcome") }
+    var index by rememberSaveable {
+        mutableIntStateOf(prefs.getInt("workflow_question_index", 0).coerceAtLeast(0))
+    }
     var costMode by rememberSaveable { mutableStateOf(prefs.getString("cost_mode", "") ?: "") }
+
+    // Central checkpoint: every screen transition is persisted, so force-closing
+    // the app does not send the user back to the beginning of onboarding.
+    LaunchedEffect(page, index) {
+        if (page != "welcome") {
+            prefs.edit()
+                .putString("workflow_checkpoint", page)
+                .putInt("workflow_question_index", index)
+                .putLong("workflow_checkpoint_updated_at", System.currentTimeMillis())
+                .apply()
+        }
+    }
 
     val questions = buildList {
         add(Question("platform", "Onde seu projeto vai funcionar?", "Você pode escolher mais de uma opção.", listOf("Aplicativo Android", "Site ou sistema web", "Android e web"), true))
@@ -92,9 +109,9 @@ private fun GeiviaApp() {
     MaterialTheme(colorScheme = lightColorScheme(primary = Blue, secondary = Orange, background = Color(0xFFF7FBFD), surface = Color.White, onSurface = Ink)) {
         Surface(Modifier.fillMaxSize(), color = Color(0xFFF7FBFD)) {
             when (page) {
-                "welcome" -> WelcomeScreen {
-                    page = if (workspaceName.isBlank()) "workspace_setup" else "questions"
-                    index = 0
+                "welcome" -> WelcomeScreen(hasCheckpoint = prefs.contains("workflow_checkpoint")) {
+                    page = savedCheckpoint
+                    if (page == "questions") index = prefs.getInt("workflow_question_index", 0).coerceAtLeast(0)
                 }
                 "workspace_setup" -> WorkspaceSetupScreen(
                     initialName = workspaceName,
@@ -155,7 +172,7 @@ private fun GeiviaApp() {
 
 
 @Composable
-private fun WelcomeScreen(onStart: () -> Unit) {
+private fun WelcomeScreen(hasCheckpoint: Boolean, onStart: () -> Unit) {
     Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White, Color(0xFFF0F8FC), Color(0xFFE7F3F9)))).verticalScroll(rememberScrollState()).padding(26.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         BrandMark()
         Spacer(Modifier.height(18.dp))
@@ -166,7 +183,7 @@ private fun WelcomeScreen(onStart: () -> Unit) {
         Spacer(Modifier.height(10.dp))
         Text("Conte o que deseja criar. A GEIVIA vai organizar as etapas e explicar quais recursos você precisa, inclusive as opções sem custo.", color = Muted, fontSize = 15.sp, lineHeight = 23.sp, textAlign = TextAlign.Center)
         Spacer(Modifier.height(28.dp))
-        Button(onClick = onStart, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Text("Começar", Modifier.padding(vertical = 7.dp), fontSize = 16.sp, fontWeight = FontWeight.Bold) }
+        Button(onClick = onStart, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Text(if (hasCheckpoint) "Continuar de onde parei" else "Começar", Modifier.padding(vertical = 7.dp), fontSize = 16.sp, fontWeight = FontWeight.Bold) }
         Spacer(Modifier.height(12.dp))
         Text("Seu ambiente GEIVIA é identificado neste aparelho. A conexão com o Google só acontece mediante configuração e autorização explícitas.", color = Muted, fontSize = 12.sp, textAlign = TextAlign.Center)
     }

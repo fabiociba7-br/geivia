@@ -75,3 +75,10 @@ A tela de análise agora deriva uma lista de APIs a partir das respostas: Authen
 Quando existe diagnóstico importado do mesmo Project ID selecionado, cada item é comparado com os serviços habilitados no relatório e marcado como ativo ou pendente. Sem projeto selecionado ou sem diagnóstico correspondente, o app não presume o estado das APIs.
 
 No modo custo zero, Storage e Cloud Build com risco de exigir faturamento são destacados como bloqueados para configuração automática. A classificação é conservadora e não substitui a verificação dos limites e preços vigentes do serviço. Nenhuma API é ativada por esta análise; ela apenas prepara a lista de trabalho.
+## Plano de execução no painel
+
+O painel pós-questionário organiza as etapas de configuração com base nas respostas e no projeto selecionado: confirmar o destino existente, importar diagnóstico vinculado ao mesmo Project ID, avaliar somente os serviços relacionados às respostas, revisar limites gratuitos e custos, e exigir autorização individual antes de qualquer alteração.
+
+O plano exibido nesta etapa é informativo e não executa comandos nem habilita APIs. A implementação de alterações deve ser feita em uma etapa posterior, com confirmação por serviço, apresentação do comando exato, execução pelo usuário no Cloud Shell e registro verificável do resultado. No modo custo zero, qualquer serviço que exija faturamento deve ser bloqueado, sem ativar Blaze ou associar forma de pagamento.
+
+O relatório de diagnóstico só é considerado correspondente quando o `project.projectId` é exatamente igual ao projeto selecionado no aparelho.

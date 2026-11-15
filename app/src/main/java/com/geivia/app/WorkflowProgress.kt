@@ -36,6 +36,15 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
         private const val KEY_HISTORY = "workflow_step_history_v1"
     }
 
+    /** Returns a safe diagnostic without clearing or rewriting corrupted persisted data. */
+    @Synchronized
+    fun healthError(): String? = runCatching {
+        readRecords()
+        null
+    }.getOrElse { error ->
+        error.message ?: "O histórico local está inválido. As operações foram bloqueadas."
+    }
+
     @Synchronized
     fun get(projectId: String, stepId: String): WorkflowStepRecord {
         require(projectId.isNotBlank()) { "Project ID obrigatório." }

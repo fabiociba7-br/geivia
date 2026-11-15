@@ -18,7 +18,7 @@ class WorkflowProgressStoreTest {
         val blocked = org.junit.Assert.assertThrows(IllegalStateException::class.java) {
             store.confirmAndStart("project-one", "create", "op-two", "Must not retry")
         }
-        assertTrue(blocked.message.orEmpty().contains("não está liberada"))
+        assertTrue(blocked.message.orEmpty().contains("nova confirmação explícita"))
 
         store.reconcileAbsent("project-one", "create", "Fresh describe returned NOT_FOUND", true)
         assertEquals(WorkflowStepState.FAILED, store.get("project-one", "create").state)

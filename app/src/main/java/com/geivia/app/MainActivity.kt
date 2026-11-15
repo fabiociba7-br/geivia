@@ -1064,6 +1064,56 @@ cloudshell download geivia-projects.json"""
             dismissButton = { TextButton(onClick = { showProjectCreateDialog = false }) { Text("Cancelar") } }
         )
     }
+    if (showFirestoreRulesDialog) {
+        AlertDialog(
+            onDismissRequest = { showFirestoreRulesDialog = false },
+            title = { Text("Preparar regras iniciais restritivas?") },
+            text = { Text("Projeto: $selectedProjectId\n\nO comando verifica se já existe uma publicação ativa de regras Firestore. Se existir, interrompe sem sobrescrever. Se não existir, publica uma regra inicial que nega todas as leituras e gravações. Isso protege os dados, mas também impede o aplicativo cliente de acessar o banco até que regras específicas sejam criadas, testadas e publicadas.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    runCatching {
+                        workflowProgressStore.waitForConfirmation(selectedProjectId, "firestore_rules", "Revisar publicação inicial de regras deny-all; não substitui regras existentes.")
+                        workflowProgressStore.confirmAndStart(selectedProjectId, "firestore_rules", "firestore-rules-$selectedProjectId", "Comando preparado; aguardando execução manual e confirmação.")
+                    }.onFailure {
+                        firestoreRulesStatus = it.message ?: "Não foi possível registrar a etapa."
+                        showFirestoreRulesDialog = false
+                        return@TextButton
+                    }
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("GEIVIA regras Firestore", firestoreRulesCommand))
+                    firestoreRulesStatus = "Comando copiado. Execute no Cloud Shell. A publicação inicial bloqueia todo acesso até personalizar as regras."
+                    Toast.makeText(context, "Comando de regras copiado.", Toast.LENGTH_LONG).show()
+                    showFirestoreRulesDialog = false
+                }) { Text("Confirmar e copiar") }
+            },
+            dismissButton = { TextButton(onClick = { showFirestoreRulesDialog = false }) { Text("Cancelar") } }
+        )
+    }
+    if (showHostingDeployDialog) {
+        AlertDialog(
+            onDismissRequest = { showHostingDeployDialog = false },
+            title = { Text("Publicar página inicial no Hosting?") },
+            text = { Text("Projeto: $selectedProjectId\n\nO comando cria ou reutiliza o site padrão do mesmo projeto e publica uma página demonstrativa simples. Ele não publica o código real do seu produto. Se a pasta local já existir e não tiver sido criada pelo GEIVIA, o comando para sem sobrescrever arquivos.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    runCatching {
+                        workflowProgressStore.waitForConfirmation(selectedProjectId, "hosting_deploy", "Revisar criação/reutilização do site padrão e publicação da página inicial.")
+                        workflowProgressStore.confirmAndStart(selectedProjectId, "hosting_deploy", "hosting-deploy-$selectedProjectId", "Comando preparado; aguardando deploy e teste manual da URL.")
+                    }.onFailure {
+                        hostingDeployStatus = it.message ?: "Não foi possível registrar a etapa."
+                        showHostingDeployDialog = false
+                        return@TextButton
+                    }
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("GEIVIA Hosting deploy", hostingStarterCommand))
+                    hostingDeployStatus = "Comando copiado. Execute no Cloud Shell e confira a URL HTTPS exibida ao final."
+                    Toast.makeText(context, "Comando de Hosting copiado.", Toast.LENGTH_LONG).show()
+                    showHostingDeployDialog = false
+                }) { Text("Confirmar e copiar") }
+            },
+            dismissButton = { TextButton(onClick = { showHostingDeployDialog = false }) { Text("Cancelar") } }
+        )
+    }
     if (showFirestoreCreateDialog) {
         AlertDialog(
             onDismissRequest = { showFirestoreCreateDialog = false },

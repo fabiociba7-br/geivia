@@ -947,6 +947,8 @@ cloudshell download geivia-projects.json"""
                                         enabled -> Text("Já habilitada — nenhuma ação necessária.", color = Color(0xFF236342), fontSize = 11.sp)
                                         blockedByCost -> Text("Bloqueada no modo custo zero: exige avaliação específica de limites e possível faturamento.", color = Color(0xFF9A5B13), fontSize = 11.sp)
                                         selectedProjectId.isBlank() -> Text("Selecione um projeto antes de preparar alterações.", color = Muted, fontSize = 11.sp)
+                                        prefs.getString("pending_api_service", null) != null && prefs.getString("pending_api_project_id", null) == selectedProjectId ->
+                                            Text("Há uma ação aguardando verificação. Importe um novo diagnóstico antes de preparar outra API.", color = Color(0xFF9A5B13), fontSize = 11.sp, lineHeight = 15.sp)
                                         else -> Button(onClick = { selectedApiForConfirmation = api to label }, modifier = Modifier.fillMaxWidth()) {
                                             Text("Revisar e confirmar")
                                         }

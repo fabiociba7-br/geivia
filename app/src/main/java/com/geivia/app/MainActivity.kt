@@ -1295,8 +1295,12 @@ cloudshell download geivia-projects.json"""
                             Text("A autenticação básica do Firebase oferece métodos sem custo no plano Spark. Configure os provedores diretamente no Console Firebase. Se o projeto ainda não for um projeto Firebase, adicione Firebase ao projeto Google Cloud existente — não crie outro projeto. Não faça upgrade para Identity Platform nem habilite login por telefone/SMS no fluxo custo zero.", color = Muted, fontSize = 11.sp, lineHeight = 16.sp)
                             Spacer(Modifier.height(8.dp))
                             if (selectedProjectId.isNotBlank()) {
-                                Button(onClick = { openGoogleCloud("https://console.firebase.google.com/project/$selectedProjectId/authentication/providers") }, modifier = Modifier.fillMaxWidth()) {
-                                    Text("Abrir provedores de autenticação")
+                                if ("identitytoolkit.googleapis.com" in enabledFirebaseApis) {
+                                    Button(onClick = { openGoogleCloud("https://console.firebase.google.com/project/$selectedProjectId/authentication/providers") }, modifier = Modifier.fillMaxWidth()) {
+                                        Text("Abrir provedores de autenticação")
+                                    }
+                                } else {
+                                    Text("Primeiro habilite identitytoolkit.googleapis.com na etapa de APIs e importe um novo diagnóstico do mesmo projeto. Depois disso, abra os provedores de login.", color = Color(0xFF9A641B), fontSize = 10.sp, lineHeight = 14.sp)
                                 }
                             }
                             Text("No Console: abra Método de login e ative somente os provedores necessários, como e-mail/senha ou Google. A ativação da Identity Toolkit API, isoladamente, não configura nenhum provedor.", color = Ink, fontSize = 11.sp, lineHeight = 16.sp)

@@ -2,6 +2,16 @@ package com.geivia.app
 
 import android.content.Context
 import android.content.Intent
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import com.google.android.gms.auth.api.identity.AuthorizationRequest
+import com.google.android.gms.auth.api.identity.AuthorizationResult
+import com.google.android.gms.auth.api.identity.Identity
+import com.google.android.gms.auth.api.identity.RevokeAccessRequest
+import com.google.android.gms.common.api.Scope
+import kotlinx.coroutines.launch
 import android.os.Bundle
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.ComponentActivity
@@ -296,48 +306,216 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
 
 @Composable
 private fun GoogleAccessScreen(onBack: () -> Unit) {
-    val stages = listOf(
-        Triple("1. Identidade Google", "Nome, e-mail e identificador básico da conta para identificar a sessão.", "openid · userinfo.email · userinfo.profile"),
-        Triple("2. Projetos Firebase", "Listar somente os projetos Firebase que a conta conectada pode acessar. Nenhuma configuração será alterada.", "firebase.readonly"),
-        Triple("3. Projetos Google Cloud", "Localizar projetos Cloud acessíveis à conta, inclusive projetos sem Firebase ativado.", "cloudplatformprojects.readonly"),
-        Triple("4. Serviços e APIs", "Consultar quais APIs estão habilitadas no projeto selecionado. A conta também precisa da permissão IAM de leitura.", "cloud-platform.read-only"),
-        Triple("5. Diagnóstico de faturamento", "Consultar somente informações de faturamento que a conta tenha permissão para visualizar. Não altera plano nem associa pagamento.", "cloud-billing.readonly")
+    val context = LocalContext.current
+    val activity = context as? Activity
+    val prefs = remember { context.getSharedPreferences("geivia_google_access", Context.MODE_PRIVATE) }
+    val authClient = remember(activity) { activity?.let { Identity.getAuthorizationClient(it) } }
+    val scope = rememberCoroutineScope()
+    var accountLabel by remember { mutableStateOf(prefs.getString("account_label", "") ?: "") }
+    var accountSub by remember { mutableStateOf(prefs.getString("account_sub", "") ?: "") }
+    val grantedScopes = remember { mutableStateListOf<String>().apply { addAll(prefs.getStringSet("granted_scopes", emptySet()).orEmpty()) } }
+    val projects = remember { mutableStateListOf<GoogleProject>() }
+    var selectedProjectId by rememberSaveable { mutableStateOf("") }
+    var enabledServices by remember { mutableStateOf<List<String>>(emptyList()) }
+    var billingStatus by remember { mutableStateOf("") }
+    var status by remember { mutableStateOf("Nenhuma conta conectada.") }
+    var busy by remember { mutableStateOf(false) }
+    var pendingStage by remember { mutableIntStateOf(-1) }
+
+    val stageScopes = listOf(
+        listOf("openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"),
+        listOf("https://www.googleapis.com/auth/firebase.readonly"),
+        listOf("https://www.googleapis.com/auth/cloudplatformprojects.readonly"),
+        listOf("https://www.googleapis.com/auth/cloud-platform.read-only"),
+        listOf("https://www.googleapis.com/auth/cloud-billing.readonly")
     )
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp)) {
-        Text("GEIVIA", color = DeepBlue, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
-        Spacer(Modifier.height(24.dp))
-        Text("Sua conta Google, suas permissões.", color = Ink, fontSize = 25.sp, lineHeight = 31.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        Text("A conexão será feita com a conta que você escolher. Cada acesso será solicitado separadamente, somente quando você usar a função correspondente.", color = Muted, fontSize = 14.sp, lineHeight = 21.sp)
-        Spacer(Modifier.height(16.dp))
-        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF5E6)), shape = RoundedCornerShape(14.dp)) {
-            Column(Modifier.padding(15.dp)) {
-                Text("CONEXÃO AINDA NÃO ATIVADA", color = Color(0xFF77501A), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                Spacer(Modifier.height(6.dp))
-                Text("O GEIVIA ainda precisa do cadastro OAuth institucional do produto. Por isso, esta tela explica as permissões, mas não solicita login nem finge que a conta está conectada.", color = Color(0xFF77501A), fontSize = 13.sp, lineHeight = 19.sp)
+
+    fun consumeAuthorization(stage: Int, result: AuthorizationResult) {
+        val token = result.accessToken
+        val newlyGranted = result.grantedScopes.orEmpty().toSet()
+        val allGranted = (grantedScopes.toSet() + newlyGranted)
+        grantedScopes.clear()
+        grantedScopes.addAll(allGranted)
+        prefs.edit().putStringSet("granted_scopes", allGranted).apply()
+        if (token.isNullOrBlank()) {
+            status = "O Google não retornou um token de acesso. Nenhum dado foi consultado."
+            return
+        }
+        busy = true
+        status = "Permissão recebida. Consultando somente os dados autorizados..."
+        scope.launch {
+            try {
+                when (stage) {
+                    0 -> {
+                        val profile = GoogleApiRepository.getUserProfile(token)
+                        val name = profile.optString("name")
+                        val email = profile.optString("email")
+                        accountSub = profile.optString("sub")
+                        accountLabel = listOf(name, email).filter { it.isNotBlank() }.joinToString(" • ")
+                        prefs.edit().putString("account_sub", accountSub).putString("account_label", accountLabel).apply()
+                        status = if (accountLabel.isNotBlank()) "Conta identificada. As demais permissões continuam opcionais." else "A autorização foi recebida, mas o perfil não retornou nome ou e-mail."
+                    }
+                    1 -> {
+                        val found = GoogleApiRepository.listFirebaseProjects(token)
+                        mergeProjects(projects, found)
+                        status = "Consulta Firebase concluída: ${found.size} projeto(s) retornado(s)."
+                    }
+                    2 -> {
+                        val found = GoogleApiRepository.listCloudProjects(token)
+                        mergeProjects(projects, found)
+                        status = "Consulta Google Cloud concluída: ${found.size} projeto(s) retornado(s)."
+                    }
+                    3 -> {
+                        val project = projects.firstOrNull { it.projectId == selectedProjectId }
+                        if (project == null || project.projectNumber.isBlank()) throw IllegalStateException("Selecione um projeto que tenha número Google Cloud disponível.")
+                        enabledServices = GoogleApiRepository.listEnabledServices(token, project.projectNumber)
+                        status = "Diagnóstico concluído: ${enabledServices.size} serviço(s) habilitado(s) encontrado(s)."
+                    }
+                    4 -> {
+                        if (selectedProjectId.isBlank()) throw IllegalStateException("Selecione um projeto antes de consultar o faturamento.")
+                        billingStatus = GoogleApiRepository.getBillingInfo(token, selectedProjectId)
+                        status = "Consulta de faturamento concluída para $selectedProjectId."
+                    }
+                }
+            } catch (error: Exception) {
+                status = error.message ?: "Não foi possível concluir a consulta. Verifique o acesso da conta e as APIs do projeto."
+            } finally {
+                busy = false
             }
         }
+    }
+
+    val authorizationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+        val stage = pendingStage
+        pendingStage = -1
+        if (result.resultCode == Activity.RESULT_OK && result.data != null && authClient != null && stage >= 0) {
+            runCatching { authClient.getAuthorizationResultFromIntent(result.data!!) }
+                .onSuccess { consumeAuthorization(stage, it) }
+                .onFailure { status = it.message ?: "A autorização não foi concluída." }
+        } else {
+            status = "Autorização cancelada. Nenhuma consulta foi executada."
+        }
+    }
+
+    fun requestStage(stage: Int) {
+        val client = authClient
+        if (client == null) { status = "Não foi possível iniciar o Google Play Services neste aparelho."; return }
+        if (stage == 3 && projects.none { it.projectId == selectedProjectId }) { status = "Primeiro consulte os projetos e selecione um projeto Google Cloud."; return }
+        if (stage == 4 && selectedProjectId.isBlank()) { status = "Selecione um projeto antes de consultar o faturamento."; return }
+        busy = true
+        status = "Preparando o consentimento do Google..."
+        val request = AuthorizationRequest.builder()
+            .setRequestedScopes(stageScopes[stage].map { Scope(it) })
+            .build()
+        client.authorize(request)
+            .addOnSuccessListener { authorization ->
+                busy = false
+                if (authorization.hasResolution()) {
+                    val pendingIntent = authorization.pendingIntent
+                    if (pendingIntent == null) { status = "O Google solicitou uma etapa de autorização, mas não retornou a tela necessária."; return@addOnSuccessListener }
+                    pendingStage = stage
+                    authorizationLauncher.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+                } else {
+                    consumeAuthorization(stage, authorization)
+                }
+            }
+            .addOnFailureListener { error ->
+                busy = false
+                status = "Falha ao iniciar autorização Google: " + (error.message ?: "verifique o cadastro OAuth Android e a assinatura SHA-1 do APK.")
+            }
+    }
+
+    fun disconnect() {
+        val client = authClient
+        if (client == null) { status = "Google Play Services indisponível."; return }
+        busy = true
+        client.revokeAccess(RevokeAccessRequest.builder().build())
+            .addOnSuccessListener {
+                prefs.edit().clear().apply()
+                accountLabel = ""; accountSub = ""; grantedScopes.clear(); projects.clear()
+                selectedProjectId = ""; enabledServices = emptyList(); billingStatus = ""
+                busy = false
+                status = "Acesso revogado e dados locais da integração removidos."
+            }
+            .addOnFailureListener { error ->
+                busy = false
+                status = "Não foi possível confirmar a revogação no Google: " + (error.message ?: "tente novamente.")
+            }
+    }
+
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp)) {
+        Text("GEIVIA", color = DeepBlue, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
         Spacer(Modifier.height(20.dp))
-        stages.forEach { stage ->
-            Card(Modifier.fillMaxWidth().padding(bottom = 10.dp), colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {
-                Column(Modifier.padding(15.dp)) {
-                    Text(stage.first, color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(6.dp))
-                    Text(stage.second, color = Muted, fontSize = 13.sp, lineHeight = 19.sp)
+        Text("Sua conta Google, suas permissões.", color = Ink, fontSize = 25.sp, lineHeight = 31.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        Text("Cada etapa abre o consentimento oficial do Google separadamente. Você escolhe a conta e pode negar permissões sem perder o uso offline do GEIVIA.", color = Muted, fontSize = 14.sp, lineHeight = 21.sp)
+        Spacer(Modifier.height(14.dp))
+        Card(colors = CardDefaults.cardColors(containerColor = if (accountLabel.isNotBlank()) Color(0xFFEAF6EF) else Color(0xFFFFF5E6)), shape = RoundedCornerShape(14.dp)) {
+            Column(Modifier.padding(15.dp)) {
+                Text(if (accountLabel.isNotBlank()) "CONTA AUTORIZADA" else "CONFIGURAÇÃO OAUTH NECESSÁRIA", color = if (accountLabel.isNotBlank()) Color(0xFF236342) else Color(0xFF77501A), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Spacer(Modifier.height(6.dp))
+                Text(if (accountLabel.isNotBlank()) accountLabel else "Para o consentimento funcionar, o publicador do GEIVIA precisa registrar o cliente OAuth Android para com.geivia.app e a assinatura SHA-1 usada neste APK. Isso não exige publicar na Play Store.", color = Ink, fontSize = 13.sp, lineHeight = 19.sp)
+            }
+        }
+        if (accountSub.isNotBlank()) { Spacer(Modifier.height(5.dp)); Text("Identificador da conta recebido do Google.", color = Muted, fontSize = 11.sp) }
+        Spacer(Modifier.height(14.dp))
+        Text("STATUS: $status", color = Blue, fontSize = 12.sp, lineHeight = 18.sp)
+        if (busy) { Spacer(Modifier.height(8.dp)); LinearProgressIndicator(Modifier.fillMaxWidth()) }
+        Spacer(Modifier.height(18.dp))
+        val stageInfo = listOf(
+            Triple("1. Identidade Google", "Nome, e-mail e identificador básico. Não acessa Gmail, Drive, Agenda ou contatos.", "openid · userinfo.email · userinfo.profile"),
+            Triple("2. Projetos Firebase", "Lista os projetos Firebase que a conta pode acessar. Não altera configurações.", "firebase.readonly"),
+            Triple("3. Projetos Google Cloud", "Lista projetos Google Cloud acessíveis à conta.", "cloudplatformprojects.readonly"),
+            Triple("4. Serviços e APIs", "Consulta APIs habilitadas no projeto selecionado. Exige também permissão IAM de leitura.", "cloud-platform.read-only"),
+            Triple("5. Faturamento", "Consulta somente se o projeto selecionado tem faturamento associado. Não altera plano nem pagamento.", "cloud-billing.readonly")
+        )
+        stageInfo.forEachIndexed { index, item ->
+            Card(Modifier.fillMaxWidth().padding(bottom = 9.dp), colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {
+                Column(Modifier.padding(14.dp)) {
+                    Text(item.first, color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(5.dp))
+                    Text(item.second, color = Muted, fontSize = 12.sp, lineHeight = 18.sp)
+                    Spacer(Modifier.height(7.dp))
+                    Text("Escopo: " + item.third, color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(8.dp))
-                    Text("Permissão planejada: " + stage.third, color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    Button(onClick = { requestStage(index) }, enabled = !busy && (index != 3 || selectedProjectId.isNotBlank()) && (index != 4 || selectedProjectId.isNotBlank()), modifier = Modifier.fillMaxWidth()) {
+                        Text(if (stageScopes[index].all { it in grantedScopes }) "Atualizar autorização / consultar" else "Autorizar e consultar")
+                    }
+                    if (stageScopes[index].any { it in grantedScopes }) Text("Permissão registrada como concedida neste aparelho.", color = Color(0xFF236342), fontSize = 10.sp)
                 }
             }
         }
-        Spacer(Modifier.height(8.dp))
-        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF6EF)), shape = RoundedCornerShape(14.dp)) {
-            Text("Segurança: consultar dados não autoriza alterações. Criar projetos, ativar APIs, publicar ou modificar faturamento exigirá uma autorização adicional e uma confirmação específica dentro do GEIVIA.", Modifier.padding(15.dp), color = Color(0xFF236342), fontSize = 13.sp, lineHeight = 19.sp)
+        if (projects.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            Text("PROJETOS ENCONTRADOS", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            Spacer(Modifier.height(7.dp))
+            projects.forEach { project ->
+                Card(Modifier.fillMaxWidth().padding(bottom = 7.dp).clickable { selectedProjectId = project.projectId; prefs.edit().putString("selected_project_id", project.projectId).apply() }, colors = CardDefaults.cardColors(containerColor = if (selectedProjectId == project.projectId) Color(0xFFE8F4FA) else Color.White), shape = RoundedCornerShape(12.dp)) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text(project.displayName, color = Ink, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        Text(project.projectId + if (project.projectNumber.isNotBlank()) " • " + project.projectNumber else "", color = Muted, fontSize = 11.sp)
+                        if (selectedProjectId == project.projectId) Text("Projeto selecionado", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
         }
-        Spacer(Modifier.height(18.dp))
-        Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Voltar ao painel") }
+        if (enabledServices.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Text("SERVIÇOS HABILITADOS", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            enabledServices.forEach { Text("• " + it, color = Muted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 2.dp)) }
+        }
+        if (billingStatus.isNotBlank()) { Spacer(Modifier.height(8.dp)); Text(billingStatus, color = Ink, fontSize = 13.sp) }
+        if (accountLabel.isNotBlank()) { Spacer(Modifier.height(14.dp)); OutlinedButton(onClick = { disconnect() }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Revogar acesso e desconectar") } }
+        Spacer(Modifier.height(10.dp))
+        OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Voltar ao painel") }
     }
 }
 
+private fun mergeProjects(target: MutableList<GoogleProject>, incoming: List<GoogleProject>) {
+    val merged = (target.toList() + incoming).associateBy { it.projectId }.values.toList()
+    target.clear()
+    target.addAll(merged)
+}
 private fun shareProjectPlan(context: Context, answers: Map<String, String>, costMode: String) {
     val labels = mapOf(
         "platform" to "Plataforma",

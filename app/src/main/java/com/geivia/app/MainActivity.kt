@@ -446,7 +446,7 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
                 workflowCatalog.forEach { (stepId, label) ->
                     val record = workflowRecords[stepId]
                     val state = record?.state ?: WorkflowStepState.NOT_STARTED
-                    val stateLabel = when (state) {
+                    val stateLabel = if (stepId == "storage" && costMode == "zero") "Bloqueada no modo custo zero" else when (state) {
                         WorkflowStepState.NOT_STARTED -> "Não iniciada"
                         WorkflowStepState.IN_PROGRESS -> "Aguardando diagnóstico"
                         WorkflowStepState.WAITING_CONFIRMATION -> "Aguardando confirmação"
@@ -455,7 +455,7 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
                         WorkflowStepState.USER_CONFIRMED -> "Declarada concluída pelo usuário"
                         WorkflowStepState.FAILED -> "Falhou — revisar antes de tentar"
                     }
-                    val stateColor = when (state) {
+                    val stateColor = if (stepId == "storage" && costMode == "zero") Color(0xFFB05A18) else when (state) {
                         WorkflowStepState.COMPLETED, WorkflowStepState.USER_CONFIRMED -> Color(0xFF238653)
                         WorkflowStepState.UNKNOWN, WorkflowStepState.FAILED -> Color(0xFFB05A18)
                         WorkflowStepState.IN_PROGRESS, WorkflowStepState.WAITING_CONFIRMATION -> Color(0xFF9A641B)

@@ -96,3 +96,9 @@ O botão de confirmação apenas copia um comando por vez. O usuário continua r
 Após a execução manual, o usuário deve gerar e importar um novo diagnóstico somente leitura. O GEIVIA só registra a API como confirmada quando o relatório pertence ao mesmo Project ID e lista o serviço como habilitado. Um comando copiado não é considerado sucesso.
 
 No modo custo zero, Cloud Storage for Firebase e Cloud Build permanecem bloqueados nesta etapa por risco de limites/faturamento. O usuário não pode contornar esse bloqueio pela interface. A ativação de uma API não garante que o uso posterior do serviço seja gratuito; os limites e preços devem ser conferidos antes da utilização.
+
+## Histórico local das ações de API
+
+O app mantém no armazenamento local do aparelho um histórico limitado das últimas 30 ações preparadas e das confirmações recebidas por diagnóstico. Cada entrada registra o Project ID e o nome técnico da API. Uma ação preparada fica explicitamente como aguardando diagnóstico; só uma importação posterior que liste a API como habilitada, vinculada ao mesmo Project ID, gera uma entrada de confirmação.
+
+Esse histórico é informativo e local: não é um log oficial do Google Cloud, não prova quem executou o comando e não é sincronizado com outros dispositivos. Trocar o projeto limpa os indicadores visuais do diagnóstico anterior, mas preserva o histórico para consulta, sempre identificado pelo Project ID.

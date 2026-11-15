@@ -426,6 +426,7 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
             "project_diagnostic" to "Diagnóstico do projeto",
             "api_firebase_googleapis_com" to "Firebase Management API",
             "api_firestore_googleapis_com" to "Cloud Firestore API",
+            "api_firebaserules_googleapis_com" to "Firebase Rules API",
             "api_identitytoolkit_googleapis_com" to "Identity Toolkit API",
             "api_firebasestorage_googleapis_com" to "Cloud Storage for Firebase API",
             "api_firebasehosting_googleapis_com" to "Firebase Hosting API",
@@ -794,6 +795,7 @@ cloudshell download geivia-projects.json"""
     val firebaseApiChecks = listOf(
         "firebase.googleapis.com" to "Firebase Management API",
         "firestore.googleapis.com" to "Cloud Firestore API",
+        "firebaserules.googleapis.com" to "Firebase Rules API",
         "identitytoolkit.googleapis.com" to "Identity Toolkit API (não configura provedores)",
         "firebasestorage.googleapis.com" to "Cloud Storage for Firebase",
         "firebasehosting.googleapis.com" to "Firebase Hosting",
@@ -806,6 +808,7 @@ cloudshell download geivia-projects.json"""
         }
         if (answers["data"].orEmpty().isNotBlank() && !answers["data"].orEmpty().contains("Não vai guardar")) {
             add("firestore.googleapis.com" to "Cloud Firestore")
+            add("firebaserules.googleapis.com" to "Firebase Rules API (regras de segurança)")
         }
         if (answers["files"].orEmpty().isNotBlank() && !answers["files"].orEmpty().startsWith("Não terá")) {
             add("firebasestorage.googleapis.com" to "Cloud Storage for Firebase")

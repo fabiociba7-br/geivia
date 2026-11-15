@@ -1332,13 +1332,19 @@ cloudshell download geivia-projects.json"""
                             if (selectedProjectId.isNotBlank()) {
                                 val hostingRecord = workflowProgressStore.get(selectedProjectId, "hosting")
                                 when (hostingRecord.state) {
-                                    WorkflowStepState.NOT_STARTED, WorkflowStepState.WAITING_CONFIRMATION -> Button(onClick = {
-                                        runCatching {
-                                            workflowProgressStore.waitForConfirmation(selectedProjectId, "hosting", "Abrir o painel de Hosting do projeto existente.")
-                                            workflowProgressStore.confirmAndStart(selectedProjectId, "hosting", "hosting-manual-$selectedProjectId-${System.currentTimeMillis()}", "Configuração manual do Hosting iniciada.")
-                                            openGoogleCloud("https://console.firebase.google.com/project/$selectedProjectId/hosting/sites")
-                                        }.onFailure { apiActionStatus = it.message ?: "Não foi possível iniciar a etapa de Hosting." }
-                                    }, modifier = Modifier.fillMaxWidth()) { Text("Abrir configuração do Hosting") }
+                                    WorkflowStepState.NOT_STARTED, WorkflowStepState.WAITING_CONFIRMATION -> {
+                                        if ("firebasehosting.googleapis.com" in enabledFirebaseApis) {
+                                            Button(onClick = {
+                                                runCatching {
+                                                    workflowProgressStore.waitForConfirmation(selectedProjectId, "hosting", "Abrir o painel de Hosting do projeto existente.")
+                                                    workflowProgressStore.confirmAndStart(selectedProjectId, "hosting", "hosting-manual-$selectedProjectId-${System.currentTimeMillis()}", "Configuração manual do Hosting iniciada.")
+                                                    openGoogleCloud("https://console.firebase.google.com/project/$selectedProjectId/hosting/sites")
+                                                }.onFailure { apiActionStatus = it.message ?: "Não foi possível iniciar a etapa de Hosting." }
+                                            }, modifier = Modifier.fillMaxWidth()) { Text("Abrir configuração do Hosting") }
+                                        } else {
+                                            Text("Primeiro habilite firebasehosting.googleapis.com na etapa de APIs e importe um novo diagnóstico deste projeto. A configuração do Hosting ficará liberada depois da confirmação.", color = Color(0xFF9A641B), fontSize = 10.sp, lineHeight = 14.sp)
+                                        }
+                                    }
                                     WorkflowStepState.IN_PROGRESS -> Button(onClick = {
                                         runCatching {
                                             workflowProgressStore.confirmManualCompletion(selectedProjectId, "hosting", "O usuário confirmou que o site Firebase Hosting foi criado/configurado no projeto selecionado.")

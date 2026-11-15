@@ -227,7 +227,7 @@ class WorkflowProgressStoreTest {
     @Test
     fun backupValidationRejectsTamperedRawContent() {
         val backup = org.json.JSONObject(WorkflowProgressStore(InMemorySharedPreferences()).exportBackupJson())
-        backup.put("recordsRaw", "{\\"changed\\":true}")
+                backup.put("recordsRaw", "{\"changed\":true}")
         val result = WorkflowBackupValidator.validate(backup.toString())
         assertEquals(false, result.valid)
         assertTrue(result.message.contains("SHA-256"))

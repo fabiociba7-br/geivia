@@ -36,6 +36,30 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
         private const val KEY_HISTORY = "workflow_step_history_v1"
     }
 
+    /**
+     * Exports the exact persisted strings, including malformed data, without parsing,
+     * repairing, or changing them. The backup is a recovery aid, never an authorization
+     * to repeat an operation.
+     */
+    @Synchronized
+    fun exportBackupJson(): String {
+        val recordsRaw = prefs.getString(KEY_RECORDS, "{}") ?: "{}"
+        val historyRaw = prefs.getString(KEY_HISTORY, "[]") ?: "[]"
+        fun sha256(value: String): String = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(value.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+        return JSONObject().apply {
+            put("format", "GEIVIA_WORKFLOW_BACKUP")
+            put("version", 1)
+            put("exportedAt", System.currentTimeMillis())
+            put("recordsRaw", recordsRaw)
+            put("historyRaw", historyRaw)
+            put("recordsSha256", sha256(recordsRaw))
+            put("historySha256", sha256(historyRaw))
+            put("recoveryWarning", "Arquivo de backup não autoriza repetir operações. Reconcile cada operação pendente com diagnóstico atualizado do mesmo Project ID.")
+        }.toString(2)
+    }
+
     /** Returns a safe diagnostic without clearing or rewriting corrupted persisted data. */
     @Synchronized
     fun healthError(): String? = runCatching {

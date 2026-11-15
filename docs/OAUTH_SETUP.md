@@ -8,7 +8,7 @@ O usuário final não precisa criar projeto Google Cloud. A configuração OAuth
 
 ## Estado do código neste momento
 
-A versão offline permanece disponível. A integração Google foi retirada temporariamente do APK enquanto a identidade OAuth institucional não estiver configurada. Não exibir login falso nem simular uma conta conectada.
+O APK contém a tela de integração e o fluxo de autorização incremental baseado no Google Play services Authorization API, além das chamadas de leitura para perfil, projetos Firebase, projetos Cloud, serviços habilitados e estado de faturamento. A autorização real depende de um cliente OAuth Android registrado para o package e a SHA-1 da assinatura do APK. Até esse cadastro existir, o modo offline permanece disponível e a tela informa a pendência sem simular uma conta conectada.
 
 ## Antes de ativar OAuth real
 

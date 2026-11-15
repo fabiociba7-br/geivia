@@ -68,3 +68,11 @@ Na versão atual do aplicativo, a criação de projetos está deliberadamente de
 A tela de acesso ao Google Cloud importa a lista JSON e permite selecionar explicitamente um projeto existente. Ao selecionar, o app persiste localmente `selected_project_id`, `selected_project_name` e `selected_project_number`. Reimportar a lista não altera a seleção. Se o projeto selecionado não aparecer na lista mais recente, o app mantém o ID e alerta o usuário; nunca escolhe outro automaticamente. O painel mostra o destino atual ou informa que nenhum projeto foi selecionado.
 
 A seleção persistente identifica o destino escolhido, mas ainda não significa que o GEIVIA esteja executando operações de provisionamento diretamente. Antes de qualquer alteração futura no Cloud, a rotina deverá validar o acesso ao mesmo Project ID e usar esse ID em todas as chamadas; nenhuma etapa poderá inferir um novo projeto a partir do nome do ambiente GEIVIA.
+
+## Diagnóstico somente leitura do projeto selecionado
+
+Depois da seleção, o app gera um comando Cloud Shell usando o Project ID exato salvo. O comando valida o formato do ID, executa `gcloud projects describe` e `gcloud services list --enabled --project=...`, e reúne as respostas em `geivia-diagnostic.json`. Ele não cria projetos, não habilita APIs e não altera faturamento. Se a consulta falhar por inexistência ou falta de permissão, `set -e` interrompe o comando; o app não troca o ID nem sugere criar substituto.
+
+Ao importar o relatório, o app exige que `project.projectId` corresponda exatamente ao projeto selecionado. Relatórios de outro projeto são rejeitados. Ao trocar de projeto, o resumo do diagnóstico anterior deixa de ser exibido, evitando associar resultados antigos ao novo destino.
+
+Esta etapa é diagnóstico assistido pelo usuário no Cloud Shell. Ainda não é automação direta de alterações na nuvem.

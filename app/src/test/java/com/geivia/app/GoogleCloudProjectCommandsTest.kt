@@ -14,6 +14,8 @@ class GoogleCloudProjectCommandsTest {
         assertTrue(command.contains("if ! gcloud projects create"))
         assertTrue(command.contains("Consulta inconclusiva ou sem permissão. Nenhuma criação foi enviada."))
         assertTrue(command.contains("NÃO repita. Reconcilie o mesmo Project ID."))
+        assertTrue(command.contains(".lifecycleState == \"ACTIVE\""))
+        assertTrue(command.contains("O projeto existe, mas ainda não está ACTIVE."))
         assertEquals(1, Regex("gcloud projects create").findAll(command).count())
         assertFalse(command.contains("grep -Eqi"))
         assertFalse(command.contains("NOT_FOUND|not found"))

@@ -1,6 +1,7 @@
 package com.geivia.app
 
 import android.os.Bundle
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -37,6 +38,7 @@ private val Ink = Color(0xFF102B43)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         window.statusBarColor = android.graphics.Color.rgb(247, 251, 253)
         window.navigationBarColor = android.graphics.Color.rgb(247, 251, 253)

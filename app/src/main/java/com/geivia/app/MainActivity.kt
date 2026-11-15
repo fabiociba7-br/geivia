@@ -315,7 +315,7 @@ private fun GoogleAccessScreen(onBack: () -> Unit) {
     var accountSub by remember { mutableStateOf(prefs.getString("account_sub", "") ?: "") }
     val grantedScopes = remember { mutableStateListOf<String>().apply { addAll(prefs.getStringSet("granted_scopes", emptySet()).orEmpty()) } }
     val projects = remember { mutableStateListOf<GoogleProject>() }
-    var selectedProjectId by rememberSaveable { mutableStateOf("") }
+    var selectedProjectId by rememberSaveable { mutableStateOf(prefs.getString("selected_project_id", "") ?: "") }
     var enabledServices by remember { mutableStateOf<List<String>>(emptyList()) }
     var billingStatus by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("Nenhuma conta conectada.") }

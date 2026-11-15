@@ -109,6 +109,8 @@ private fun GeiviaApp() {
                 "cloud_setup" -> CloudShellSetupScreen(
                     workspaceName = workspaceName,
                     workspaceId = workspaceId,
+                    answers = answers.toMap(),
+                    costMode = costMode,
                     onBack = { page = "workspace_setup" },
                     onContinue = {
                         prefs.edit().putBoolean("cloud_setup_completed", true).apply()
@@ -132,6 +134,8 @@ private fun GeiviaApp() {
                 "google_access" -> CloudShellSetupScreen(
                     workspaceName = workspaceName,
                     workspaceId = workspaceId,
+                    answers = answers.toMap(),
+                    costMode = costMode,
                     onBack = { page = "dashboard" },
                     onContinue = { page = "dashboard" }
                 )
@@ -522,6 +526,8 @@ private data class CloudProject(
 private fun CloudShellSetupScreen(
     workspaceName: String,
     workspaceId: String,
+    answers: Map<String, String>,
+    costMode: String,
     onBack: () -> Unit,
     onContinue: () -> Unit
 ) {
@@ -547,6 +553,8 @@ private fun CloudShellSetupScreen(
     var selectedProjectId by remember { mutableStateOf(prefs.getString("selected_project_id", null).orEmpty()) }
     var selectedProjectName by remember { mutableStateOf(prefs.getString("selected_project_name", null).orEmpty()) }
     var selectedProjectNumber by remember { mutableStateOf(prefs.getString("selected_project_number", null).orEmpty()) }
+    var selectedApiForConfirmation by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var apiActionStatus by remember { mutableStateOf("") }
 
     val cloudShellCommand = """echo 'GEIVIA - diagnóstico inicial'
 gcloud auth list --filter=status:ACTIVE --format='table(account,status)'
@@ -602,6 +610,24 @@ cloudshell download geivia-projects.json"""
         "firebasehosting.googleapis.com" to "Firebase Hosting",
         "cloudbuild.googleapis.com" to "Cloud Build"
     )
+    val requestedApis = buildList {
+        add("firebase.googleapis.com" to "Firebase Management API")
+        if (answers["login"].orEmpty().isNotBlank() && !answers["login"].orEmpty().contains("Não precisa")) {
+            add("identitytoolkit.googleapis.com" to "Firebase Authentication")
+        }
+        if (answers["data"].orEmpty().isNotBlank() && !answers["data"].orEmpty().contains("Não vai guardar")) {
+            add("firestore.googleapis.com" to "Cloud Firestore")
+        }
+        if (answers["files"].orEmpty().isNotBlank() && !answers["files"].orEmpty().startsWith("Não terá")) {
+            add("firebasestorage.googleapis.com" to "Cloud Storage for Firebase")
+        }
+        if (answers["platform"].orEmpty().let { it.contains("web") || it.contains("Site") || it.contains("Android e web") }) {
+            add("firebasehosting.googleapis.com" to "Firebase Hosting")
+        }
+        if (answers["extras"].orEmpty().let { it.contains("Processamentos automáticos") || it.contains("programadas") }) {
+            add("cloudbuild.googleapis.com" to "Cloud Build")
+        }
+    }.distinctBy { it.first }
     var enabledFirebaseApis by remember {
         mutableStateOf(
             runCatching {
@@ -648,10 +674,26 @@ cloudshell download geivia-projects.json"""
                 val services = report.optJSONArray("enabledServices") ?: throw IllegalStateException("Relatório inválido: lista de APIs ausente.")
                 val summary = "Último diagnóstico: $reportId • ${services.length()} API(s) habilitada(s)."
                 val enabledNames = (0 until services.length()).mapNotNull { index ->
-                    services.optJSONObject(index)?.optJSONObject("config")?.optString("name")?.takeIf { it.isNotBlank() }
+                    val item = services.optJSONObject(index) ?: return@mapNotNull null
+                    item.optJSONObject("config")?.optString("name")?.takeIf { it.isNotBlank() }
+                        ?: item.optString("name").takeIf { it.isNotBlank() }
                 }.toSet()
                 enabledFirebaseApis = enabledNames
-                prefs.edit().putString("cloud_project_diagnostic_json", report.toString()).putString("cloud_project_diagnostic_summary", summary).apply()
+                val pendingApi = prefs.getString("pending_api_service", null)
+                val pendingProject = prefs.getString("pending_api_project_id", null)
+                val completedApi = if (pendingApi != null && pendingProject == selectedProjectId && pendingApi in enabledNames) pendingApi else null
+                val editor = prefs.edit()
+                    .putString("cloud_project_diagnostic_json", report.toString())
+                    .putString("cloud_project_diagnostic_summary", summary)
+                if (completedApi != null) {
+                    editor.putString("last_completed_api_service", completedApi)
+                        .putString("last_completed_api_project_id", selectedProjectId)
+                        .remove("pending_api_service")
+                        .remove("pending_api_project_id")
+                        .remove("pending_api_created_at")
+                    apiActionStatus = "Confirmado pelo novo diagnóstico: $completedApi está ativa neste projeto."
+                }
+                editor.apply()
                 summary
             }.onSuccess { diagnosticSummary = it; importStatus = "Diagnóstico importado e vinculado ao projeto selecionado." }
              .onFailure { importStatus = it.message ?: "Não foi possível importar o diagnóstico." }
@@ -689,6 +731,39 @@ cloudshell download geivia-projects.json"""
         Toast.makeText(context, "Comando copiado. Cole no terminal do Cloud Shell.", Toast.LENGTH_LONG).show()
     }
 
+    selectedApiForConfirmation?.let { (api, label) ->
+        AlertDialog(
+            onDismissRequest = { selectedApiForConfirmation = null },
+            title = { Text("Confirmar habilitação da API?") },
+            text = {
+                Column {
+                    Text("Projeto de destino: $selectedProjectId", fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(8.dp))
+                    Text("$label ($api)")
+                    Spacer(Modifier.height(8.dp))
+                    Text("O comando abaixo habilita somente esta API. O GEIVIA não executará o comando: ele será copiado para você revisar e executar no Cloud Shell. A ativação da API não significa que o uso futuro do serviço seja gratuito.", color = Muted, fontSize = 12.sp, lineHeight = 17.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Text("gcloud services enable $api --project=$selectedProjectId", color = Color(0xFFDAEAF4), fontSize = 11.sp, modifier = Modifier.fillMaxWidth().background(Color(0xFF102B43), RoundedCornerShape(8.dp)).padding(10.dp))
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val command = "gcloud services enable $api --project=$selectedProjectId"
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("GEIVIA habilitar API", command))
+                    prefs.edit()
+                        .putString("pending_api_service", api)
+                        .putString("pending_api_project_id", selectedProjectId)
+                        .putLong("pending_api_created_at", System.currentTimeMillis())
+                        .apply()
+                    apiActionStatus = "Comando copiado para $selectedProjectId. Execute no Cloud Shell e importe um novo diagnóstico para confirmar."
+                    Toast.makeText(context, "Comando copiado. Execute manualmente no Cloud Shell.", Toast.LENGTH_LONG).show()
+                    selectedApiForConfirmation = null
+                }) { Text("Confirmar e copiar") }
+            },
+            dismissButton = { TextButton(onClick = { selectedApiForConfirmation = null }) { Text("Cancelar") } }
+        )
+    }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp)) {
         Text("GEIVIA", color = DeepBlue, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
         Spacer(Modifier.height(18.dp))
@@ -825,6 +900,39 @@ cloudshell download geivia-projects.json"""
                                 }
                                 Text(if (enabled) "Ativa" else "Não listada", color = if (enabled) Color(0xFF238653) else Color(0xFF9A641B), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                             }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Divider(color = Color(0xFFE1EAF0))
+                        Spacer(Modifier.height(10.dp))
+                        Text("ETAPA 7 — HABILITAÇÃO ASSISTIDA, UMA API POR VEZ", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text("O GEIVIA prepara um único comando para o projeto selecionado. Você revisa, confirma, copia e executa manualmente no Cloud Shell. Nenhuma alteração é executada pelo aplicativo.", color = Muted, fontSize = 11.sp, lineHeight = 16.sp)
+                        Spacer(Modifier.height(8.dp))
+                        requestedApis.forEach { (api, label) ->
+                            val enabled = api in enabledFirebaseApis
+                            val blockedByCost = costMode == "zero" && (api == "firebasestorage.googleapis.com" || api == "cloudbuild.googleapis.com")
+                            Card(
+                                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                colors = CardDefaults.cardColors(containerColor = if (enabled) Color(0xFFEAF6EF) else if (blockedByCost) Color(0xFFFFF5E6) else Color(0xFFF4F8FA)),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Column(Modifier.padding(11.dp)) {
+                                    Text(label, color = Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(api, color = Muted, fontSize = 10.sp)
+                                    Spacer(Modifier.height(5.dp))
+                                    when {
+                                        enabled -> Text("Já habilitada — nenhuma ação necessária.", color = Color(0xFF236342), fontSize = 11.sp)
+                                        blockedByCost -> Text("Bloqueada no modo custo zero: exige avaliação específica de limites e possível faturamento.", color = Color(0xFF9A5B13), fontSize = 11.sp)
+                                        selectedProjectId.isBlank() -> Text("Selecione um projeto antes de preparar alterações.", color = Muted, fontSize = 11.sp)
+                                        else -> Button(onClick = { selectedApiForConfirmation = api to label }, modifier = Modifier.fillMaxWidth()) {
+                                            Text("Revisar e confirmar")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (apiActionStatus.isNotBlank()) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(apiActionStatus, color = DeepBlue, fontSize = 11.sp, lineHeight = 16.sp)
                         }
                     }
                 }

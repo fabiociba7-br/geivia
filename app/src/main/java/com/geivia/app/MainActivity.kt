@@ -1109,7 +1109,7 @@ cloudshell download geivia-projects.json"""
                             Divider(color = Color(0xFFE1EAF0))
                             Spacer(Modifier.height(10.dp))
                             Text("ETAPA 9 — FIREBASE AUTHENTICATION (PLANO SPARK)", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            Text("A autenticação básica do Firebase oferece métodos sem custo no plano Spark. Configure os provedores diretamente no Console Firebase. Não faça upgrade para Identity Platform e não habilite login por telefone/SMS no fluxo custo zero.", color = Muted, fontSize = 11.sp, lineHeight = 16.sp)
+                            Text("A autenticação básica do Firebase oferece métodos sem custo no plano Spark. Configure os provedores diretamente no Console Firebase. Se o projeto ainda não for um projeto Firebase, adicione Firebase ao projeto Google Cloud existente — não crie outro projeto. Não faça upgrade para Identity Platform nem habilite login por telefone/SMS no fluxo custo zero.", color = Muted, fontSize = 11.sp, lineHeight = 16.sp)
                             Spacer(Modifier.height(8.dp))
                             if (selectedProjectId.isNotBlank()) {
                                 Button(onClick = { openGoogleCloud("https://console.firebase.google.com/project/$selectedProjectId/authentication/providers") }, modifier = Modifier.fillMaxWidth()) {

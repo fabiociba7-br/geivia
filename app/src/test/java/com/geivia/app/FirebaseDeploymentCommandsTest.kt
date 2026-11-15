@@ -64,4 +64,32 @@ class FirebaseDeploymentCommandsTest {
     fun invalidProjectIdIsRejectedForFirestoreRulesCommand() {
         FirebaseDeploymentCommands.firestoreRulesBootstrap("invalid;touch-pwned")
     }
+    @Test
+    fun firestoreRulesCommandValidatesLocalDirectoryBeforeAnyCloudMutation() {
+        val command = FirebaseDeploymentCommands.firestoreRulesBootstrap("geivia-sample-123")
+        val localGuard = command.indexOf("A pasta de destino é um link simbólico")
+        val firebaseRegistration = command.indexOf("firebase projects:addfirebase")
+        val rulesPublish = command.indexOf("firebase deploy --only firestore:rules")
+        assertTrue(localGuard >= 0)
+        assertTrue(firebaseRegistration > localGuard)
+        assertTrue(rulesPublish > firebaseRegistration)
+        assertTrue(command.contains("[ -L \"\$WORKDIR/.geivia-generated\" ]"))
+        assertTrue(command.contains("GEIVIA_FIRESTORE_RULES_STARTER_V1"))
+        assertTrue(command.contains("mkdir \"\$WORKDIR\""))
+    }
+
+    @Test
+    fun hostingCommandValidatesLocalDirectoryBeforeCreatingRemoteSite() {
+        val command = FirebaseDeploymentCommands.hostingStarterDeploy("geivia-sample-123")
+        val localGuard = command.indexOf("A pasta de destino é um link simbólico")
+        val siteCreate = command.indexOf("-X POST")
+        val hostingDeploy = command.indexOf("firebase deploy --only hosting")
+        assertTrue(localGuard >= 0)
+        assertTrue(siteCreate > localGuard)
+        assertTrue(hostingDeploy > siteCreate)
+        assertTrue(command.contains("[ -L \"\$WORKDIR/.geivia-generated\" ]"))
+        assertTrue(command.contains("GEIVIA_HOSTING_STARTER_V1"))
+        assertTrue(command.contains("mkdir \"\$WORKDIR\""))
+    }
+
 }

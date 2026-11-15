@@ -63,3 +63,8 @@ Essa arquitetura evita colocar client secret, chave de conta de serviço ou toke
 - [OAuth 2.0 para apps instalados](https://developers.google.com/identity/protocols/oauth2/native-app)
 - [Autorização no Android](https://developer.android.com/identity/authorization)
 - [Google Cloud Shell](https://cloud.google.com/shell/docs)
+## Diagnóstico de prontidão Firebase
+
+Depois do diagnóstico do projeto, o app interpreta a lista de serviços habilitados e apresenta o estado de APIs comuns: Firebase Management, Cloud Firestore, Firebase Authentication (Identity Toolkit), Cloud Storage for Firebase, Firebase Hosting e Cloud Build.
+
+Esse painel é informativo: uma API não listada não significa automaticamente que o projeto esteja incorreto, pois a necessidade depende das escolhas do questionário. A versão atual não ativa APIs, não altera IAM e não associa faturamento. O resultado é vinculado ao Project ID exato do relatório importado; ao trocar o projeto, o resumo anterior não é tratado como diagnóstico do novo destino.

@@ -70,3 +70,7 @@ A criação do banco não publica regras de segurança. Antes de conectar client
 
 Referência:
 - https://firebase.google.com/docs/firestore/security/get-started
+
+## Preservar o projeto Google Cloud existente
+
+Se o Project ID selecionado ainda não estiver registrado como projeto Firebase, adicionar Firebase ao projeto Google Cloud existente pelo Console Firebase. Não escolher a opção de criar outro projeto para contornar qualquer erro de configuração. Se o projeto já estiver associado ao Firebase, reutilizá-lo.

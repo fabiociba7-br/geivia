@@ -423,6 +423,22 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
         }.getOrDefault(false)
         val workflowStore = remember(projectPrefs) { WorkflowProgressStore(projectPrefs) }
         val workflowStorageError = workflowStore.healthError()
+        val workflowBackupLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.CreateDocument("application/json")
+        ) { uri ->
+            if (uri != null) {
+                runCatching {
+                    val backup = workflowStore.exportBackupJson()
+                    context.contentResolver.openOutputStream(uri)?.use {
+                        it.write(backup.toByteArray(Charsets.UTF_8))
+                    } ?: error("Não foi possível gravar o arquivo de backup.")
+                }.onSuccess {
+                    Toast.makeText(context, "Backup do histórico salvo. Guarde o arquivo em local seguro.", Toast.LENGTH_LONG).show()
+                }.onFailure { error ->
+                    Toast.makeText(context, "Falha ao exportar backup: ${error.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
         val workflowCatalog = listOf(
             "project_diagnostic" to "Diagnóstico do projeto",
             "api_firebase_googleapis_com" to "Firebase Management API",
@@ -444,6 +460,16 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
         Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(15.dp)) {
             Column(Modifier.padding(16.dp)) {
                 Text("ACOMPANHAMENTO DAS ETAPAS", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = {
+                        workflowBackupLauncher.launch("GEIVIA-historico-${System.currentTimeMillis()}.json")
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Exportar backup do histórico")
+                }
+                Text("O backup preserva os dados originais, inclusive se houver corrupção. Ele não restaura nem libera operações automaticamente.", color = Muted, fontSize = 10.sp, lineHeight = 15.sp)
                 if (workflowStorageError != null) {
                     Spacer(Modifier.height(8.dp))
                     Text("OPERAÇÕES BLOQUEADAS PARA EVITAR DUPLICIDADE", color = Color(0xFF9A5B13), fontSize = 11.sp, fontWeight = FontWeight.Bold)

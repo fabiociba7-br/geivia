@@ -28,12 +28,14 @@ Essa arquitetura evita colocar client secret, chave de conta de serviço ou toke
 3. O GEIVIA gera um identificador local único, por exemplo `GEIVIA-A1B2C3D4E5`.
 4. O usuário toca em **Abrir Google Cloud** e autentica no navegador, fora do GEIVIA.
 5. O usuário abre o Cloud Shell, que executa comandos na sessão Google já autenticada.
-6. Se o usuário ainda não tiver um projeto, o GEIVIA oferece um comando opcional `gcloud projects create` com identificador sugerido. O comando cria somente o projeto e não associa faturamento; o usuário pode ignorá-lo e usar um projeto existente.
-7. O GEIVIA fornece um comando de diagnóstico somente leitura para listar projetos em JSON.
-8. O usuário executa e revisa o comando no terminal.
-9. O comando usa `cloudshell download geivia-projects.json` para baixar o resultado ao aparelho.
-10. O usuário seleciona o JSON no GEIVIA; o app valida e importa apenas ID, nome, número e estado dos projetos.
-10. Para operações de escrita, o GEIVIA sempre mostra o comando exato, projeto, impacto, custo possível e exige confirmação do usuário antes de copiar/executar.
+6. O GEIVIA fornece um comando de diagnóstico somente leitura para listar projetos em JSON.
+7. O usuário executa e revisa o comando no terminal.
+8. O comando usa `cloudshell download geivia-projects.json` para baixar o resultado ao aparelho.
+9. O usuário seleciona o JSON no GEIVIA; o app valida e importa apenas ID, nome, número e estado dos projetos.
+10. O usuário seleciona explicitamente um projeto existente; o GEIVIA persiste o Project ID exato e mantém a escolha mesmo após nova importação ou reinício.
+11. Para o projeto selecionado, o GEIVIA gera um diagnóstico somente leitura (`gcloud projects describe` e `gcloud services list --enabled`) e importa o relatório apenas se o Project ID corresponder exatamente ao destino salvo.
+12. A criação de projetos permanece desabilitada nesta versão. Só será reintroduzida como ação separada, confirmada e com reconciliação segura de operações ambíguas.
+13. Para futuras operações de escrita, o GEIVIA deverá sempre mostrar o comando exato, projeto, impacto e custo possível, exigindo confirmação do usuário antes de copiar/executar.
 
 ## Limites e segurança
 

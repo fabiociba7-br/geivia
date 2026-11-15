@@ -125,7 +125,8 @@ class GitHubTokenStore(context: Context) {
         require(JSONObject(tokenResponse).optString("access_token").isNotBlank()) {
             "Resposta de autorização sem access_token."
         }
-        prefs.edit().putString("encrypted_token_response", encryptValue(tokenResponse)).apply()
+        val storedResponse = JSONObject(tokenResponse).put("_geivia_saved_at", System.currentTimeMillis()).toString()
+        prefs.edit().putString("encrypted_token_response", encryptValue(storedResponse)).apply()
     }
 
     fun readTokenResponse(): String? {
@@ -158,6 +159,20 @@ class GitHubTokenStore(context: Context) {
         runCatching { JSONObject(it).optString("access_token").takeIf(String::isNotBlank) }.getOrNull()
     }
 
+    fun needsRefresh(bufferMillis: Long = 120_000L): Boolean {
+        val raw = readTokenResponse() ?: return false
+        val json = JSONObject(raw)
+        val expiresIn = json.optLong("expires_in", 0L)
+        if (expiresIn <= 0L) return false
+        val savedAt = json.optLong("_geivia_saved_at", 0L)
+        if (savedAt <= 0L) return true
+        return System.currentTimeMillis() >= savedAt + expiresIn * 1000L - bufferMillis
+    }
+
+    fun refreshTokenValue(): String? = readTokenResponse()?.let {
+        JSONObject(it).optString("refresh_token").takeIf { value -> value.isNotBlank() && value != "null" }
+    }
+
     fun clear() {
         prefs.edit().remove("encrypted_token_response").remove("encrypted_pending_authorization").apply()
         runCatching {
@@ -184,6 +199,50 @@ class GitHubTokenStore(context: Context) {
 }
 
 object GitHubAuthClient {
+    fun ensureFreshAccessToken(exchangeUrl: String, clientId: String, callbackUrl: String, tokenStore: GitHubTokenStore): String? {
+        val current = tokenStore.accessToken() ?: return null
+        if (!tokenStore.needsRefresh()) return current
+        val refreshToken = tokenStore.refreshTokenValue()
+            ?: throw IllegalStateException("A autorização expirou e não há refresh token. Conecte novamente.")
+        val refreshUrl = exchangeUrl.removeSuffix("/exchange") + "/refresh"
+        val refreshed = refreshToken(refreshUrl, clientId, callbackUrl, refreshToken)
+        tokenStore.save(refreshed)
+        return tokenStore.accessToken()
+            ?: throw IllegalStateException("O GitHub não retornou um novo token válido.")
+    }
+
+    fun refreshToken(refreshUrl: String, clientId: String, callbackUrl: String, refreshToken: String): String {
+        require(refreshUrl.startsWith("https://") && GitHubOAuth.validEndpoints(callbackUrl, refreshUrl.removeSuffix("/refresh") + "/exchange")) {
+            "O serviço de renovação precisa usar o mesmo domínio HTTPS."
+        }
+        val connection = (URL(refreshUrl).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 15_000
+            readTimeout = 20_000
+            doOutput = true
+            setRequestProperty("Content-Type", "application/json")
+            setRequestProperty("Accept", "application/json")
+        }
+        try {
+            val body = JSONObject()
+                .put("client_id", clientId)
+                .put("callback_url", callbackUrl)
+                .put("refresh_token", refreshToken)
+                .toString()
+            connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+            val status = connection.responseCode
+            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+            val response = readUtf8Limited(stream, 64 * 1024)
+            if (status !in 200..299) throw IllegalStateException("Falha ao renovar a autorização GitHub (HTTP $status).")
+            require(JSONObject(response).optString("access_token").isNotBlank()) {
+                "O serviço não retornou um novo token válido."
+            }
+            return response
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     fun exchangeCode(exchangeUrl: String, clientId: String, callbackUrl: String, code: String, verifier: String): String {
         require(exchangeUrl.startsWith("https://") && GitHubOAuth.validEndpoints(callbackUrl, exchangeUrl)) { "Callback e serviço de autorização devem usar HTTPS no mesmo domínio." }
         val connection = (URL(exchangeUrl).openConnection() as HttpURLConnection).apply {

@@ -170,6 +170,24 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
         ))
     }
 
+    /** Moves a prepared manual command to execution tracking only after the user attests it was run. */
+    @Synchronized
+    fun markManualExecutionStarted(projectId: String, stepId: String, operationId: String, attestation: String): WorkflowStepRecord {
+        require(operationId.isNotBlank()) { "Identificador da operação obrigatório." }
+        require(attestation.isNotBlank()) { "Confirmação de execução manual obrigatória." }
+        val current = get(projectId, stepId)
+        check(current.state == WorkflowStepState.WAITING_CONFIRMATION) {
+            "A etapa não está aguardando execução manual. Estado atual: ${current.state}."
+        }
+        return save(current.copy(
+            state = WorkflowStepState.IN_PROGRESS,
+            updatedAt = System.currentTimeMillis(),
+            operationId = operationId,
+            message = "Usuário declarou que executou o comando manualmente; aguardando diagnóstico atualizado.",
+            evidence = "DECLARAÇÃO DE EXECUÇÃO MANUAL: $attestation"
+        ))
+    }
+
     /** Records a user's explicit attestation for a manual Console task; not a Google diagnostic. */
     @Synchronized
     fun confirmManualCompletion(projectId: String, stepId: String, userAttestation: String): WorkflowStepRecord {

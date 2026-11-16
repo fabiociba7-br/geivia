@@ -2310,6 +2310,20 @@ private fun TerminalPanel() {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var importing by remember { mutableStateOf(false) }
     val scroll = rememberScrollState()
+    val linuxPreflight = remember {
+        LinuxRuntimePreflight.evaluate(
+            androidApi = android.os.Build.VERSION.SDK_INT,
+            supportedAbis = android.os.Build.SUPPORTED_ABIS.toList(),
+            availableBytes = context.filesDir.usableSpace
+        )
+    }
+    val linuxController = remember(linuxPreflight.supported) {
+        if (linuxPreflight.supported) LinuxRuntimeController(context) else null
+    }
+    var linuxTranscript by rememberSaveable { mutableStateOf("GEIVIA Linux • PRoot ARM64\\nO ambiente será instalado no armazenamento privado do aplicativo.\\n") }
+    var linuxBusy by remember { mutableStateOf(false) }
+    var linuxSession by remember { mutableStateOf<id.or.oo.pr.engine.ProotLauncher.Session?>(null) }
+    var linuxCommand by rememberSaveable { mutableStateOf("") }
 
     fun appendOutput(message: String) {
         output = (output + message.lines()).takeLast(300)
@@ -2431,9 +2445,147 @@ private fun TerminalPanel() {
                     color = Color(0xFF9AA9B8), fontSize = 10.sp, lineHeight = 14.sp
                 )
                 Text(
-                    "O terminal ainda usa comandos locais restritos; o motor Linux integrado está em desenvolvimento.",
+                    "O terminal local acima continua restrito. A seção abaixo usa o motor Linux PRoot real, empacotado no APK; não concede root ao Android.",
                     color = Color(0xFF9AA9B8), fontSize = 10.sp, lineHeight = 14.sp
                 )
+                Spacer(Modifier.height(12.dp))
+                Text("AMBIENTE LINUX REAL", color = Color(0xFF7EE787), fontSize = 12.sp, fontWeight = FontWeight.Black)
+                if (!linuxPreflight.supported) {
+                    Text(
+                        linuxPreflight.reasons.joinToString("\\n"),
+                        color = Color(0xFFFFC078), fontSize = 11.sp, lineHeight = 16.sp
+                    )
+                } else {
+                    Text(
+                        "Debian ARM64 • execução dentro do GEIVIA • sem Termux e sem root",
+                        color = Color(0xFF9AA9B8), fontSize = 10.sp
+                    )
+                    Spacer(Modifier.height(7.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = {
+                                scope.launch {
+                                    linuxBusy = true
+                                    try {
+                                        val code = withContext(Dispatchers.IO) {
+                                            linuxController!!.prepareEngine()
+                                            linuxController.execute(listOf("list")) { chunk ->
+                                                scope.launch(Dispatchers.Main) { linuxTranscript += chunk }
+                                            }
+                                        }
+                                        linuxTranscript += "\\n[lista concluída: código $code]\\n"
+                                    } catch (error: Exception) {
+                                        linuxTranscript += "\\n[erro: ${error.message ?: "falha desconhecida"}]\\n"
+                                    } finally { linuxBusy = false }
+                                }
+                            },
+                            enabled = !linuxBusy && linuxSession == null,
+                            modifier = Modifier.weight(1f)
+                        ) { Text("Verificar Linux") }
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    linuxBusy = true
+                                    linuxTranscript += "\\n[Instalando Debian ARM64… mantenha o GEIVIA aberto]\\n"
+                                    try {
+                                        val code = withContext(Dispatchers.IO) {
+                                            linuxController!!.prepareEngine()
+                                            linuxController.execute(listOf("install", "debian")) { chunk ->
+                                                scope.launch(Dispatchers.Main) { linuxTranscript += chunk }
+                                            }
+                                        }
+                                        linuxTranscript += "\\n[instalação finalizada: código $code]\\n"
+                                    } catch (error: Exception) {
+                                        linuxTranscript += "\\n[erro na instalação: ${error.message ?: "falha desconhecida"}]\\n"
+                                    } finally { linuxBusy = false }
+                                }
+                            },
+                            enabled = !linuxBusy && linuxSession == null,
+                            modifier = Modifier.weight(1f)
+                        ) { Text("Instalar Debian") }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(
+                            onClick = {
+                                scope.launch {
+                                    try {
+                                        val session = withContext(Dispatchers.IO) {
+                                            linuxController!!.prepareEngine()
+                                            linuxController.startDebianShell()
+                                        }
+                                        linuxSession = session
+                                        linuxTranscript += "\\n[Shell Debian iniciado]\\n"
+                                        scope.launch {
+                                            val code = runCatching {
+                                                linuxController!!.readSession(session) { chunk ->
+                                                    scope.launch(Dispatchers.Main) { linuxTranscript += chunk }
+                                                }
+                                            }.getOrElse { -1 }
+                                            linuxTranscript += "\\n[Shell encerrado: código $code]\\n"
+                                            linuxSession = null
+                                        }
+                                    } catch (error: Exception) {
+                                        linuxTranscript += "\\n[Não foi possível iniciar Debian: ${error.message ?: "verifique a instalação"}]\\n"
+                                    }
+                                }
+                            },
+                            enabled = !linuxBusy && linuxSession == null,
+                            modifier = Modifier.weight(1f)
+                        ) { Text("Abrir shell") }
+                        OutlinedButton(
+                            onClick = {
+                                linuxController?.cancel()
+                                linuxSession = null
+                            },
+                            enabled = linuxSession != null,
+                            modifier = Modifier.weight(1f)
+                        ) { Text("Encerrar shell") }
+                    }
+                    Column(
+                        Modifier.fillMaxWidth().heightIn(min = 100.dp, max = 220.dp)
+                            .background(Color(0xFF101D2B), RoundedCornerShape(10.dp))
+                            .verticalScroll(rememberScrollState()).padding(9.dp)
+                    ) {
+                        Text(linuxTranscript.takeLast(16000), color = Color(0xFFE2E8F0), fontSize = 10.sp, lineHeight = 14.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                    }
+                    if (linuxSession != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            OutlinedTextField(
+                                value = linuxCommand,
+                                onValueChange = { linuxCommand = it.take(2048) },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                placeholder = { Text("Comando Linux", color = Color(0xFF9AA9B8)) },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    focusedBorderColor = Color(0xFF7EE787),
+                                    unfocusedBorderColor = Color(0xFF526273),
+                                    cursorColor = Color(0xFF7EE787)
+                                )
+                            )
+                            Spacer(Modifier.width(7.dp))
+                            Button(onClick = {
+                                val submitted = linuxCommand
+                                linuxCommand = ""
+                                scope.launch(Dispatchers.IO) {
+                                    runCatching { linuxController!!.send(linuxSession!!, submitted + "\\n") }
+                                        .onFailure { error ->
+                                            withContext(Dispatchers.Main) { linuxTranscript += "\\n[erro de entrada: ${error.message}]\\n" }
+                                        }
+                                }
+                            }, enabled = linuxCommand.isNotBlank()) { Text("Enviar") }
+                        }
+                    }
+                    if (linuxBusy) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        Text("Operação em andamento. Não feche o aplicativo durante a instalação.", color = Color(0xFFFFC078), fontSize = 10.sp)
+                    }
+                    Text(
+                        "A primeira instalação baixa a distribuição e pode consumir centenas de MB. O ambiente fica privado do GEIVIA. A instalação inicial permanece em primeiro plano; mantenha o app aberto.",
+                        color = Color(0xFF9AA9B8), fontSize = 10.sp, lineHeight = 14.sp
+                    )
+                }
             } else {
                 Spacer(Modifier.height(6.dp))
                 Text("Toque em Abrir para usar os comandos locais sem sair do painel.", color = Color(0xFF9AA9B8), fontSize = 10.sp)

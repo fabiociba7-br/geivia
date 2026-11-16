@@ -21,7 +21,10 @@ internal class GeiviaProotHost(context: Context) : ProotHost {
     override val nativeLibraryDir: File = File(appContext.applicationInfo.nativeLibraryDir)
 
     fun prepare(): ProotLauncher {
-        listOf(prefixDir, homeDir, cacheDir, File(prefixDir, "bin")).forEach { directory ->
+        // The PRoot engine also binds this legacy files/cache path. Create it explicitly
+        // before launch so Android does not report a missing bind source on fresh installs.
+        val legacyCacheBindDir = File(appContext.filesDir, "cache")
+        listOf(prefixDir, homeDir, cacheDir, legacyCacheBindDir, File(prefixDir, "bin")).forEach { directory ->
             check(directory.mkdirs() || directory.isDirectory) {
                 "Não foi possível preparar " + directory.name + " para o ambiente Linux."
             }

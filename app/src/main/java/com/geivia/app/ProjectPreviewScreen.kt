@@ -27,7 +27,7 @@ internal fun ProjectPreviewScreen(projectDir: String, onBack: () -> Unit) {
             Text("Não encontrei uma página HTML de entrada. Para projetos Android, o GEIVIA precisará compilar e instalar uma versão de teste; para web, inclua index.html ou gere dist/build.", Modifier.padding(16.dp))
         } else {
             Text("Prévia local: ${entry.relativeTo(root).path}", Modifier.padding(horizontal = 12.dp), style = MaterialTheme.typography.labelSmall)
-            AndroidView(modifier = Modifier.fillMaxSize(), factory = { ctx ->
+            AndroidView(modifier = Modifier.weight(1f).fillMaxWidth(), factory = { ctx ->
                 WebView(ctx).apply {
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true

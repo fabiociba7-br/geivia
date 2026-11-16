@@ -19,7 +19,9 @@ O comando `cat` limita a leitura a 64 KB. A entrada de cada comando é limitada 
 - Não executa ações no Google Cloud ou GitHub.
 - A pasta de trabalho é privada do aplicativo e removida quando o app é desinstalado ou seus dados são apagados.
 
-Esta versão é um primeiro terminal de comandos internos, não uma distribuição Linux e não substitui Termux. A integração Termux será uma fase separada, opcional e sujeita à autorização explícita do usuário. A execução remota também será isolada em um módulo próprio, com autenticação e confirmação antes de qualquer operação.
+A integração opcional com Termux já possui um primeiro fluxo de envio: o usuário digita um comando, revisa o texto em uma confirmação explícita e o GEIVIA envia o comando ao Termux instalado usando a interface RUN_COMMAND. O processo é aberto no próprio Termux; a saída e os pedidos de permissão são apresentados pelo Termux, não capturados pelo GEIVIA nesta fase. O usuário precisa instalar o Termux por uma fonte confiável e habilitar a permissão de execução de comandos externos quando solicitado. O GEIVIA não instala pacotes automaticamente nem concede permissões por conta própria.
+
+O terminal local continua sendo um interpretador restrito, não uma distribuição Linux. O envio ao Termux é uma integração opcional e separada. A execução remota também será isolada em um módulo próprio, com autenticação e confirmação antes de qualquer operação.
 
 ## Próximas fases
 

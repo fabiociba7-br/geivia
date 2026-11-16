@@ -64,6 +64,8 @@ class LocalTerminalEngine(filesDir: File) {
                     String(target.readBytes(), StandardCharsets.UTF_8)
                 }
                 "clear" -> "__CLEAR__"
+                "su", "sudo", "mount", "umount", "systemctl", "setenforce" ->
+                    AndroidAccessPolicy.guidance(AndroidAccessUseCase.ROOT_OR_PROTECTED_SYSTEM_ACCESS)
                 else -> "Comando não disponível: $command. Digite help para ver os comandos."
             }
         } catch (error: Exception) {

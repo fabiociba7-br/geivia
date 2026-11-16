@@ -1,0 +1,36 @@
+name: Build Firebase CLI ARM64 bundle
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/firebase-cli-arm64.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  bundle:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Firebase CLI dependencies for Linux ARM64
+        run: |
+          set -euo pipefail
+          mkdir -p staging
+          npm install --prefix staging --omit=dev --no-audit --no-fund firebase-tools@latest
+          node staging/node_modules/firebase-tools/lib/bin/firebase.js --version
+          tar -czf firebase-cli-arm64.tar.gz -C staging node_modules
+          sha256sum firebase-cli-arm64.tar.gz
+      - name: Publish versioned ARM64 bundle
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: firebase-cli-arm64
+          name: GEIVIA Firebase CLI Linux ARM64 bundle
+          target_commitish: main
+          make_latest: false
+          files: firebase-cli-arm64.tar.gz
+          overwrite_files: true

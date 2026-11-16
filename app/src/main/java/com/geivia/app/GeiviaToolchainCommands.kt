@@ -35,37 +35,39 @@ internal object GeiviaToolchainCommands {
 
 
     /**
-     * Uses a dedicated npm cache and retries after cache ENOENT/rename failures.
-     * This avoids reusing a potentially damaged default /root/.npm cache.
+     * Tries independent cache locations. PRoot-backed filesystems can expose
+     * rename/ENOENT races in npm's cacache; retrying the same directory is not
+     * sufficient, so each fallback uses a fresh cache root.
      */
     private fun firebaseCliInstallCommand(): String = """
         set -eu
-        NPM_CACHE=/root/.cache/geivia-npm
-        mkdir -p "${'$'}NPM_CACHE/_cacache/tmp"
-        npm config set cache "${'$'}NPM_CACHE" --global
-        npm cache verify --cache "${'$'}NPM_CACHE" || {
-          npm cache clean --force --cache "${'$'}NPM_CACHE" || true
-          mkdir -p "${'$'}NPM_CACHE/_cacache/tmp"
-        }
         INSTALLED=0
-        for attempt in 1 2 3; do
-          echo "GEIVIA_FIREBASE_INSTALL_ATTEMPT_${'$'}attempt"
+        for NPM_CACHE in /tmp/geivia-npm-cache /root/.cache/geivia-npm /root/.npm; do
+          echo "GEIVIA_NPM_CACHE_LOCATION_${'$'}NPM_CACHE"
+          mkdir -p "${'$'}NPM_CACHE/_cacache/tmp"
+          npm config set cache "${'$'}NPM_CACHE" --global
+          npm cache verify --cache "${'$'}NPM_CACHE" || {
+            npm cache clean --force --cache "${'$'}NPM_CACHE" || true
+            mkdir -p "${'$'}NPM_CACHE/_cacache/tmp"
+          }
           if npm install --global firebase-tools@latest \
             --cache "${'$'}NPM_CACHE" \
             --prefer-online \
+            --no-audit \
+            --no-fund \
             --fetch-retries=5 \
             --fetch-retry-mintimeout=20000 \
             --fetch-retry-maxtimeout=120000; then
-            firebase --version
-            echo GEIVIA_FIREBASE_CLI_OK
-            INSTALLED=1
-            break
+            if command -v firebase >/dev/null 2>&1 && firebase --version; then
+              echo GEIVIA_FIREBASE_CLI_OK
+              INSTALLED=1
+              break
+            fi
           fi
-          echo "Firebase CLI install attempt ${'$'}attempt failed; rebuilding the dedicated npm cache."
+          echo "Firebase CLI installation failed with cache ${'$'}NPM_CACHE; trying a different cache location."
           npm cache clean --force --cache "${'$'}NPM_CACHE" || true
           rm -rf "${'$'}NPM_CACHE/_cacache/tmp"
           mkdir -p "${'$'}NPM_CACHE/_cacache/tmp"
-          sleep "${'$'}attempt"
         done
         if [ "${'$'}INSTALLED" -ne 1 ]; then
           echo GEIVIA_FIREBASE_CLI_FAILED
@@ -107,9 +109,9 @@ internal object GeiviaToolchainCommands {
             3 * 60 * 1000L
         ),
         InstallStage(
-            "npm_cache_recovery", "Preparação e verificação do cache do npm",
+            "npm_cache_recovery_v2", "Teste do sistema de arquivos e preparação do cache npm",
             listOf("login", "debian", "--", "/bin/sh", "-lc",
-                "set -eu; NPM_CACHE=/root/.cache/geivia-npm; mkdir -p \"\$NPM_CACHE/_cacache/tmp\"; npm config set cache \"\$NPM_CACHE\" --global; npm cache verify --cache \"\$NPM_CACHE\" || { npm cache clean --force --cache \"\$NPM_CACHE\" || true; mkdir -p \"\$NPM_CACHE/_cacache/tmp\"; }; echo GEIVIA_NPM_CACHE_READY"),
+                "set -eu; NPM_CACHE=/tmp/geivia-npm-cache; mkdir -p \"\$NPM_CACHE/_cacache/tmp\" \"\$NPM_CACHE/_cacache/content-v2/sha512\"; printf probe > \"\$NPM_CACHE/_cacache/tmp/rename-probe\"; mv \"\$NPM_CACHE/_cacache/tmp/rename-probe\" \"\$NPM_CACHE/_cacache/content-v2/sha512/rename-probe\"; rm -f \"\$NPM_CACHE/_cacache/content-v2/sha512/rename-probe\"; npm config set cache \"\$NPM_CACHE\" --global; npm cache verify --cache \"\$NPM_CACHE\" || { npm cache clean --force --cache \"\$NPM_CACHE\" || true; mkdir -p \"\$NPM_CACHE/_cacache/tmp\"; }; echo GEIVIA_NPM_CACHE_READY"),
             5 * 60 * 1000L
         ),
         InstallStage(

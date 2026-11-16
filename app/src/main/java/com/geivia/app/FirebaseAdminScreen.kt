@@ -168,11 +168,11 @@ internal fun FirebaseAdminScreen(projectId: String, onBack: () -> Unit) {
                             } else null
                         }
                         workflowRefresh++
-                        log = evidence + "\\n\\n" +
+                        log = evidence + "\n\n" +
                             if (pending.isEmpty()) "Nenhuma operação em andamento precisava de reconciliação."
-                            else pending.joinToString("\\n") +
-                                "\\n\\nO estado atual, isoladamente, não prova que a operação preparada causou a alteração. Nenhuma etapa foi marcada como concluída. Nenhuma alteração foi feita na nuvem."
-                    }.onFailure { log = "Diagnóstico concluído, mas não foi possível atualizar o histórico: ${it.message}\\n$evidence" }
+                            else pending.joinToString("\n") +
+                                "\n\nO estado atual, isoladamente, não prova que a operação preparada causou a alteração. Nenhuma etapa foi marcada como concluída. Nenhuma alteração foi feita na nuvem."
+                    }.onFailure { log = "Diagnóstico concluído, mas não foi possível atualizar o histórico: ${it.message}\n$evidence" }
                 }.onFailure { log = "Falha no diagnóstico: ${it.message}. Nenhuma alteração foi feita na nuvem." }
                 busy = false
             }
@@ -264,7 +264,7 @@ internal fun FirebaseAdminScreen(projectId: String, onBack: () -> Unit) {
                             )
                             val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                             clipboard.setPrimaryClip(android.content.ClipData.newPlainText("GEIVIA • $title", command))
-                            log = "OPERAÇÃO PREPARADA • $title\\nProject ID: $projectId\\n\\nO comando foi copiado. Revise-o e execute manualmente no Google Cloud Shell.\\n\\n$command\\n\\nApós executar, volte ao GEIVIA e rode o diagnóstico do projeto. A etapa continuará pendente até haver evidência atualizada."
+                            log = "OPERAÇÃO PREPARADA • $title\nProject ID: $projectId\n\nO comando foi copiado. Revise-o e execute manualmente no Google Cloud Shell.\n\n$command\n\nApós executar, volte ao GEIVIA e rode o diagnóstico do projeto. A etapa continuará pendente até haver evidência atualizada."
                         }.onFailure { log = "Não foi possível preparar a operação: ${it.message}" }
                     }
                     confirmAction = null

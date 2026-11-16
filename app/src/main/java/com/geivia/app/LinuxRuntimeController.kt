@@ -6,93 +6,84 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.concurrent.thread
 
-/**
- * Executes real PRoot commands through the native engine packaged in the APK.
- * It never invokes Android's shell and never grants root privileges.
- */
 internal class LinuxRuntimeController(context: Context) {
     private val host = GeiviaProotHost(context.applicationContext)
     private val launcher: ProotLauncher by lazy { host.prepare() }
-
-    @Volatile
-    private var activeSession: ProotLauncher.Session? = null
-
+    @Volatile private var activeSession: ProotLauncher.Session? = null
     val prefixDir: File get() = host.prefixDir
 
-    fun prepareEngine() {
-        launcher
-    }
+    fun prepareEngine() { launcher }
 
-    suspend fun execute(
-        args: List<String>,
-        onOutput: (String) -> Unit
-    ): Int = withContext(Dispatchers.IO) {
-        val session = openCommandSession(args)
-        try {
-            readUntilClosed(session, onOutput)
-            awaitExitCode(session)
-        } finally {
-            session.close()
-            releaseSession(session)
+    suspend fun execute(args: List<String>, onOutput: (String) -> Unit, timeoutMs: Long? = null): Int =
+        withContext(Dispatchers.IO) {
+            val session = openCommandSession(args)
+            try {
+                val timedOut = readUntilClosed(session, onOutput, timeoutMs)
+                if (timedOut) {
+                    onOutput("\n[GEIVIA] Tempo limite excedido (${timeoutMs} ms). Processo interrompido para evitar espera infinita.\n")
+                    -124
+                } else awaitExitCode(session)
+            } finally {
+                session.close()
+                releaseSession(session)
+            }
         }
-    }
 
     /**
-     * Installs Debian, runs the upstream distro smoke suite, then executes a real
-     * command inside the guest. A non-zero stage stops the sequence immediately.
+     * Installs Debian and validates it with a bounded direct shell check.
+     * The upstream distro suite deploys a separate test binary and can stall
+     * on some Android/PRoot combinations.
      */
     suspend fun installAndVerifyDebian(onOutput: (String) -> Unit): List<Int> {
         val results = mutableListOf<Int>()
         val stages = listOf(
-            "Instalando Debian ARM64" to LinuxRuntimeCommands.installDebian(),
-            "Validando a distribuição e o PRoot" to LinuxRuntimeCommands.testDebianBase(),
-            "Testando shell, diretórios e execução de comandos" to LinuxRuntimeCommands.smokeCheckDebian()
+            Triple("Instalando Debian ARM64", LinuxRuntimeCommands.installDebian(), 30 * 60 * 1000L),
+            Triple("Verificando shell e arquivos essenciais do Debian", LinuxRuntimeCommands.testDebianBase(), 60 * 1000L)
         )
-        for ((label, args) in stages) {
+        for ((label, args, timeoutMs) in stages) {
             onOutput("\n[GEIVIA] $label…\n")
-            val code = execute(args, onOutput)
+            val code = execute(args, onOutput, timeoutMs)
             results += code
             onOutput("\n[GEIVIA] Etapa concluída com código $code.\n")
             check(code == 0) {
-                "$label falhou (código $code). Consulte a saída acima; a próxima etapa não foi executada."
+                if (code == -124) "$label excedeu o tempo limite de ${timeoutMs / 1000} segundos. O processo foi interrompido; consulte o diagnóstico."
+                else "$label falhou (código $code). Consulte a saída acima; a próxima etapa não foi executada."
             }
         }
-        onOutput("\n[GEIVIA] Debian instalado e verificado. Procure o marcador GEIVIA_DEBIAN_SHELL_OK acima.\n")
+        onOutput("\n[GEIVIA] Debian instalado e verificado com sucesso.\n")
         return results
     }
 
     fun startDebianShell(): ProotLauncher.Session = synchronized(this) {
         check(activeSession == null) { "Já existe uma sessão Linux em execução." }
         val session = launcher.startSession("debian")
-            ?: throw IllegalStateException(
-                "Debian ainda não está instalado. Use primeiro Preparar Debian."
-            )
+            ?: throw IllegalStateException("Debian ainda não está instalado. Use primeiro Preparar Debian.")
         activeSession = session
         session
     }
 
-    suspend fun readSession(
-        session: ProotLauncher.Session,
-        onOutput: (String) -> Unit
-    ): Int = withContext(Dispatchers.IO) {
-        try {
-            readUntilClosed(session, onOutput)
-            awaitExitCode(session)
-        } finally {
-            session.close()
-            releaseSession(session)
+    suspend fun readSession(session: ProotLauncher.Session, onOutput: (String) -> Unit): Int =
+        withContext(Dispatchers.IO) {
+            try {
+                readUntilClosed(session, onOutput)
+                awaitExitCode(session)
+            } finally {
+                session.close()
+                releaseSession(session)
+            }
         }
-    }
 
     fun send(session: ProotLauncher.Session, text: String) {
         val bytes = text.toByteArray(StandardCharsets.UTF_8)
         check(session.write(bytes) == bytes.size) { "Não foi possível enviar o comando ao terminal Linux." }
     }
 
-    fun cancel() {
-        activeSession?.close()
-    }
+    fun cancel() { activeSession?.close() }
 
     @Synchronized
     private fun openCommandSession(args: List<String>): ProotLauncher.Session {
@@ -108,23 +99,42 @@ internal class LinuxRuntimeController(context: Context) {
         if (activeSession === session) activeSession = null
     }
 
-    private fun readUntilClosed(session: ProotLauncher.Session, onOutput: (String) -> Unit) {
-        val buffer = ByteArray(8192)
-        while (!session.closed) {
-            val count = session.read(buffer)
-            when {
-                count < 0 -> return
-                count == 0 -> Thread.sleep(15)
-                else -> onOutput(String(buffer, 0, count, StandardCharsets.UTF_8))
+    /** Native PTY reads may block; watchdog closes the PTY at the deadline. */
+    private fun readUntilClosed(
+        session: ProotLauncher.Session,
+        onOutput: (String) -> Unit,
+        timeoutMs: Long? = null
+    ): Boolean {
+        val timedOut = AtomicBoolean(false)
+        val finished = CountDownLatch(1)
+        if (timeoutMs != null) {
+            require(timeoutMs > 0) { "timeoutMs precisa ser positivo." }
+            thread(isDaemon = true, name = "geivia-command-timeout") {
+                if (!finished.await(timeoutMs, TimeUnit.MILLISECONDS) && !session.closed) {
+                    timedOut.set(true)
+                    session.close()
+                }
             }
+        }
+        try {
+            val buffer = ByteArray(8192)
+            while (!session.closed) {
+                val count = session.read(buffer)
+                when {
+                    count < 0 -> return timedOut.get()
+                    count == 0 -> Thread.sleep(15)
+                    else -> onOutput(String(buffer, 0, count, StandardCharsets.UTF_8))
+                }
+            }
+            return timedOut.get()
+        } finally {
+            finished.countDown()
         }
     }
 
     private fun awaitExitCode(session: ProotLauncher.Session): Int {
         val deadline = System.nanoTime() + 10_000_000_000L
-        while (session.exitCode == null && System.nanoTime() < deadline) {
-            Thread.sleep(20)
-        }
+        while (session.exitCode == null && System.nanoTime() < deadline) Thread.sleep(20)
         return session.exitCode ?: -1
     }
 }

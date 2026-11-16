@@ -76,7 +76,7 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("CENTRAL DE PROJETOS", color = Color(0xFF087DB5), fontSize = 11.sp)
         Text("Importar, enviar e publicar", color = Color(0xFF102B43), fontSize = 25.sp)
-        Text("O ZIP é extraído no Debian/PRoot. Os comandos são executados pelo GEIVIA, sem copiar comandos para outro terminal.", color = Color(0xFF587083), fontSize = 13.sp)
+        Text("O ZIP é extraído no Debian/PRoot. O envio ao GitHub ocorre pelo aplicativo; deploy Firebase é preparado para revisão e execução manual no Google Cloud Shell.", color = Color(0xFF587083), fontSize = 13.sp)
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Voltar ao painel") }
         Button(onClick = { zipPicker.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Selecionar ZIP do projeto") }
         if (projectDir.isNotBlank()) Text("Pasta importada: $projectDir", color = Color(0xFF18794E), fontSize = 11.sp)
@@ -85,7 +85,7 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Publicação Firebase", color = Color(0xFF102B43))
                 Text("Prepara o comando de deploy para revisão e execução manual no Google Cloud Shell. O GEIVIA não publica automaticamente.", color = Color(0xFF587083), fontSize = 12.sp)
-                Button(onClick = { showDeployConfirm = true }, enabled = !busy && projectDir.isNotBlank() && projectId.matches(Regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$")), modifier = Modifier.fillMaxWidth()) { Text("Publicar Hosting, Rules, Storage e Functions") }
+                Button(onClick = { showDeployConfirm = true }, enabled = !busy && projectDir.isNotBlank() && projectId.matches(Regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$")), modifier = Modifier.fillMaxWidth()) { Text("Preparar comando de deploy Firebase") }
                 Text("Firebase CLI precisa estar instalado e autenticado no Debian do GEIVIA.", color = Color(0xFF587083), fontSize = 11.sp)
             }
         }

@@ -64,3 +64,9 @@ A instalação da CLI não significa que o deploy esteja autenticado nem que o p
 - Android SDK/NDK e builds completos de APK dentro do telefone ficam fora do perfil inicial: são grandes e exigem uma avaliação separada.
 - Google Cloud CLI fica opcional até confirmar suporte ARM64 no repositório oficial.
 - A instalação de ferramentas não ativa faturamento nem executa alterações remotas automaticamente.
+
+## Verificação de compatibilidade do aparelho
+
+Foi adicionada a classe `LinuxRuntimePreflight` e sua suíte unitária. Ela valida três pré-requisitos antes de uma futura instalação: Android API 28 ou superior (limitação do motor PRoot candidato), ABI `arm64-v8a` e pelo menos 2 GiB livres como limite inicial conservador. A verificação é pura e testável, retorna todos os motivos de incompatibilidade de uma vez e não inicia downloads nem processos.
+
+O limite de 2 GiB é provisório para a primeira avaliação e deverá ser refinado com medições da rootfs e dos perfis de pacotes. O app atual mantém seu terminal local restrito em aparelhos que não passem nessa verificação; não se altera o `minSdk 26` global apenas por causa do runtime opcional.

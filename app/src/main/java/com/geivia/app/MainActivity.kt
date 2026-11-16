@@ -215,8 +215,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                             .putBoolean("preflight_completed", true)
                             .putLong("preflight_completed_at", System.currentTimeMillis())
                             .apply()
-                        val hasExistingCloud = preflightCloudProject == "yes" || preflightFirebaseProject == "yes"
-                        val shouldLoginNow = hasExistingCloud && preflightGoogleAccount == "yes"
+                        val shouldLoginNow = preflightGoogleAccount == "yes"
                         prefs.edit().putBoolean("preflight_auto_cloud_login", shouldLoginNow).putBoolean("preflight_return_to_workspace", shouldLoginNow).apply()
                         page = if (shouldLoginNow) "google_access" else if (prefs.contains("workflow_checkpoint")) savedCheckpoint else "workspace_setup"
                     }

@@ -41,7 +41,6 @@ class GeiviaToolchainCommandsTest {
             "apt_update",
             "apt_packages",
             "npm_config",
-            "npm_cache_recovery_v2",
             "firebase_cli",
             "toolchain_verify"
         ))
@@ -69,31 +68,26 @@ class GeiviaToolchainCommandsTest {
 
 
     @Test
-    fun npmCacheRecoveryUsesDedicatedCacheAndCreatesTemporaryDirectory() {
-        val stage = GeiviaToolchainCommands.installStages().first { it.id == "npm_cache_recovery_v2" }
-        val command = stage.command.last()
-
-        assertTrue(command.contains("/tmp/geivia-npm-cache"))
-        assertTrue(command.contains("rename-probe"))
-        assertTrue(command.contains("mv "))
-        assertTrue(command.contains("_cacache/tmp"))
-        assertTrue(command.contains("npm config set cache"))
-        assertTrue(command.contains("npm cache verify"))
-        assertTrue(command.contains("npm cache clean --force"))
-    }
-
-    @Test
-    fun firebaseCliInstallRetriesAndRebuildsCacheAfterFailure() {
+    fun firebaseCliInstallUsesSerializedFetchesAndCacheFallbacks() {
         val command = GeiviaToolchainCommands.installStages().first { it.id == "firebase_cli" }.command.last()
 
         assertTrue(command.contains("for NPM_CACHE in /tmp/geivia-npm-cache /root/.cache/geivia-npm /root/.npm"))
+        assertTrue(command.contains("firebase-tools@latest"))
         assertTrue(command.contains("--fetch-retries=5"))
+        assertTrue(command.contains("--fetch-timeout=120000"))
+        assertTrue(command.contains("--maxsockets=1"))
         assertTrue(command.contains("--no-audit"))
         assertTrue(command.contains("--no-fund"))
         assertTrue(command.contains("npm cache clean --force"))
-        assertTrue(command.contains("rm -rf"))
-        assertTrue(command.contains("_cacache/tmp"))
         assertTrue(command.contains("GEIVIA_FIREBASE_CLI_OK"))
+    }
+
+    @Test
+    fun firebaseCliInstallerSkipsDownloadWhenAlreadyInstalled() {
+        val command = GeiviaToolchainCommands.installStages().first { it.id == "firebase_cli" }.command.last()
+
+        assertTrue(command.indexOf("command -v firebase") < command.indexOf("npm install --global"))
+        assertTrue(command.contains("exit 0"))
     }
 
     @Test
@@ -101,8 +95,8 @@ class GeiviaToolchainCommandsTest {
         val updateCommand = GeiviaToolchainCommands.updateFirebaseCli().last()
         val fullUpdateCommand = GeiviaToolchainCommands.updateAll().last()
 
-        assertTrue(updateCommand.contains("/tmp/geivia-npm-cache"))
-        assertTrue(fullUpdateCommand.contains("/tmp/geivia-npm-cache"))
+        assertTrue(updateCommand.contains("--maxsockets=1"))
+        assertTrue(fullUpdateCommand.contains("--maxsockets=1"))
     }
 
 }

@@ -27,7 +27,7 @@ A geração de APK e os testes automatizados são realizados pelo GitHub Actions
 
 ## Terminal integrado
 
-O GEIVIA oferece um terminal local restrito no painel e um terminal de recuperação interativo dentro do Debian ARM64/PRoot, acessível pela tela de diagnóstico. O ambiente Linux e as ferramentas são instalados no armazenamento privado do app, sem Termux e sem root Android. A instalação das ferramentas mostra etapas, checkpoints e retomada após falhas. A validação final ainda depende de testes em aparelho físico. Consulte [a arquitetura e os critérios de aceite](docs/GEIVIA_TERMINAL.md).
+O GEIVIA oferece um terminal local restrito no painel e um terminal de recuperação interativo dentro do Debian ARM64/PRoot, acessível pela tela de diagnóstico e pelos detalhes técnicos quando a configuração inicial falha. O ambiente Linux e as ferramentas são instalados no armazenamento privado do app, sem Termux e sem root Android. A instalação das ferramentas mostra etapas, checkpoints e retomada após falhas. A validação final ainda depende de testes em aparelho físico. Consulte [a arquitetura e os critérios de aceite](docs/GEIVIA_TERMINAL.md).
 ## Integração com GitHub
 
 A primeira fase da integração já está implementada no Android: GitHub App Authorization Code + PKCE S256, token cifrado com Android Keystore e renovação automática, listagem paginada de repositórios, perfil, branches, commits, pull requests, GitHub Actions, jobs e metadados de artefatos. A conexão é somente leitura; o GEIVIA não faz push, commit, merge ou alteração de workflows.

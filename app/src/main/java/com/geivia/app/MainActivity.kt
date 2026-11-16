@@ -78,7 +78,13 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
             ?.let { when (it) { "cloud_setup" -> "questions"; "terminal" -> "dashboard"; else -> it } }
             ?: if (prefs.getBoolean("cloud_setup_completed", false)) "questions" else "workspace_setup"
     }
-    var page by rememberSaveable { mutableStateOf(if (githubCallbackUri != null) "github" else "welcome") }
+    var page by rememberSaveable {
+        mutableStateOf(
+            if (githubCallbackUri != null) "github"
+            else if (!prefs.getBoolean("preflight_completed", false)) "preflight"
+            else "welcome"
+        )
+    }
     var index by rememberSaveable {
         mutableIntStateOf(prefs.getInt("workflow_question_index", 0).coerceAtLeast(0))
     }

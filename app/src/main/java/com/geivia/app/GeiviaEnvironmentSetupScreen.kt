@@ -296,6 +296,8 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
                 ) {
                     Text(details, color = Color(0xFFE2E8F0), fontSize = 10.sp, lineHeight = 15.sp, fontFamily = FontFamily.Monospace)
                 }
+                Spacer(Modifier.height(8.dp))
+                GeiviaRecoveryTerminal(controller)
             }
         }
         Text(

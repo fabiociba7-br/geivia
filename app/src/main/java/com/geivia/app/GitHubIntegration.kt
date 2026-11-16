@@ -13,6 +13,10 @@ import java.io.InputStream
 import java.io.File
 import java.io.ByteArrayOutputStream
 import java.net.URLEncoder
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.OkHttpClient
 import java.security.KeyStore
 import java.security.SecureRandom
 import java.security.MessageDigest
@@ -433,24 +437,21 @@ object GitHubApiClient {
     }
 
     private fun writeJson(accessToken: String, method: String, path: String, payload: JSONObject): JSONObject {
-        val connection = (URL("https://api.github.com$path").openConnection() as HttpURLConnection).apply {
-            requestMethod = method
-            connectTimeout = 20_000
-            readTimeout = 60_000
-            doOutput = true
-            setRequestProperty("Authorization", "Bearer $accessToken")
-            setRequestProperty("Accept", "application/vnd.github+json")
-            setRequestProperty("Content-Type", "application/json")
-            setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
+        val body = payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+        val request = Request.Builder()
+            .url("https://api.github.com$path")
+            .header("Authorization", "Bearer $accessToken")
+            .header("Accept", "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .method(method, body)
+            .build()
+        OkHttpClient().newCall(request).execute().use { response ->
+            val content = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                throw IllegalStateException("GitHub recusou a gravação (HTTP ${response.code}): ${content.take(1200)}")
+            }
+            return JSONObject(content)
         }
-        try {
-            connection.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
-            val status = connection.responseCode
-            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val response = readUtf8Limited(stream, 2 * 1024 * 1024)
-            if (status !in 200..299) throw IllegalStateException("GitHub recusou a gravação (HTTP $status): ${response.take(1200)}")
-            return JSONObject(response)
-        } finally { connection.disconnect() }
     }
 
     /** Creates one Git commit containing the imported project tree; secrets and generated folders are excluded. */

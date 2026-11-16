@@ -34,6 +34,13 @@ class LocalTerminalEngineTest {
         assertTrue(terminal.execute("sh -c id").contains("Comando não disponível"))
     }
 
+    @Test fun privilegedSystemCommandsExplainAndroidLimitation() {
+        val terminal = engine()
+        assertTrue(terminal.execute("sudo ls /system").contains("não oferece uma permissão comum"))
+        assertTrue(terminal.execute("su").contains("privilégios"))
+        assertTrue(terminal.execute("mount").contains("não oferece uma permissão comum"))
+    }
+
     @Test fun oversizedInputIsRejected() {
         assertTrue(engine().execute("echo " + "x".repeat(2100)).contains("excede o limite"))
     }

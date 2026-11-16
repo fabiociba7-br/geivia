@@ -33,7 +33,12 @@
     {
       "id": "firebase",
       "title": "Firebase Hosting",
-      "npmGlobal": ["firebase-tools"],
+      "bundle": {
+        "provider": "github-release",
+        "asset": "firebase-cli-arm64.tar.gz",
+        "releaseTag": "firebase-cli-arm64",
+        "architecture": "arm64"
+      },
       "requires": ["node"]
     },
     {

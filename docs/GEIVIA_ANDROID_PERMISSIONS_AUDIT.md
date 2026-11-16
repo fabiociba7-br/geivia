@@ -169,3 +169,17 @@ A existência da política não significa que o GEIVIA já implemente acesso roo
 
 
 O terminal local também reconhece comandos privilegiados comuns (`su`, `sudo`, `mount`, `umount`, `systemctl` e `setenforce`) e responde com a limitação real do Android, em vez de sugerir que conceder uma permissão resolveria o acesso. Há teste unitário para esse comportamento.
+
+## 12. Importação de arquivos no terminal
+
+O painel do terminal oferece ações explícitas para **Importar arquivos** e **Importar pasta** usando `OpenMultipleDocuments` e `OpenDocumentTree`. O usuário escolhe o conteúdo no seletor do Android; o GEIVIA copia os bytes para a pasta privada `terminal-workspace/imports/`. O interpretador não recebe nem usa caminhos externos ou URIs arbitrárias.
+
+Limites defensivos atuais:
+- até 100 arquivos por operação;
+- até 5 MiB por arquivo;
+- até 25 MiB no total por operação;
+- profundidade máxima de 8 níveis ao importar uma árvore de diretórios;
+- nomes normalizados, sem componentes de caminho, com colisões resolvidas por sufixo;
+- arquivos são gravados primeiro em temporário privado e renomeados após a cópia concluída.
+
+A importação de pasta percorre apenas a árvore selecionada e copia arquivos; não mantém autorização persistente nem sincroniza alterações posteriores. O usuário pode acessar o conteúdo importado pelo terminal em `imports/`, por exemplo com `ls imports`. Cancelar o seletor não altera o workspace. Não foi adicionada permissão de armazenamento ao manifesto.

@@ -3,6 +3,8 @@ package com.geivia.app
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.os.Build
+import android.os.StatFs
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -21,6 +23,20 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+
+private fun collectEnvironmentPreflight(context: Context): LinuxRuntimePreflightResult {
+    val availableBytes = runCatching { StatFs(context.filesDir.absolutePath).availableBytes }.getOrDefault(0L)
+    val nativeFiles = runCatching {
+        File(context.applicationInfo.nativeLibraryDir).listFiles()?.map { it.name }?.toSet().orEmpty()
+    }.getOrDefault(emptySet())
+    return LinuxRuntimePreflight.evaluate(
+        androidApi = Build.VERSION.SDK_INT,
+        supportedAbis = Build.SUPPORTED_ABIS.toList(),
+        availableBytes = availableBytes,
+        availableNativeLibraries = nativeFiles
+    )
+}
+
 @Composable
 internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
     val context = LocalContext.current
@@ -28,6 +44,7 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
     val scope = rememberCoroutineScope()
     val controller = remember { LinuxRuntimeController(context) }
     val stages = remember { GeiviaToolchainCommands.installStages() }
+    var preflight by remember(context) { mutableStateOf(collectEnvironmentPreflight(context)) }
     var busy by remember { mutableStateOf(false) }
     var cancelRequested by remember { mutableStateOf(false) }
     var debianReady by remember { mutableStateOf(prefs.getBoolean("linux_debian_verified", false)) }
@@ -56,6 +73,10 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
 
     fun runSetup() {
         if (busy || complete) return
+        if (!preflight.supported) {
+            status = preflight.reasons.joinToString(" ")
+            return
+        }
         cancelRequested = false
         scope.launch {
             busy = true
@@ -156,6 +177,21 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
             "O GEIVIA instala o Linux integrado e configura automaticamente as ferramentas básicas. Você não precisa abrir Termux nem digitar comandos.",
             color = Color(0xFF587083), fontSize = 14.sp, lineHeight = 21.sp
         )
+        if (preflight.supported) {
+            Text("✓ REQUISITOS DO APARELHO VERIFICADOS", color = Color(0xFF18794E), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        } else {
+            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF0EF)), shape = RoundedCornerShape(13.dp)) {
+                Column(Modifier.padding(13.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Text("NÃO É POSSÍVEL INICIAR A INSTALAÇÃO", color = Color(0xFFB3261E), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    preflight.reasons.forEach { reason ->
+                        Text("• $reason", color = Color(0xFF7A2925), fontSize = 12.sp, lineHeight = 17.sp)
+                    }
+                    OutlinedButton(onClick = { preflight = collectEnvironmentPreflight(context) }) {
+                        Text("Verificar requisitos novamente")
+                    }
+                }
+            }
+        }
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF4FA)), shape = RoundedCornerShape(15.dp)) {
             Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 Text("O QUE SERÁ INSTALADO", color = Color(0xFF07528D), fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -220,7 +256,7 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
                 status = "Cancelamento solicitado. As etapas concluídas foram preservadas; a etapa interrompida poderá ser repetida."
             }, modifier = Modifier.fillMaxWidth()) { Text("Cancelar configuração") }
         } else if (!complete) {
-            Button(onClick = { runSetup() }, modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = { runSetup() }, enabled = preflight.supported, modifier = Modifier.fillMaxWidth()) {
                 Text(
                     when {
                         debianFailed -> "Tentar novamente: Debian ARM64"

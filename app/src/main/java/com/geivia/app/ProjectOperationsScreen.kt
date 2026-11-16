@@ -37,12 +37,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.UUID
 
 @Composable
 internal fun ProjectOperationsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val controller = remember { LinuxRuntimeController(context) }
+    val workflowStore = remember { WorkflowProgressStore(context.getSharedPreferences("geivia_onboarding", android.content.Context.MODE_PRIVATE)) }
     var projectDir by rememberSaveable { mutableStateOf("") }
     var projectId by rememberSaveable { mutableStateOf(context.getSharedPreferences("geivia_onboarding", 0).getString("selected_project_id", "").orEmpty()) }
     var output by rememberSaveable { mutableStateOf("Importe um ZIP do seu projeto para começar. O GEIVIA extrairá os arquivos no Debian privado e executará os comandos no próprio aparelho.") }
@@ -140,8 +142,24 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
         text = { Text("Projeto: $projectId\nPasta: $projectDir\n\nO deploy pode substituir conteúdo publicado e alterar regras de segurança. Revise os arquivos antes de continuar.") },
         confirmButton = { TextButton(onClick = {
             showDeployConfirm = false
+            val operationId = UUID.randomUUID().toString()
+            val stepId = "firebase_deploy"
+            val historyError = workflowStore.healthError()
+            if (historyError != null) {
+                output = "Deploy bloqueado: $historyError"
+                return@TextButton
+            }
+            runCatching {
+                workflowStore.appendAuditEvent(
+                    projectId, stepId, "STARTED", operationId, "Deploy Firebase solicitado",
+                    "Pasta: $projectDir; alvos serão lidos do firebase.json; exige confirmação explícita."
+                )
+            }.onFailure {
+                output = "Deploy bloqueado: não foi possível registrar o histórico. ${it.message}"
+                return@TextButton
+            }
             busy = true
-            output = "Verificando projeto e autenticação Firebase…\n"
+            output = "Project ID: $projectId\nOperação: $operationId\nVerificando projeto e autenticação Firebase…\n"
             scope.launch {
                 val safeDir = projectDir.replace("'", "'\\''")
                 val safeId = projectId.replace("'", "")
@@ -176,7 +194,22 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                     }
                 }.onSuccess { code ->
                     output += "\nProcesso finalizado com código $code. " + if (code == 0) "Consulte a saída de cada alvo publicado." else "A publicação não foi confirmada."
-                }.onFailure { output += "\nFalha ao executar: " + (it.message ?: "erro desconhecido") }
+                    runCatching {
+                        workflowStore.appendAuditEvent(
+                            projectId, stepId, if (code == 0) "SUCCEEDED" else "FAILED", operationId,
+                            "Deploy Firebase • código de saída $code",
+                            "Project ID: $projectId; exitCode=$code; " + if (code == 0) "verifique a saída dos alvos e o estado remoto" else "o deploy não foi confirmado; faça novo diagnóstico antes de repetir"
+                        )
+                    }.onFailure { output += "\nFalha ao registrar o resultado no histórico: ${it.message}" }
+                }.onFailure {
+                    output += "\nFalha ao executar: " + (it.message ?: "erro desconhecido")
+                    runCatching {
+                        workflowStore.appendAuditEvent(
+                            projectId, stepId, "FAILED", operationId, "Deploy Firebase interrompido",
+                            "Resultado não confirmado; verificar estado remoto antes de repetir."
+                        )
+                    }.onFailure { output += "\nFalha ao registrar histórico: ${it.message}" }
+                }
                 busy = false
             }
         }) { Text("Confirmar e executar") } },

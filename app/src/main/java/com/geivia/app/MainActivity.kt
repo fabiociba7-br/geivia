@@ -2493,17 +2493,16 @@ private fun TerminalPanel() {
                             onClick = {
                                 scope.launch {
                                     linuxBusy = true
-                                    linuxTranscript += "\n[Instalando Debian ARM64… mantenha o GEIVIA aberto]\n"
+                                    linuxTranscript += "\n[Preparando Debian ARM64 e verificando o terminal… mantenha o GEIVIA aberto]\n"
                                     try {
-                                        val code = withContext(Dispatchers.IO) {
-                                            linuxController!!.prepareEngine()
-                                            linuxController.execute(listOf("install", "debian")) { chunk ->
-                                                scope.launch(Dispatchers.Main) { linuxTranscript += chunk }
-                                            }
+                                        val controller = linuxController!!
+                                        withContext(Dispatchers.IO) { controller.prepareEngine() }
+                                        val results = controller.installAndVerifyDebian { chunk ->
+                                            scope.launch(Dispatchers.Main) { linuxTranscript += chunk }
                                         }
-                                        linuxTranscript += "\n[instalação finalizada: código $code]\n"
+                                        linuxTranscript += "\n[Debian instalado; três etapas concluídas: ${results.joinToString()}]\n"
                                     } catch (error: Exception) {
-                                        linuxTranscript += "\n[erro na instalação: ${error.message ?: "falha desconhecida"}]\n"
+                                        linuxTranscript += "\n[processo interrompido: ${error.message ?: "falha desconhecida"}]\n"
                                     } finally { linuxBusy = false }
                                 }
                             },

@@ -2314,7 +2314,10 @@ private fun TerminalPanel() {
         LinuxRuntimePreflight.evaluate(
             androidApi = android.os.Build.VERSION.SDK_INT,
             supportedAbis = android.os.Build.SUPPORTED_ABIS.toList(),
-            availableBytes = context.filesDir.usableSpace
+            availableBytes = context.filesDir.usableSpace,
+            availableNativeLibraries = LinuxRuntimePreflight.REQUIRED_NATIVE_LIBRARIES
+                .filter { library -> java.io.File(context.applicationInfo.nativeLibraryDir, library).isFile }
+                .toSet()
         )
     }
     val linuxController = remember(linuxPreflight.supported) {

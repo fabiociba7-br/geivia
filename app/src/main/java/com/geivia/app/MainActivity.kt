@@ -792,6 +792,8 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
         Spacer(Modifier.height(8.dp))
         OutlinedButton(onClick = onGitHub, modifier = Modifier.fillMaxWidth()) { Text("Conectar e acompanhar GitHub") }
         Spacer(Modifier.height(8.dp))
+        XiaomiCompatibilityCard()
+        Spacer(Modifier.height(8.dp))
         TerminalPanel()
         Spacer(Modifier.height(8.dp))
         Button(onClick = { shareProjectPlan(context = context, answers = answers, costMode = costMode) }, modifier = Modifier.fillMaxWidth()) { Text("Compartilhar plano do projeto") }
@@ -2439,6 +2441,31 @@ private fun TerminalPanel() {
         }
     }
 }
+@Composable
+private fun XiaomiCompatibilityCard() {
+    val context = LocalContext.current
+    if (!DeviceCompatibility.isCurrentDeviceXiaomiFamily()) return
+    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF5E6)), shape = RoundedCornerShape(15.dp)) {
+        Column(Modifier.padding(15.dp)) {
+            Text("COMPATIBILIDADE XIAOMI / HYPEROS", color = Color(0xFF8A5715), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(5.dp))
+            Text(DeviceCompatibility.deviceLabel(), color = Ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text("Android ${android.os.Build.VERSION.RELEASE} • API ${android.os.Build.VERSION.SDK_INT}", color = Muted, fontSize = 11.sp)
+            Spacer(Modifier.height(8.dp))
+            Text("O GEIVIA identificou um aparelho Xiaomi, Redmi ou POCO. O HyperOS pode aplicar controles adicionais de bateria, inicialização automática e permissões. Os caminhos variam conforme o modelo e a versão.", color = Ink, fontSize = 12.sp, lineHeight = 17.sp)
+            Spacer(Modifier.height(8.dp))
+            DeviceCompatibility.hyperOsGuidance().forEach { item -> Text("• $item", color = Muted, fontSize = 11.sp, lineHeight = 16.sp, modifier = Modifier.padding(vertical = 3.dp)) }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = {
+                val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.parse("package:${context.packageName}") }
+                runCatching { context.startActivity(intent) }.onFailure { runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS)) } }
+            }, modifier = Modifier.fillMaxWidth()) { Text("Abrir configurações do GEIVIA") }
+            OutlinedButton(onClick = { runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS)) } }, modifier = Modifier.fillMaxWidth()) { Text("Abrir configurações do aparelho") }
+            Text("O GEIVIA não consegue ativar essas opções silenciosamente. O Android/HyperOS exige confirmação do usuário; não tentaremos contornar bloqueios do sistema.", color = Color(0xFF8A5715), fontSize = 10.sp, lineHeight = 14.sp)
+        }
+    }
+}
+
 @Composable
 private fun BrandMark() {
     Box(Modifier.fillMaxWidth().height(170.dp), contentAlignment = Alignment.Center) {

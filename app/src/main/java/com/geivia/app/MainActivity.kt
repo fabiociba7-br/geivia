@@ -73,7 +73,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
         }
     }
     var workspaceName by rememberSaveable { mutableStateOf(prefs.getString("workspace_name", "GEIVIA-" + workspaceId.removePrefix("GEIVIA-")) ?: ("GEIVIA-" + workspaceId.removePrefix("GEIVIA-"))) }
-    val validWorkflowPages = setOf("workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "accounts", "google_access", "github", "terminal", "toolchain_updates", "diagnostics")
+    val validWorkflowPages = setOf("device_access", "workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "accounts", "google_access", "github", "terminal", "toolchain_updates", "diagnostics")
     val savedCheckpoint = remember {
         prefs.getString("workflow_checkpoint", null)?.takeIf { it in validWorkflowPages }
             ?.let { when (it) { "cloud_setup" -> "questions"; "terminal" -> "dashboard"; else -> it } }
@@ -82,6 +82,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
     var page by rememberSaveable {
         mutableStateOf(
             if (githubCallbackUri != null) "github"
+            else if (!prefs.getBoolean("device_access_completed", false)) "device_access"
             else if (!prefs.getBoolean("environment_setup_completed", false)) "environment_setup"
             else if (!prefs.getBoolean("preflight_completed", false)) "preflight"
             else "welcome"
@@ -160,6 +161,10 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
     MaterialTheme(colorScheme = lightColorScheme(primary = Blue, secondary = Orange, background = Color(0xFFF7FBFD), surface = Color.White, onSurface = Ink)) {
         Surface(Modifier.fillMaxSize(), color = Color(0xFFF7FBFD)) {
             when (page) {
+                "device_access" -> DeviceAccessSetupScreen(onCompleted = {
+                    prefs.edit().putBoolean("device_access_completed", true).putLong("device_access_completed_at", System.currentTimeMillis()).apply()
+                    page = "environment_setup"
+                })
                 "welcome" -> WelcomeScreen(hasCheckpoint = prefs.contains("workflow_checkpoint")) {
                     page = if (!prefs.getBoolean("environment_setup_completed", false)) "environment_setup"
                         else if (prefs.getBoolean("preflight_completed", false)) savedCheckpoint else "preflight"

@@ -1,7 +1,7 @@
 package com.geivia.app
 
 /**
- * Checks whether this device can host the planned ARM64 PRoot runtime.
+ * Checks whether this device can run the integrated ARM64 PRoot environment.
  *
  * This is a capability gate only: it does not install or execute Linux binaries.
  * The legacy restricted terminal remains available when a check fails.

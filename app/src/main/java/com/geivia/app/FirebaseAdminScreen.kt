@@ -78,11 +78,11 @@ internal fun FirebaseAdminScreen(projectId: String, onBack: () -> Unit) {
             val script = """
                 set -euo pipefail
                 mkdir -p '${f.parent}'
-                TOKEN="${'(gcloud auth print-access-token)"}(gcloud auth print-access-token)"
-                curl -fsS -H "Authorization: Bearer ${'TOKEN}TOKEN" "https://firebaserules.googleapis.com/v1/projects/$projectId/releases/cloud.firestore" > release.json
-                NAME="${'(jq -r '.rulesetName // empty' release.json)"}(jq -r '.rulesetName // empty' release.json)"
+                TOKEN="${'$'}(gcloud auth print-access-token)"
+                curl -fsS -H "Authorization: Bearer ${'$'}TOKEN" "https://firebaserules.googleapis.com/v1/projects/$projectId/releases/cloud.firestore" > release.json
+                NAME="${'$'}(jq -r '.rulesetName // empty' release.json)"
                 test -n "$NAME" || { echo "Nenhuma release de regras Firestore foi encontrada."; exit 4; }
-                curl -fsS -H "Authorization: Bearer $TOKEN" "https://firebaserules.googleapis.com/v1/${'NAME}NAME" > '${f.absolutePath}'
+                curl -fsS -H "Authorization: Bearer ${'$'}TOKEN" "https://firebaserules.googleapis.com/v1/${'$'}NAME" > '${f.absolutePath}'
                 cat '${f.absolutePath}'
             """.trimIndent()
             runOperation("Baixando regras Firestore ativas", script, export = f)

@@ -592,7 +592,7 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
         val workflowStore = remember(projectPrefs) { WorkflowProgressStore(projectPrefs) }
         val workflowStorageError = workflowStore.healthError()
         val workflowBackupLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.CreateDocument("application/json")
+            contract = ActivityResultContracts.CreateDocument(AndroidAccessUseCase.EXPORT_HISTORY_BACKUP.mimeTypes.first())
         ) { uri ->
             if (uri != null) {
                 runCatching {
@@ -662,7 +662,7 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
                 Text("ACOMPANHAMENTO DAS ETAPAS", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Quando você exportar ou verificar um backup, o Android abrirá o seletor de arquivos. O GEIVIA acessará somente o arquivo que você escolher; não precisa liberar acesso geral ao armazenamento.",
+                    AndroidAccessPolicy.guidance(AndroidAccessUseCase.VALIDATE_HISTORY_BACKUP) + " Não precisa liberar acesso geral ao armazenamento.",
                     color = Muted, fontSize = 11.sp, lineHeight = 16.sp
                 )
                 Spacer(Modifier.height(8.dp))
@@ -1570,7 +1570,9 @@ cloudshell download geivia-projects.json"""
                 Spacer(Modifier.height(10.dp))
                 Button(onClick = { copyCommand() }, modifier = Modifier.fillMaxWidth()) { Text("Copiar comando de diagnóstico") }
                 Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/json", "text/*", "*/*")) }, modifier = Modifier.fillMaxWidth()) {
+                Text(AndroidAccessPolicy.guidance(AndroidAccessUseCase.IMPORT_CLOUD_PROJECTS), color = Muted, fontSize = 11.sp, lineHeight = 16.sp)
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = { importLauncher.launch(AndroidAccessUseCase.IMPORT_CLOUD_PROJECTS.mimeTypes.toTypedArray()) }, modifier = Modifier.fillMaxWidth()) {
                     Text("Importar geivia-projects.json")
                 }
                 if (importStatus.isNotBlank()) {

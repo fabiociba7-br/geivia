@@ -41,6 +41,7 @@ class GeiviaToolchainCommandsTest {
             "apt_update",
             "apt_packages",
             "npm_config",
+            "npm_cache_recovery",
             "firebase_cli",
             "toolchain_verify"
         ))
@@ -64,6 +65,39 @@ class GeiviaToolchainCommandsTest {
         val stage = GeiviaToolchainCommands.installStages().first { it.id == "firebase_cli" }
 
         assertTrue(stage.command.last().contains("npm install --global firebase-tools@latest"))
+    }
+
+
+    @Test
+    fun npmCacheRecoveryUsesDedicatedCacheAndCreatesTemporaryDirectory() {
+        val stage = GeiviaToolchainCommands.installStages().first { it.id == "npm_cache_recovery" }
+        val command = stage.command.last()
+
+        assertTrue(command.contains("/root/.cache/geivia-npm"))
+        assertTrue(command.contains("_cacache/tmp"))
+        assertTrue(command.contains("npm config set cache"))
+        assertTrue(command.contains("npm cache verify"))
+        assertTrue(command.contains("npm cache clean --force"))
+    }
+
+    @Test
+    fun firebaseCliInstallRetriesAndRebuildsCacheAfterFailure() {
+        val command = GeiviaToolchainCommands.installStages().first { it.id == "firebase_cli" }.command.last()
+
+        assertTrue(command.contains("for attempt in 1 2 3"))
+        assertTrue(command.contains("--fetch-retries=5"))
+        assertTrue(command.contains("npm cache clean --force"))
+        assertTrue(command.contains("rm -rf \"\\$NPM_CACHE/_cacache/tmp\""))
+        assertTrue(command.contains("GEIVIA_FIREBASE_CLI_OK"))
+    }
+
+    @Test
+    fun firebaseCliUpdatesUseTheSameCacheRecoveryRoutine() {
+        val updateCommand = GeiviaToolchainCommands.updateFirebaseCli().last()
+        val fullUpdateCommand = GeiviaToolchainCommands.updateAll().last()
+
+        assertTrue(updateCommand.contains("/root/.cache/geivia-npm"))
+        assertTrue(fullUpdateCommand.contains("/root/.cache/geivia-npm"))
     }
 
 }

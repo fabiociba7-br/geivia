@@ -39,31 +39,40 @@ internal object GeiviaToolchainCommands {
      * rename/ENOENT races in npm's cacache; retrying the same directory is not
      * sufficient, so each fallback uses a fresh cache root.
      */
+    /**
+     * Installs Firebase CLI using a serialized npm download and isolated caches.
+     * The official standalone Linux binary is not selected because its published
+     * Linux asset is not architecture-aware and can fail on ARM64 devices.
+     */
     private fun firebaseCliInstallCommand(): String = """
         set -eu
+        if command -v firebase >/dev/null 2>&1 && firebase --version; then
+          echo GEIVIA_FIREBASE_CLI_OK
+          exit 0
+        fi
         INSTALLED=0
         for NPM_CACHE in /tmp/geivia-npm-cache /root/.cache/geivia-npm /root/.npm; do
-          echo "GEIVIA_NPM_CACHE_LOCATION_${'$'}NPM_CACHE"
-          mkdir -p "${'$'}NPM_CACHE/_cacache/tmp"
-          npm config set cache "${'$'}NPM_CACHE" --global
-          npm cache verify --cache "${'$'}NPM_CACHE" || {
-            npm cache clean --force --cache "${'$'}NPM_CACHE" || true
-            mkdir -p "${'$'}NPM_CACHE/_cacache/tmp"
-          }
-          # PRoot-backed filesystems can expose transient rename races in cacache.
-          # Serializing HTTP fetches reduces concurrent cache writes; start each
-          # attempt with a clean temporary area while preserving completed stages.
-          rm -rf "${'
+          echo "GEIVIA_NPM_CACHE_LOCATION_$NPM_CACHE"
+          rm -rf "$NPM_CACHE/_cacache/tmp" || true
+          mkdir -p "$NPM_CACHE/_cacache/tmp"
+          if npm install --global firebase-tools@latest \
+              --cache "$NPM_CACHE" \
+              --prefer-online \
+              --no-audit \
+              --no-fund \
+              --fetch-retries=5 \
+              --fetch-timeout=120000 \
+              --maxsockets=1; then
             if command -v firebase >/dev/null 2>&1 && firebase --version; then
               echo GEIVIA_FIREBASE_CLI_OK
               INSTALLED=1
               break
             fi
           fi
-          echo "Firebase CLI installation failed with cache ${'$'}NPM_CACHE; trying a different cache location."
-          npm cache clean --force --cache "${'
+          echo "Firebase CLI installation failed with cache $NPM_CACHE; cleaning before fallback."
+          npm cache clean --force --cache "$NPM_CACHE" || true
         done
-        if [ "${'$'}INSTALLED" -ne 1 ]; then
+        if [ "$INSTALLED" -ne 1 ]; then
           echo GEIVIA_FIREBASE_CLI_FAILED
           exit 1
         fi
@@ -101,12 +110,6 @@ internal object GeiviaToolchainCommands {
             listOf("login", "debian", "--", "/bin/sh", "-lc",
                 "set -eu; npm config set fund false; npm config set audit false; echo GEIVIA_NPM_CONFIG_OK"),
             3 * 60 * 1000L
-        ),
-        InstallStage(
-            "npm_cache_recovery_v2", "Teste do sistema de arquivos e preparação do cache npm",
-            listOf("login", "debian", "--", "/bin/sh", "-lc",
-                "set -eu; NPM_CACHE=/tmp/geivia-npm-cache; mkdir -p \"\$NPM_CACHE/_cacache/tmp\" \"\$NPM_CACHE/_cacache/content-v2/sha512\"; printf probe > \"\$NPM_CACHE/_cacache/tmp/rename-probe\"; mv \"\$NPM_CACHE/_cacache/tmp/rename-probe\" \"\$NPM_CACHE/_cacache/content-v2/sha512/rename-probe\"; rm -f \"\$NPM_CACHE/_cacache/content-v2/sha512/rename-probe\"; npm config set cache \"\$NPM_CACHE\" --global; npm cache verify --cache \"\$NPM_CACHE\" || { npm cache clean --force --cache \"\$NPM_CACHE\" || true; mkdir -p \"\$NPM_CACHE/_cacache/tmp\"; }; echo GEIVIA_NPM_CACHE_READY"),
-            5 * 60 * 1000L
         ),
         InstallStage(
             "firebase_cli", "Instalação da Firebase CLI com recuperação automática do cache",

@@ -1,0 +1,24 @@
+import fs from "node:fs";
+import assert from "node:assert/strict";
+
+const path = "app/src/main/assets/linux-toolchain-manifest.json";
+const manifest = JSON.parse(fs.readFileSync(path, "utf8"));
+
+assert.equal(manifest.schemaVersion, 1);
+assert.equal(manifest.architecture, "arm64");
+assert.equal(manifest.installMode, "on-demand-in-app");
+const profiles = new Map(manifest.profiles.map((profile) => [profile.id, profile]));
+for (const required of ["base", "java", "node", "python", "build", "firebase"]) {
+  assert.ok(profiles.has(required), `Missing required profile: ${required}`);
+}
+assert.ok(profiles.get("java").apt.includes("openjdk-17-jdk-headless"));
+assert.ok(profiles.get("base").apt.includes("git"));
+assert.ok(profiles.get("firebase").npmGlobal.includes("firebase-tools"));
+assert.ok(profiles.get("firebase").requires.includes("node"));
+assert.ok(manifest.defaultProfiles.includes("firebase"));
+assert.ok(manifest.optionalProfiles.includes("gcloud"));
+assert.equal(
+  profiles.get("gcloud").aptExternal[0].requiresSignedRepositoryKey,
+  true
+);
+console.log("Linux toolchain manifest: OK");

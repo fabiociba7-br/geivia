@@ -70,7 +70,7 @@ class GeiviaToolchainCommandsTest {
         assertTrue(command.contains("npm install --global"))
         assertTrue(command.contains("NPM_VERSION=11.6.2"))
         assertTrue(command.contains("node \"\$NPM_CLI\""))
-        assertTrue(command.contains("npm install --prefix"))
+        assertTrue(command.contains("npm_run install --prefix"))
         assertTrue(command.contains("--maxsockets=1"))
         assertTrue(command.contains("GEIVIA_FIREBASE_CACHE_RECOVERY"))
         assertTrue(command.contains("rm -rf \"\$FIREBASE_CACHE\" \"\$FIREBASE_ROOT/node_modules\""))
@@ -82,7 +82,7 @@ class GeiviaToolchainCommandsTest {
     fun firebaseCliInstallerUsesPublicNpmRegistryAndIsIdempotent() {
         val command = GeiviaToolchainCommands.installStages().first { it.id == "firebase_cli" }.command.last()
 
-        assertTrue(command.contains("https://registry.npmjs.org") || command.contains("npm install --prefix"))
+        assertTrue(command.contains("https://registry.npmjs.org") || command.contains("npm_run install --prefix"))
         assertTrue(command.contains("if [ ! -f \"\$FIREBASE_ENTRY\" ]"))
         assertTrue(command.contains("test -f \"\$FIREBASE_ENTRY\""))
         assertTrue(command.contains("chmod 755 /usr/local/bin/firebase"))
@@ -95,9 +95,9 @@ class GeiviaToolchainCommandsTest {
         val updateCommand = GeiviaToolchainCommands.updateFirebaseCli().last()
         val fullUpdateCommand = GeiviaToolchainCommands.updateAll().last()
 
-        assertTrue(updateCommand.contains("npm install --prefix"))
-        assertTrue(fullUpdateCommand.contains("npm install --prefix"))
-        assertTrue(installCommand.contains("npm install --prefix"))
+        assertTrue(updateCommand.contains("npm_run install --prefix"))
+        assertTrue(fullUpdateCommand.contains("npm_run install --prefix"))
+        assertTrue(installCommand.contains("npm_run install --prefix"))
     }
 
 }

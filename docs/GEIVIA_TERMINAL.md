@@ -51,3 +51,6 @@ A escolha do runtime não deve ser tratada como concluída até que a compatibil
 O catálogo inicial de ferramentas está versionado em `app/src/main/assets/linux-toolchain-manifest.json`. Ele descreve os perfis Base, Java 17, Node.js/npm, Python 3, ferramentas de compilação e Firebase CLI, além do Google Cloud CLI como perfil opcional condicionado à validação ARM64. A especificação de instalação, segurança, compatibilidade e deploy está em [GEIVIA_LINUX_TOOLCHAIN.md](GEIVIA_LINUX_TOOLCHAIN.md).
 
 **Importante:** o manifesto é apenas o catálogo para a futura instalação. Ele não instala nem executa os pacotes. O runtime PRoot ainda precisa ser integrado, compatibilizado com a cadeia Android atual e testado em aparelho real antes de habilitar a instalação de ferramentas.
+
+
+A classe `LinuxRuntimePreflight` verifica API Android, ABI ARM64 e espaço livre antes de uma futura instalação do runtime. Ela não instala pacotes nem altera o terminal local atual.

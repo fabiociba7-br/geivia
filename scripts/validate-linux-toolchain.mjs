@@ -13,7 +13,9 @@ for (const required of ["base", "java", "node", "python", "build", "firebase"]) 
 }
 assert.ok(profiles.get("java").apt.includes("default-jdk-headless"));
 assert.ok(profiles.get("base").apt.includes("git"));
-assert.ok(profiles.get("firebase").npmGlobal.includes("firebase-tools"));
+assert.equal(profiles.get("firebase").bundle.provider, "github-release");
+assert.equal(profiles.get("firebase").bundle.asset, "firebase-cli-arm64.tar.gz");
+assert.equal(profiles.get("firebase").bundle.architecture, "arm64");
 assert.ok(profiles.get("firebase").requires.includes("node"));
 assert.ok(manifest.defaultProfiles.includes("firebase"));
 assert.ok(manifest.optionalProfiles.includes("gcloud"));

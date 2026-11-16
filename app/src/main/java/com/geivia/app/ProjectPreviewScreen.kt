@@ -18,7 +18,7 @@ internal fun ProjectPreviewScreen(projectDir: String, onBack: () -> Unit) {
         listOf("index.html", "public/index.html", "dist/index.html", "build/index.html")
             .map { File(root, it) }.firstOrNull { it.isFile }
     }
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("PRÉVIA DO PROJETO", style = MaterialTheme.typography.titleMedium)
             TextButton(onClick = onBack) { Text("Voltar") }

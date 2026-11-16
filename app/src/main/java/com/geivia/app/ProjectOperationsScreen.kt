@@ -54,6 +54,7 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
     var busy by rememberSaveable { mutableStateOf(false) }
     var showDeployConfirm by remember { mutableStateOf(false) }
     var deployTargets by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    var workflowRefresh by rememberSaveable { mutableStateOf(0) }
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", android.content.Context.MODE_PRIVATE) }
     LaunchedEffect(projectId) { prefs.edit().putString("selected_project_id", projectId).apply() }
     val zipPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -83,6 +84,26 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
         Button(onClick = { zipPicker.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Selecionar ZIP do projeto") }
         if (projectDir.isNotBlank()) Text("Pasta importada: $projectDir", color = Color(0xFF18794E), fontSize = 11.sp)
         OutlinedTextField(value = projectId, onValueChange = { projectId = it.trim() }, modifier = Modifier.fillMaxWidth(), label = { Text("Firebase Project ID") }, singleLine = true)
+        val deployRecord = remember(projectId, workflowRefresh) { workflowStore.get(projectId, "firebase_deploy") }
+        if (deployRecord.state == WorkflowStepState.WAITING_CONFIRMATION) {
+            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF5E6))) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("DEPLOY AGUARDANDO EXECUÇÃO MANUAL", color = Color(0xFF77501A))
+                    Text("Depois de executar o comando no Google Cloud Shell, registre aqui. Isso apenas registra sua declaração; o GEIVIA ainda exigirá diagnóstico para confirmar o deploy.", fontSize = 12.sp)
+                    OutlinedButton(onClick = {
+                        runCatching {
+                            val operationId = UUID.randomUUID().toString()
+                            workflowStore.markManualExecutionStarted(projectId, "firebase_deploy", operationId, "Usuário informou que executou o comando copiado no Google Cloud Shell.")
+                            workflowStore.appendAuditEvent(projectId, "firebase_deploy", "IN_PROGRESS", operationId, "Execução manual declarada; aguardando diagnóstico.", "Declaração do usuário; ainda não é evidência do estado remoto.")
+                            workflowRefresh++
+                            output = "Execução manual registrada para $projectId. Estado: aguardando diagnóstico. O GEIVIA não marcou o deploy como concluído."
+                        }.onFailure { output = "Não foi possível registrar a execução: ${it.message}" }
+                    }, modifier = Modifier.fillMaxWidth()) { Text("Executei no Cloud Shell") }
+                }
+            }
+        } else if (deployRecord.state == WorkflowStepState.IN_PROGRESS) {
+            Text("Deploy declarado como executado. Aguardando diagnóstico atualizado do projeto $projectId; ainda não está confirmado.", color = Color(0xFF9A641B), fontSize = 12.sp)
+        }
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F7FB))) {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Publicação Firebase", color = Color(0xFF102B43))

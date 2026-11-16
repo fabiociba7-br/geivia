@@ -142,7 +142,7 @@ internal object GeiviaToolchainCommands {
     fun verifyDefaultProfile(): List<String> = listOf(
         "login", "debian", "--",
         "/bin/sh", "-lc",
-        "set -eu; command -v git; command -v java; command -v node; command -v npm; command -v python3; command -v firebase; git --version; java -version; node --version; npm --version; python3 --version; firebase --version; printf 'GEIVIA_TOOLCHAIN_OK\\n'"
+        "set -eu; command -v git; command -v java; command -v node; command -v npm; command -v python3; command -v firebase; git --version; java -version; node --version; npm --version; python3 --version; firebase --version; printf 'GEIVIA_TOOLCHAIN_OK\n'"
     )
 
     fun checkUpdates(): List<String> = listOf(
@@ -161,7 +161,7 @@ internal object GeiviaToolchainCommands {
           if [ "$installed" != "não instalado" ] && [ "$candidate" != "(none)" ] && dpkg --compare-versions "$candidate" gt "$installed"; then
             available=1
           fi
-          printf 'GEIVIA_UPDATE|%s|%s|%s|%s\\n' "$package" "$installed" "$candidate" "$available"
+          printf 'GEIVIA_UPDATE|%s|%s|%s|%s\n' "$package" "$installed" "$candidate" "$available"
         }
         check_apt git
         check_apt default-jdk-headless
@@ -175,10 +175,10 @@ internal object GeiviaToolchainCommands {
         [ -n "$installed_firebase" ] || installed_firebase="não instalado"
         available_firebase=0
         if [ "$installed_firebase" != "não instalado" ] && [ "$latest_firebase" != "$installed_firebase" ] &&
-           [ "$(printf '%s\\n' "$installed_firebase" "$latest_firebase" | sort -V | tail -n 1)" = "$latest_firebase" ]; then
+           [ "$(printf '%s\n' "$installed_firebase" "$latest_firebase" | sort -V | tail -n 1)" = "$latest_firebase" ]; then
           available_firebase=1
         fi
-        printf 'GEIVIA_UPDATE|firebase-tools|%s|%s|%s\\n' "$installed_firebase" "$latest_firebase" "$available_firebase"
+        printf 'GEIVIA_UPDATE|firebase-tools|%s|%s|%s\n' "$installed_firebase" "$latest_firebase" "$available_firebase"
         echo GEIVIA_UPDATE_REPORT_END
         """.trimIndent()
     )
@@ -192,9 +192,27 @@ internal object GeiviaToolchainCommands {
 
     fun updateFirebaseCli(): List<String> = listOf(
         "login", "debian", "--", "/bin/sh", "-lc",
-        firebaseCliInstallCommand() + "\nfirebase --version"
+        """
+        set -eu
+        FIREBASE_ROOT=/opt/geivia/firebase
+        FIREBASE_CACHE=/opt/geivia/npm-cache
+        NPM_CLI=/usr/local/lib/node_modules/npm/bin/npm-cli.js
+        mkdir -p "$FIREBASE_ROOT" "$FIREBASE_CACHE"
+        export npm_config_cache="$FIREBASE_CACHE"
+        export npm_config_registry=https://registry.npmjs.org/
+        if [ -f "$NPM_CLI" ] && [ "$(node "$NPM_CLI" --version)" = "11.6.2" ]; then
+          node "$NPM_CLI" install --prefix "$FIREBASE_ROOT" --omit=dev --no-audit --no-fund --prefer-online --maxsockets=1 firebase-tools@latest
+        else
+          npm install --prefix "$FIREBASE_ROOT" --omit=dev --no-audit --no-fund --prefer-online --maxsockets=1 firebase-tools@latest
+        fi
+        cat > /usr/local/bin/firebase <<'GEIVIA_FIREBASE_WRAPPER'
+        #!/bin/sh
+        exec node /opt/geivia/firebase/node_modules/firebase-tools/lib/bin/firebase.js "$@"
+        GEIVIA_FIREBASE_WRAPPER
+        chmod 755 /usr/local/bin/firebase
+        firebase --version
+        """.trimIndent()
     )
-
     fun updateAll(): List<String> = listOf(
         "login", "debian", "--", "/bin/sh", "-lc",
         """

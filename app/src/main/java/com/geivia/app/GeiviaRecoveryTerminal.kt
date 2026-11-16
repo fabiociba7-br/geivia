@@ -203,7 +203,7 @@ internal fun GeiviaRecoveryTerminal(
                                 color = TerminalForeground, fontSize = 11.sp
                             )
                         }
-                        OutlinedButton(onClick = { fullScreen = false }) { Text("Minimizar") }
+                        OutlinedButton(onClick = { fullScreen = false }) { Text("Sair do terminal") }
                     }
                     Divider(color = Color(0xFF344653))
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

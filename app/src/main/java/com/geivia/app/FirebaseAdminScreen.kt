@@ -92,6 +92,7 @@ internal fun FirebaseAdminScreen(projectId: String, onBack: () -> Unit) {
         Text("FIREBASE • ADMINISTRAÇÃO", style = MaterialTheme.typography.titleLarge)
         Text("Projeto: $projectId", style = MaterialTheme.typography.labelMedium)
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Voltar") }
+        if (projectId.isNotBlank()) {
         listOf("Criar banco Firestore", "Ativar Firebase Authentication", "Ativar APIs necessárias").forEach { actionTitle ->
             val stepId = "firebase_admin_" + actionTitle.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_').take(70)
             val record = remember(projectId, stepId, workflowRefresh) { workflowStore.get(projectId, stepId) }
@@ -114,6 +115,7 @@ internal fun FirebaseAdminScreen(projectId: String, onBack: () -> Unit) {
             } else if (record.state == WorkflowStepState.IN_PROGRESS) {
                 Text("$actionTitle: execução declarada; aguardando diagnóstico. Ainda não confirmada.", fontSize = 11.sp, color = androidx.compose.ui.graphics.Color(0xFF9A641B))
             }
+        }
         }
         Text("CONSULTAR E BAIXAR", style = MaterialTheme.typography.labelLarge)
         Button(enabled = !busy, onClick = {

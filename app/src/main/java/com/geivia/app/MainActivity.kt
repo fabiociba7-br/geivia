@@ -1999,6 +1999,7 @@ private fun GitHubScreen(
     var clientId by rememberSaveable { mutableStateOf(prefs.getString("github_client_id", "").orEmpty()) }
     var callbackUrl by rememberSaveable { mutableStateOf(prefs.getString("github_callback_url", "").orEmpty()) }
     var exchangeUrl by rememberSaveable { mutableStateOf(prefs.getString("github_exchange_url", "").orEmpty()) }
+    var showAdvancedConfiguration by rememberSaveable { mutableStateOf(clientId.isBlank() || callbackUrl.isBlank() || exchangeUrl.isBlank()) }
     var authenticatedLogin by remember { mutableStateOf("") }
     var repositories by remember { mutableStateOf<List<GitHubRepository>>(emptyList()) }
     var selectedRepository by remember { mutableStateOf<GitHubRepository?>(null) }
@@ -2163,6 +2164,10 @@ private fun GitHubScreen(
         }
         if (!localConnected) {
             Spacer(Modifier.height(18.dp))
+            TextButton(onClick = { showAdvancedConfiguration = !showAdvancedConfiguration }, modifier = Modifier.fillMaxWidth()) {
+                Text(if (showAdvancedConfiguration) "Ocultar configuração técnica" else "Configurar conexão (uma única vez)")
+            }
+            if (showAdvancedConfiguration) {
             Text("CONFIGURAÇÃO DA GITHUB APP", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(value = clientId, onValueChange = { clientId = it.trim() }, label = { Text("Client ID (não é segredo)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
@@ -2186,6 +2191,7 @@ private fun GitHubScreen(
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Salvar configuração") }
             Spacer(Modifier.height(8.dp))
+            }
             Button(
                 onClick = {
                     runCatching {

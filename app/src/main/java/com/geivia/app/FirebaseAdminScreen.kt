@@ -81,7 +81,53 @@ internal fun FirebaseAdminScreen(projectId: String, onBack: () -> Unit) {
                 TOKEN="${'$'}(gcloud auth print-access-token)"
                 curl -fsS -H "Authorization: Bearer ${'$'}TOKEN" "https://firebaserules.googleapis.com/v1/projects/$projectId/releases/cloud.firestore" > release.json
                 NAME="${'$'}(jq -r '.rulesetName // empty' release.json)"
-                test -n "$NAME" || { echo "Nenhuma release de regras Firestore foi encontrada."; exit 4; }
+                test -n "${' { echo "Nenhuma release de regras Firestore foi encontrada."; exit 4; }
+                curl -fsS -H "Authorization: Bearer ${'$'}TOKEN" "https://firebaserules.googleapis.com/v1/${'$'}NAME" > '${f.absolutePath}'
+                cat '${f.absolutePath}'
+            """.trimIndent()
+            runOperation("Baixando regras Firestore ativas", script, export = f)
+        }, modifier = Modifier.fillMaxWidth()) { Text("Baixar regras Firestore atuais (JSON)") }
+
+        HorizontalDivider()
+        Text("CRIAR E CONFIGURAR", style = MaterialTheme.typography.labelLarge)
+        Text("As ações abaixo podem criar recursos e gerar cobrança. O GEIVIA consulta o estado atual antes de agir.", fontSize = 12.sp)
+        OutlinedTextField(value = firestoreRegion, onValueChange = { firestoreRegion = it.trim() }, modifier = Modifier.fillMaxWidth(), label = { Text("Região do Firestore (ex.: southamerica-east1)") }, singleLine = true)
+        OutlinedButton(enabled = !busy && firestoreRegion.matches(Regex("^[a-z0-9-]+$")), onClick = { confirmAction = "database" }, modifier = Modifier.fillMaxWidth()) { Text("Criar banco Firestore") }
+        OutlinedButton(enabled = !busy, onClick = { confirmAction = "auth" }, modifier = Modifier.fillMaxWidth()) { Text("Ativar Firebase Authentication") }
+        OutlinedButton(enabled = !busy, onClick = { confirmAction = "apis" }, modifier = Modifier.fillMaxWidth()) { Text("Ativar APIs necessárias") }
+        Card {
+            Column(Modifier.padding(12.dp)) {
+                Text("CUSTOS • AVISO ANTES DA AÇÃO", style = MaterialTheme.typography.labelLarge)
+                Text("Spark: uso dentro das cotas gratuitas disponíveis. Blaze: cobrança conforme consumo e serviços usados. Criar banco Firestore, publicar Functions ou ativar recursos pode exigir faturamento ou gerar custos indiretos. Ativar uma API, isoladamente, normalmente não cobra; o recurso utilizado pode cobrar. O preço depende de região, tráfego, armazenamento e operações.", fontSize = 12.sp)
+                Text("O GEIVIA não promete gratuidade sem verificar plano, cotas e faturamento do projeto.", fontSize = 12.sp)
+            }
+        }
+        if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+        Text("LOG / RESULTADO", style = MaterialTheme.typography.labelLarge)
+        Card(colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color(0xFF101820))) {
+            SelectionContainer { Text(log, Modifier.padding(12.dp), color = androidx.compose.ui.graphics.Color.White, fontSize = 11.sp) }
+        }
+        OutlinedButton(onClick = {
+            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("GEIVIA", sanitizeTerminalLog(log)))
+        }, modifier = Modifier.fillMaxWidth()) { Text("Copiar log") }
+    }
+
+    confirmAction?.let { action ->
+        val (title, detail, command) = when (action) {
+            "database" -> Triple("Criar banco Firestore", "Cria o banco Firestore Native (default) na região $firestoreRegion. A região não poderá ser alterada depois. O GEIVIA verifica antes se o banco já existe. Pode gerar cobrança conforme uso e plano.", "if gcloud firestore databases describe --database='(default)' --project='$projectId' >/dev/null 2>&1; then echo 'O banco default já existe; nenhuma alteração foi feita.'; else gcloud firestore databases create --database='(default)' --location='$firestoreRegion' --type=firestore-native --project='$projectId'; fi")
+            "auth" -> Triple("Ativar Firebase Authentication", "Ativa a API Identity Toolkit. Configurar provedores (Google, e-mail, telefone) é uma etapa separada e pode exigir dados e consentimento do proprietário.", "gcloud services enable identitytoolkit.googleapis.com --project='$projectId'")
+            else -> Triple("Ativar APIs básicas Firebase", "Ativa Firebase Management, Firestore, Rules e Hosting. O uso dos serviços pode gerar cobrança.", "gcloud services enable firebase.googleapis.com firebaserules.googleapis.com firestore.googleapis.com firebasehosting.googleapis.com --project='$projectId'")
+        }
+        AlertDialog(
+            onDismissRequest = { confirmAction = null },
+            title = { Text(title) }, text = { Text(detail) },
+            confirmButton = { TextButton(onClick = { confirmAction = null; runOperation(title, command) }) { Text("Confirmar e executar") } },
+            dismissButton = { TextButton(onClick = { confirmAction = null }) { Text("Cancelar") } }
+        )
+    }
+}
+}NAME" || { echo "Nenhuma release de regras Firestore foi encontrada."; exit 4; }
                 curl -fsS -H "Authorization: Bearer ${'$'}TOKEN" "https://firebaserules.googleapis.com/v1/${'$'}NAME" > '${f.absolutePath}'
                 cat '${f.absolutePath}'
             """.trimIndent()

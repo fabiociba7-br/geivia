@@ -42,8 +42,8 @@ A tela **Configurar GEIVIA**, exibida antes das perguntas sobre contas e projeto
 3. atualiza os índices do Debian;
 4. instala os pacotes básicos, Java, Node.js/npm, Python e ferramentas de compilação;
 5. configura o npm;
-6. cria e verifica um cache dedicado do npm, separado do cache padrão `/root/.npm`;
-7. instala a Firebase CLI com até três tentativas, limpeza/recriação do cache e repetição automática em caso de falha;
+6. testa a operação de renomeação no sistema de arquivos e prepara o cache temporário do npm;
+7. instala a Firebase CLI tentando, em sequência, caches independentes em `/tmp`, `/root/.cache` e `/root/.npm`;
 8. valida as versões reais de `git`, `java`, `node`, `npm`, `python3` e `firebase`.
 
 A interface apresenta os estados Aguardando, Em andamento, Concluída e Falhou. O resultado de cada etapa concluída é salvo localmente; ao retomar, as etapas confirmadas são puladas e a primeira etapa pendente/falha é repetida. O cancelamento interrompe a operação ativa e mantém os checkpoints já confirmados. O terminal de recuperação, na tela de diagnóstico e nos detalhes técnicos da configuração inicial com falha, permite investigar e corrigir o ambiente Debian.
@@ -53,9 +53,9 @@ O APK não carrega a rootfs inteira nem todos os pacotes. A distribuição e os 
 
 ### Recuperação do cache npm (erro ENOENT ao renomear arquivos)
 
-A instalação da Firebase CLI usa o cache dedicado `/root/.cache/geivia-npm`, em vez de reutilizar o cache padrão `/root/.npm`. Antes da instalação, o GEIVIA cria `_cacache/tmp`, configura o npm para usar esse diretório e executa `npm cache verify`. Se a verificação falhar, limpa e recria o cache. A instalação da CLI tem até três tentativas, com cinco retries de rede por tentativa; após uma tentativa malsucedida, limpa e recria o diretório temporário antes de tentar novamente. O mesmo procedimento é usado na atualização da Firebase CLI e na atualização geral da toolchain.
+O erro ENOENT/rename persistiu mesmo após a mudança para um cache dedicado em `/root/.cache/geivia-npm`. Portanto, repetir a limpeza no mesmo diretório não é considerado suficiente. A nova rotina primeiro testa a criação e renomeação de um arquivo no cache temporário e, durante a instalação, tenta raízes independentes nesta ordem: `/tmp/geivia-npm-cache`, `/root/.cache/geivia-npm` e `/root/.npm`. Cada local é configurado e verificado separadamente; a instalação usa cinco retries de rede, sem auditoria/funding, e só marca sucesso depois de executar `firebase --version`.
 
-Essa correção trata a classe de falhas `ENOENT`/rename observada no cache do npm, mas a confirmação definitiva depende da execução da instalação em um Debian/PRoot real com rede. Falhas de rede, falta de espaço ou problemas no sistema de arquivos ainda podem impedir a instalação; nesse caso, o app mantém a etapa marcada como falha e permite retomá-la.
+A etapa de preparação recebeu um novo identificador de checkpoint para que instalações já existentes na 1.0.6 executem o teste de filesystem e a preparação atualizados, em vez de pularem a etapa antiga. A confirmação definitiva depende de executar o comando em Debian/PRoot real no aparelho. Se todos os caminhos falharem, os logs indicarão qual cache foi tentado; rede, espaço e limitações do filesystem ainda podem impedir a instalação.
 
 ## Firebase Hosting
 

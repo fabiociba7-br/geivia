@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "id": "geivia-debian-arm64-dev",
+  "distribution": "Debian stable",
+  "architecture": "arm64",
+  "installMode": "on-demand-in-app",
+  "profiles": [
+    {
+      "id": "base",
+      "title": "Base de desenvolvimento",
+      "apt": ["ca-certificates", "curl", "wget", "git", "openssh-client", "unzip", "zip", "xz-utils", "tar", "jq", "nano", "less"]
+    },
+    {
+      "id": "java",
+      "title": "Java",
+      "apt": ["openjdk-17-jdk-headless"]
+    },
+    {
+      "id": "node",
+      "title": "Node.js",
+      "apt": ["nodejs", "npm"]
+    },
+    {
+      "id": "python",
+      "title": "Python",
+      "apt": ["python3", "python3-pip", "python3-venv"]
+    },
+    {
+      "id": "build",
+      "title": "Ferramentas de compilação",
+      "apt": ["build-essential", "cmake", "pkg-config", "make"]
+    },
+    {
+      "id": "firebase",
+      "title": "Firebase Hosting",
+      "npmGlobal": ["firebase-tools"],
+      "requires": ["node"]
+    },
+    {
+      "id": "gcloud",
+      "title": "Google Cloud CLI",
+      "aptExternal": [
+        {
+          "id": "google-cloud-cli",
+          "repository": "https://packages.cloud.google.com/apt",
+          "architecture": "arm64",
+          "requiresSignedRepositoryKey": true,
+          "enabledByDefault": false
+        }
+      ]
+    }
+  ],
+  "defaultProfiles": ["base", "java", "node", "python", "build", "firebase"],
+  "optionalProfiles": ["gcloud"],
+  "notes": [
+    "Packages are installed inside the app-private Linux root filesystem, never into Android itself.",
+    "The runtime must verify repository signatures and package checksums.",
+    "The Google Cloud CLI profile is opt-in and must pass an ARM64 repository availability check before installation.",
+    "Android SDK and Android NDK are not part of this profile; on-device Android builds require a separate compatibility and storage assessment."
+  ]
+}

@@ -11,7 +11,7 @@ const profiles = new Map(manifest.profiles.map((profile) => [profile.id, profile
 for (const required of ["base", "java", "node", "python", "build", "firebase"]) {
   assert.ok(profiles.has(required), `Missing required profile: ${required}`);
 }
-assert.ok(profiles.get("java").apt.includes("openjdk-17-jdk-headless"));
+assert.ok(profiles.get("java").apt.includes("default-jdk-headless"));
 assert.ok(profiles.get("base").apt.includes("git"));
 assert.ok(profiles.get("firebase").npmGlobal.includes("firebase-tools"));
 assert.ok(profiles.get("firebase").requires.includes("node"));

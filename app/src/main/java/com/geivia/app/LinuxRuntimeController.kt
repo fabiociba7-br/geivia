@@ -60,9 +60,9 @@ internal class LinuxRuntimeController(context: Context) {
         return results
     }
 
-    fun startDebianShell(): ProotLauncher.Session = synchronized(this) {
+    fun startDebianShell(rows: Int = 50, cols: Int = 80): ProotLauncher.Session = synchronized(this) {
         check(activeSession == null) { "Já existe uma sessão Linux em execução." }
-        val session = launcher.startSession("debian")
+        val session = launcher.startSession("debian", rows = rows, cols = cols)
             ?: throw IllegalStateException("Debian ainda não está instalado. Use primeiro Preparar Debian.")
         activeSession = session
         session
@@ -82,6 +82,11 @@ internal class LinuxRuntimeController(context: Context) {
     fun send(session: ProotLauncher.Session, text: String) {
         val bytes = text.toByteArray(StandardCharsets.UTF_8)
         check(session.write(bytes) == bytes.size) { "Não foi possível enviar o comando ao terminal Linux." }
+    }
+
+    fun resize(session: ProotLauncher.Session, rows: Int, cols: Int) {
+        require(rows >= 8 && cols >= 20) { "Dimensões de terminal inválidas." }
+        check(session.resize(rows, cols) == 0) { "Não foi possível redimensionar o terminal Linux." }
     }
 
     fun cancel() { activeSession?.close() }

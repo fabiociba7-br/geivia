@@ -162,6 +162,7 @@ internal fun GoogleCloudAccessScreen(onBack: () -> Unit) {
         }
         Spacer(Modifier.height(12.dp))
         Text("SAÍDA DO PROCESSO", color = Color(0xFF173B5E), fontWeight = FontWeight.Bold, fontSize = 11.sp)
+        CopyTerminalLogButton(output, modifier = Modifier.fillMaxWidth())
         Column(
             Modifier.fillMaxWidth().heightIn(min = 180.dp, max = 360.dp)
                 .background(Color(0xFF101D2B), RoundedCornerShape(12.dp))

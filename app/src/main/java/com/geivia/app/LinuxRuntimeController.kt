@@ -47,6 +47,7 @@ internal class LinuxRuntimeController(context: Context) {
         )
         for ((label, args, timeoutMs) in stages) {
             onOutput("\n[GEIVIA] $label…\n")
+            onOutput("[GEIVIA] Executando: ${args.joinToString(" ")}\\n")
             val code = execute(args, timeoutMs, onOutput)
             results += code
             onOutput("\n[GEIVIA] Etapa concluída com código $code.\n")

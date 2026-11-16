@@ -43,7 +43,7 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
     ) {
         Text("PRIMEIRO PASSO • CONFIGURAÇÃO DO GEIVIA", color = Color(0xFF07528D), fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
         LinearProgressIndicator(
-            progress = { if (complete) 1f else if (busy) 0.55f else 0.08f },
+            progress = if (complete) 1f else if (busy) 0.55f else 0.08f,
             modifier = Modifier.fillMaxWidth().height(5.dp)
         )
         Text("Vamos preparar tudo antes de perguntar sobre suas contas.", color = Color(0xFF102B43), fontSize = 24.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold)

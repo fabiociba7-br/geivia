@@ -135,6 +135,23 @@ class WorkflowProgressStoreTest {
     }
 
     @Test
+    fun manualExecutionAcknowledgementStaysPendingUntilDiagnosticEvidence() {
+        val store = store()
+        store.waitForConfirmation("project-manual-run", "firebase_deploy", "Command reviewed")
+        val started = store.markManualExecutionStarted(
+            "project-manual-run", "firebase_deploy", "manual-run-1", "User says command was run in Cloud Shell"
+        )
+        assertEquals(WorkflowStepState.IN_PROGRESS, started.state)
+        assertTrue(started.evidence.startsWith("DECLARAÇÃO DE EXECUÇÃO MANUAL:"))
+        assertTrue(started.message.contains("aguardando diagnóstico"))
+        org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+            store.markManualExecutionStarted("project-manual-run", "firebase_deploy", "manual-run-2", "Duplicate")
+        }
+        store.reconcileCompleted("project-manual-run", "firebase_deploy", "Fresh diagnostic evidence for same Project ID")
+        assertEquals(WorkflowStepState.COMPLETED, store.get("project-manual-run", "firebase_deploy").state)
+    }
+
+    @Test
     fun manualConfirmationRemainsDistinctFromDiagnosticCompletion() {
         val store = store()
         store.waitForConfirmation("project-two", "hosting", "Review")

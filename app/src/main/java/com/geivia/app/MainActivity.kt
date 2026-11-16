@@ -83,6 +83,11 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
         mutableIntStateOf(prefs.getInt("workflow_question_index", 0).coerceAtLeast(0))
     }
     var costMode by rememberSaveable { mutableStateOf(prefs.getString("cost_mode", "") ?: "") }
+    var preflightGoogleAccount by rememberSaveable { mutableStateOf(prefs.getString("preflight_google_account", "") ?: "") }
+    var preflightCloudProject by rememberSaveable { mutableStateOf(prefs.getString("preflight_cloud_project", "") ?: "") }
+    var preflightFirebaseProject by rememberSaveable { mutableStateOf(prefs.getString("preflight_firebase_project", "") ?: "") }
+    var preflightGithubRepo by rememberSaveable { mutableStateOf(prefs.getString("preflight_github_repo", "") ?: "") }
+    var preflightProjectId by rememberSaveable { mutableStateOf(prefs.getString("preflight_project_id", "") ?: "") }
     val githubTokenStore = remember { GitHubTokenStore(context) }
     var githubConnected by remember { mutableStateOf(githubTokenStore.accessToken() != null) }
     var githubCallbackMessage by remember { mutableStateOf<String?>(null) }
@@ -148,9 +153,35 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
         Surface(Modifier.fillMaxSize(), color = Color(0xFFF7FBFD)) {
             when (page) {
                 "welcome" -> WelcomeScreen(hasCheckpoint = prefs.contains("workflow_checkpoint")) {
-                    page = savedCheckpoint
+                    page = if (prefs.getBoolean("preflight_completed", false)) savedCheckpoint else "preflight"
                     if (page == "questions") index = prefs.getInt("workflow_question_index", 0).coerceAtLeast(0)
                 }
+                "preflight" -> InitialEnvironmentScreen(
+                    googleAccount = preflightGoogleAccount,
+                    cloudProject = preflightCloudProject,
+                    firebaseProject = preflightFirebaseProject,
+                    githubRepo = preflightGithubRepo,
+                    projectId = preflightProjectId,
+                    onGoogleAccountChange = { preflightGoogleAccount = it },
+                    onCloudProjectChange = { preflightCloudProject = it },
+                    onFirebaseProjectChange = { preflightFirebaseProject = it },
+                    onGithubRepoChange = { preflightGithubRepo = it },
+                    onProjectIdChange = { preflightProjectId = it },
+                    onBack = { page = "welcome" },
+                    onContinue = {
+                        prefs.edit()
+                            .putString("preflight_google_account", preflightGoogleAccount)
+                            .putString("preflight_cloud_project", preflightCloudProject)
+                            .putString("preflight_firebase_project", preflightFirebaseProject)
+                            .putString("preflight_github_repo", preflightGithubRepo)
+                            .putString("preflight_project_id", preflightProjectId.trim())
+                            .putBoolean("preflight_completed", true)
+                            .putLong("preflight_completed_at", System.currentTimeMillis())
+                            .apply()
+                        val hasExistingCloud = preflightCloudProject == "yes" || preflightFirebaseProject == "yes"
+                        page = if (hasExistingCloud) "google_access" else if (prefs.contains("workflow_checkpoint")) savedCheckpoint else "workspace_setup"
+                    }
+                )
                 "workspace_setup" -> WorkspaceSetupScreen(
                     initialName = workspaceName,
                     workspaceId = workspaceId,
@@ -236,6 +267,92 @@ private fun WelcomeScreen(hasCheckpoint: Boolean, onStart: () -> Unit) {
         Button(onClick = onStart, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Text(if (hasCheckpoint) "Continuar de onde parei" else "Começar", Modifier.padding(vertical = 7.dp), fontSize = 16.sp, fontWeight = FontWeight.Bold) }
         Spacer(Modifier.height(12.dp))
         Text("Seu ambiente GEIVIA é identificado neste aparelho. A conexão com o Google só acontece mediante configuração e autorização explícitas.", color = Muted, fontSize = 12.sp, textAlign = TextAlign.Center)
+    }
+}
+
+@Composable
+private fun InitialEnvironmentScreen(
+    googleAccount: String,
+    cloudProject: String,
+    firebaseProject: String,
+    githubRepo: String,
+    projectId: String,
+    onGoogleAccountChange: (String) -> Unit,
+    onCloudProjectChange: (String) -> Unit,
+    onFirebaseProjectChange: (String) -> Unit,
+    onGithubRepoChange: (String) -> Unit,
+    onProjectIdChange: (String) -> Unit,
+    onBack: () -> Unit,
+    onContinue: () -> Unit
+) {
+    val complete = googleAccount.isNotBlank() && cloudProject.isNotBlank() &&
+        firebaseProject.isNotBlank() && githubRepo.isNotBlank()
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp),
+        verticalArrangement = Arrangement.spacedBy(13.dp)
+    ) {
+        Text("GEIVIA • CONFIGURAÇÃO INICIAL", color = DeepBlue, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+        LinearProgressIndicator(progress = 0.12f, modifier = Modifier.fillMaxWidth().height(5.dp))
+        Text("Antes de começar, vamos aproveitar o que você já tem.", color = Ink, fontSize = 24.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold)
+        Text(
+            "Responda estas perguntas uma vez. O GEIVIA usará as respostas para evitar etapas desnecessárias e não vai criar projetos, conectar contas ou alterar serviços nesta tela.",
+            color = Muted, fontSize = 14.sp, lineHeight = 21.sp
+        )
+        InitialStatusQuestion("Você já tem uma conta Google?", googleAccount, onGoogleAccountChange,
+            "Ela é usada para acessar o Google Cloud e o Firebase.")
+        InitialStatusQuestion("Você já tem um projeto no Google Cloud?", cloudProject, onCloudProjectChange,
+            "Se já tiver, vamos tentar localizar e reutilizar esse projeto.")
+        InitialStatusQuestion("Você já tem um projeto no Firebase?", firebaseProject, onFirebaseProjectChange,
+            "Um projeto Firebase também é um projeto Google Cloud associado ao Firebase.")
+        InitialStatusQuestion("Você já tem um repositório GitHub para esse projeto?", githubRepo, onGithubRepoChange,
+            "Se já existir, o GEIVIA poderá trabalhar com ele após a autorização.")
+        OutlinedTextField(
+            value = projectId,
+            onValueChange = onProjectIdChange,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Project ID existente (opcional)") },
+            placeholder = { Text("ex.: meu-projeto-123") },
+            singleLine = true,
+            supportingText = { Text("Se souber o ID do projeto Cloud/Firebase, informe aqui. Ele será apenas uma referência até a conta ser autorizada.") }
+        )
+        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF4FA)), shape = RoundedCornerShape(13.dp)) {
+            Text(
+                "Privacidade e segurança: o GEIVIA não consegue confirmar contas ou projetos sem sua autorização. Quando uma etapa precisar de arquivos, conta ou acesso do Android, ele explicará o motivo e pedirá somente o acesso necessário. Não existe uma permissão comum que conceda acesso root ou controle irrestrito do sistema.",
+                Modifier.padding(14.dp), color = Ink, fontSize = 12.sp, lineHeight = 18.sp
+            )
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedButton(onClick = onBack, modifier = Modifier.weight(1f)) { Text("Voltar") }
+            Button(onClick = onContinue, enabled = complete, modifier = Modifier.weight(1f)) { Text("Continuar") }
+        }
+    }
+}
+
+@Composable
+private fun InitialStatusQuestion(
+    title: String,
+    selected: String,
+    onSelect: (String) -> Unit,
+    help: String
+) {
+    Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {
+        Column(Modifier.fillMaxWidth().padding(13.dp)) {
+            Text(title, color = Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(3.dp))
+            Text(help, color = Muted, fontSize = 11.sp, lineHeight = 16.sp)
+            Spacer(Modifier.height(7.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                listOf("yes" to "Sim", "no" to "Não", "unsure" to "Não sei").forEach { (value, label) ->
+                    Row(
+                        Modifier.weight(1f).clickable { onSelect(value) }.padding(vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected == value, onClick = { onSelect(value) })
+                        Text(label, color = Ink, fontSize = 11.sp)
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -166,3 +166,6 @@ A política compartilhada está em `AndroidAccessPolicy.kt`, com casos explícit
 A interface usa as orientações dessa política nos fluxos de backup e importação de inventário. Os testes unitários verificam que arquivos privados e seletores não pedem permissões runtime, que root não é apresentado como permissão concedível e que a lista atual do manifesto permanece restrita a `INTERNET`.
 
 A existência da política não significa que o GEIVIA já implemente acesso root, leitura de todo o armazenamento ou controle privilegiado do Android. Essas operações continuam fora do escopo suportado em aparelhos sem root.
+
+
+O terminal local também reconhece comandos privilegiados comuns (`su`, `sudo`, `mount`, `umount`, `systemctl` e `setenforce`) e responde com a limitação real do Android, em vez de sugerir que conceder uma permissão resolveria o acesso. Há teste unitário para esse comportamento.

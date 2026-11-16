@@ -80,6 +80,56 @@ A lista mínima continua sendo somente `INTERNET` para a arquitetura atual e par
 
 A implementação futura pode precisar de permissões normais adicionais apenas se adotar recursos específicos, como foreground service de transferência. A necessidade de executar o Linux é principalmente uma questão de compatibilidade do runtime com as políticas de execução do Android, não de conceder acesso irrestrito ao sistema de arquivos.
 
+
+## 8. Regra obrigatória para futuras funções que precisem de acesso
+
+A partir desta auditoria, toda função nova do GEIVIA que tocar arquivos compartilhados ou recursos protegidos do Android deverá implementar solicitação de acesso no momento da ação, e não presumir autorização.
+
+### Fluxo obrigatório para arquivos
+
+1. O usuário inicia uma ação concreta, como importar um projeto, abrir uma pasta existente ou exportar um arquivo.
+2. Antes de abrir o seletor, o GEIVIA explica em linguagem simples qual arquivo/pasta será acessado e para quê.
+3. Usar o seletor oficial do Android:
+   - arquivo individual: `ACTION_OPEN_DOCUMENT`;
+   - salvar/exportar: `ACTION_CREATE_DOCUMENT`;
+   - pasta inteira escolhida pelo usuário: `ACTION_OPEN_DOCUMENT_TREE`, apenas quando a função realmente precisar trabalhar com vários arquivos daquela pasta.
+4. Usar somente a URI autorizada pelo usuário e persistir a permissão de URI quando a API permitir e a função precisar reutilizá-la.
+5. Se o usuário negar ou cancelar, não insistir, não procurar o mesmo arquivo por outros caminhos e oferecer a alternativa de usar o workspace privado do GEIVIA.
+6. Nunca pedir acesso amplo ao armazenamento como atalho para uma função que pode usar o seletor.
+
+### Fluxo obrigatório para permissões especiais do Android
+
+Quando uma função futura realmente depender de uma permissão perigosa ou acesso especial:
+- explicar primeiro o recurso que ficará indisponível sem ela;
+- solicitar somente a permissão estritamente necessária;
+- abrir a tela oficial de configurações do Android quando a concessão exigir configuração manual;
+- verificar novamente o estado da autorização ao retornar ao app;
+- tratar negação como resultado válido, sem bloquear funções não relacionadas;
+- oferecer botão para rever a autorização nas configurações do GEIVIA.
+
+Não solicitar acessibilidade, acesso a notificações, VPN, administração do dispositivo, instalação de pacotes, exibição sobre outros apps ou acesso a todos os arquivos sem uma função explícita, justificativa técnica e revisão de segurança próprias.
+
+### Acesso ao sistema operacional
+
+O GEIVIA deve distinguir claramente:
+- **acesso concedível pelo Android**: permissões runtime, seletor de arquivos e acessos especiais oferecidos pelo próprio sistema;
+- **acesso privado do app**: diretórios internos do GEIVIA, disponíveis sem permissão de armazenamento;
+- **acesso privilegiado/root**: não concedível por uma permissão comum. Se uma operação exigir root, acesso a dados de outros apps, alteração de `/system` ou controle do kernel, o GEIVIA deve informar que a operação não é suportada em aparelho sem root e não deve simular sucesso.
+
+### Critério de aceite obrigatório em revisão e testes
+
+Nenhuma função que dependa de acesso protegido poderá ser considerada pronta sem testes para:
+- primeira solicitação e explicação contextual;
+- autorização concedida;
+- autorização negada;
+- cancelamento do seletor;
+- autorização revogada nas configurações;
+- arquivo ou pasta removido/inacessível;
+- retomada após fechar e reabrir o aplicativo;
+- confirmação de que nenhum arquivo fora do escopo autorizado foi lido ou alterado.
+
+**Compromisso de produto:** pedir acesso quando necessário, explicar por quê, respeitar a escolha do usuário e nunca pedir acesso ao sistema inteiro por conveniência.
+
 ## Referências oficiais
 
 - Android app-specific storage: https://developer.android.com/training/data-storage/app-specific

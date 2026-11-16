@@ -148,9 +148,43 @@ internal fun FirebaseAdminScreen(projectId: String, onBack: () -> Unit) {
         }
         AlertDialog(
             onDismissRequest = { confirmAction = null },
-            title = { Text(title) }, text = { Text(detail) },
-            confirmButton = { TextButton(onClick = { confirmAction = null; runOperation(title, command) }) { Text("Confirmar e executar") } },
-            dismissButton = { TextButton(onClick = { confirmAction = null }) { Text("Cancelar") } }
+            title = { Text("Revisar operação • $title") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(detail)
+                    Text("Project ID: $projectId", style = MaterialTheme.typography.labelMedium)
+                    Text("COMANDO PARA REVISÃO", style = MaterialTheme.typography.labelMedium)
+                    SelectionContainer {
+                        Text(command, fontSize = 11.sp, color = androidx.compose.ui.graphics.Color(0xFF1565C0))
+                    }
+                    Text(
+                        "O GEIVIA não executará esta alteração automaticamente. Copie o comando, revise-o e execute manualmente no Google Cloud Shell. Depois retorne ao GEIVIA e faça um novo diagnóstico para confirmar o resultado.",
+                        fontSize = 12.sp
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val stepId = "firebase_admin_" + title.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_').take(70)
+                    val historyError = workflowStore.healthError()
+                    if (historyError != null) {
+                        log = "Operação bloqueada: $historyError"
+                    } else {
+                        runCatching {
+                            workflowStore.waitForConfirmation(projectId, stepId, "Comando revisado; aguardando execução manual no Google Cloud Shell.")
+                            workflowStore.appendAuditEvent(
+                                projectId, stepId, "WAITING_CONFIRMATION", UUID.randomUUID().toString(),
+                                title, "Comando preparado para execução manual: " + sanitizeTerminalLog(command).take(8000)
+                            )
+                            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("GEIVIA • $title", command))
+                            log = "OPERAÇÃO PREPARADA • $title\\nProject ID: $projectId\\n\\nO comando foi copiado. Revise-o e execute manualmente no Google Cloud Shell.\\n\\n$command\\n\\nApós executar, volte ao GEIVIA e rode o diagnóstico do projeto. A etapa continuará pendente até haver evidência atualizada."
+                        }.onFailure { log = "Não foi possível preparar a operação: ${it.message}" }
+                    }
+                    confirmAction = null
+                }) { Text("Copiar comando e preparar") }
+            },
+            dismissButton = { TextButton(onClick = { confirmAction = null }) { Text("Voltar") } }
         )
     }
 }

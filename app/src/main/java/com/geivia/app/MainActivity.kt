@@ -2328,6 +2328,10 @@ private fun TerminalPanel() {
     var linuxSession by remember { mutableStateOf<id.or.oo.pr.engine.ProotLauncher.Session?>(null) }
     var linuxCommand by rememberSaveable { mutableStateOf("") }
 
+    DisposableEffect(linuxController) {
+        onDispose { linuxController?.cancel() }
+    }
+
     fun appendOutput(message: String) {
         output = (output + message.lines()).takeLast(300)
         expanded = true
@@ -2506,6 +2510,16 @@ private fun TerminalPanel() {
                             enabled = !linuxBusy && linuxSession == null,
                             modifier = Modifier.weight(1f)
                         ) { Text("Instalar Debian") }
+                    }
+                    if (linuxBusy) {
+                        Spacer(Modifier.height(6.dp))
+                        OutlinedButton(
+                            onClick = {
+                                linuxTranscript += "\n[Cancelamento solicitado…]\n"
+                                linuxController?.cancel()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("Cancelar operação Linux") }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         OutlinedButton(

@@ -90,18 +90,6 @@ internal object GeiviaToolchainCommands {
             45 * 60 * 1000L
         ),
         InstallStage(
-            "npm_config", "Configuração do npm",
-            listOf("login", "debian", "--", "/bin/sh", "-lc",
-                "set -eu; npm config set fund false; npm config set audit false; echo GEIVIA_NPM_CONFIG_OK"),
-            3 * 60 * 1000L
-        ),
-        InstallStage(
-            "npm_cache_recovery_v2", "Teste do sistema de arquivos e preparação do cache npm",
-            listOf("login", "debian", "--", "/bin/sh", "-lc",
-                "set -eu; NPM_CACHE=/tmp/geivia-npm-cache; mkdir -p \"\$NPM_CACHE/_cacache/tmp\" \"\$NPM_CACHE/_cacache/content-v2/sha512\"; printf probe > \"\$NPM_CACHE/_cacache/tmp/rename-probe\"; mv \"\$NPM_CACHE/_cacache/tmp/rename-probe\" \"\$NPM_CACHE/_cacache/content-v2/sha512/rename-probe\"; rm -f \"\$NPM_CACHE/_cacache/content-v2/sha512/rename-probe\"; npm config set cache \"\$NPM_CACHE\" --global; npm cache verify --cache \"\$NPM_CACHE\" || { npm cache clean --force --cache \"\$NPM_CACHE\" || true; mkdir -p \"\$NPM_CACHE/_cacache/tmp\"; }; echo GEIVIA_NPM_CACHE_READY"),
-            5 * 60 * 1000L
-        ),
-        InstallStage(
             "firebase_cli", "Instalação da Firebase CLI com recuperação automática do cache",
             listOf("login", "debian", "--", "/bin/sh", "-lc", firebaseCliInstallCommand()),
             45 * 60 * 1000L

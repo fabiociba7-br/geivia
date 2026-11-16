@@ -41,17 +41,17 @@ internal object GeiviaToolchainCommands {
     private fun firebaseCliInstallCommand(): String = """
         set -eu
         NPM_CACHE=/root/.cache/geivia-npm
-        mkdir -p "\$NPM_CACHE/_cacache/tmp"
-        npm config set cache "\$NPM_CACHE" --global
-        npm cache verify --cache "\$NPM_CACHE" || {
-          npm cache clean --force --cache "\$NPM_CACHE" || true
-          mkdir -p "\$NPM_CACHE/_cacache/tmp"
+        mkdir -p "${'$'}NPM_CACHE/_cacache/tmp"
+        npm config set cache "${'$'}NPM_CACHE" --global
+        npm cache verify --cache "${'$'}NPM_CACHE" || {
+          npm cache clean --force --cache "${'$'}NPM_CACHE" || true
+          mkdir -p "${'$'}NPM_CACHE/_cacache/tmp"
         }
         INSTALLED=0
         for attempt in 1 2 3; do
-          echo "GEIVIA_FIREBASE_INSTALL_ATTEMPT_\$attempt"
+          echo "GEIVIA_FIREBASE_INSTALL_ATTEMPT_${'$'}attempt"
           if npm install --global firebase-tools@latest \
-            --cache "\$NPM_CACHE" \
+            --cache "${'$'}NPM_CACHE" \
             --prefer-online \
             --fetch-retries=5 \
             --fetch-retry-mintimeout=20000 \
@@ -61,13 +61,13 @@ internal object GeiviaToolchainCommands {
             INSTALLED=1
             break
           fi
-          echo "Firebase CLI install attempt \$attempt failed; rebuilding the dedicated npm cache."
-          npm cache clean --force --cache "\$NPM_CACHE" || true
-          rm -rf "\$NPM_CACHE/_cacache/tmp"
-          mkdir -p "\$NPM_CACHE/_cacache/tmp"
-          sleep "\$attempt"
+          echo "Firebase CLI install attempt ${'$'}attempt failed; rebuilding the dedicated npm cache."
+          npm cache clean --force --cache "${'$'}NPM_CACHE" || true
+          rm -rf "${'$'}NPM_CACHE/_cacache/tmp"
+          mkdir -p "${'$'}NPM_CACHE/_cacache/tmp"
+          sleep "${'$'}attempt"
         done
-        if [ "\$INSTALLED" -ne 1 ]; then
+        if [ "${'$'}INSTALLED" -ne 1 ]; then
           echo GEIVIA_FIREBASE_CLI_FAILED
           exit 1
         fi

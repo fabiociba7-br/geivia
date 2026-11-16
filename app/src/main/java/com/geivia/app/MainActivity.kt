@@ -185,6 +185,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onContinue = { page = "summary" })
                 "summary" -> SummaryScreen(answers.toMap(), costMode,
                     onBack = { page = "cost" }, onEdit = { page = "questions"; index = 0 }, onFinish = { page = "dashboard" })
+                "terminal" -> TerminalScreen(onBack = { page = "dashboard" })
                 "github" -> GitHubScreen(
                     connected = githubConnected,
                     callbackMessage = githubCallbackMessage,
@@ -199,7 +200,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onBack = { page = "dashboard" },
                     onContinue = { page = "dashboard" }
                 )
-                else -> DashboardScreen(answers.toMap(), costMode, onGoogleAccess = { page = "google_access" }, onGitHub = { page = "github" }) {
+                else -> DashboardScreen(answers.toMap(), costMode, onGoogleAccess = { page = "google_access" }, onGitHub = { page = "github" }, onTerminal = { page = "terminal" }) {
                     answers.clear()
                     val editor = prefs.edit()
                     answerKeys.forEach { editor.remove(it) }
@@ -426,7 +427,7 @@ private fun SummaryScreen(answers: Map<String, String>, costMode: String, onBack
 }
 
 @Composable
-private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGoogleAccess: () -> Unit, onGitHub: () -> Unit, onRestart: () -> Unit) {
+private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGoogleAccess: () -> Unit, onGitHub: () -> Unit, onTerminal: () -> Unit, onRestart: () -> Unit) {
     val context = LocalContext.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp)) {
         BrandMark()
@@ -660,6 +661,8 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
         OutlinedButton(onClick = onGoogleAccess, modifier = Modifier.fillMaxWidth()) { Text("Acessar Google Cloud com minha conta") }
         Spacer(Modifier.height(8.dp))
         OutlinedButton(onClick = onGitHub, modifier = Modifier.fillMaxWidth()) { Text("Conectar e acompanhar GitHub") }
+        Spacer(Modifier.height(8.dp))
+        Button(onClick = onTerminal, modifier = Modifier.fillMaxWidth()) { Text("Abrir Terminal GEIVIA") }
         Spacer(Modifier.height(8.dp))
         Button(onClick = { shareProjectPlan(context = context, answers = answers, costMode = costMode) }, modifier = Modifier.fillMaxWidth()) { Text("Compartilhar plano do projeto") }
         Spacer(Modifier.height(8.dp))
@@ -2139,6 +2142,68 @@ private fun GitHubScreen(
         error?.takeIf { !localConnected }?.let { Text(it, color = Color(0xFF9A5B13), fontSize = 11.sp, lineHeight = 16.sp) }
         Spacer(Modifier.height(16.dp))
         Text("Permissões iniciais recomendadas: Metadata (read), Contents (read), Actions (read) e Pull requests (read). O GEIVIA não pede escrita, administração, secrets ou alteração de workflows nesta primeira fase.", color = Muted, fontSize = 11.sp, lineHeight = 16.sp)
+    }
+}
+
+
+@Composable
+private fun TerminalScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    val engine = remember { LocalTerminalEngine(context.filesDir) }
+    var command by rememberSaveable { mutableStateOf("") }
+    var output by remember {
+        mutableStateOf(listOf("GEIVIA Terminal 1.0", "Ambiente local restrito • Digite help para começar.", ""))
+    }
+    val scroll = rememberScrollState()
+
+    LaunchedEffect(output.size) { scroll.animateScrollTo(scroll.maxValue) }
+
+    fun runCommand() {
+        val submitted = command.trim()
+        if (submitted.isEmpty()) return
+        val result = engine.execute(submitted)
+        output = if (result == "__CLEAR__") emptyList() else (output + "geivia@local:~$ $submitted" + result.lines()).takeLast(300)
+        command = ""
+    }
+
+    Column(
+        Modifier.fillMaxSize().background(Color(0xFF0B1420)).padding(16.dp)
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("GEIVIA TERMINAL", color = Color(0xFF7EE787), fontSize = 15.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
+            TextButton(onClick = onBack) { Text("Fechar", color = Color.White) }
+        }
+        Text("Sessão local • pasta privada do aplicativo", color = Color(0xFF9AA9B8), fontSize = 11.sp)
+        Spacer(Modifier.height(12.dp))
+        Column(
+            Modifier.weight(1f).fillMaxWidth().background(Color(0xFF101D2B), RoundedCornerShape(12.dp))
+                .verticalScroll(scroll).padding(12.dp)
+        ) {
+            output.forEach { line ->
+                Text(line, color = if (line.startsWith("geivia@")) Color(0xFF7EE787) else Color(0xFFE2E8F0), fontSize = 12.sp, lineHeight = 18.sp)
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = command,
+                onValueChange = { command = it.take(LocalTerminalEngine.MAX_COMMAND_LENGTH) },
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("Digite um comando", color = Color(0xFF9AA9B8)) },
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedBorderColor = Color(0xFF7EE787),
+                    unfocusedBorderColor = Color(0xFF526273),
+                    cursorColor = Color(0xFF7EE787)
+                )
+            )
+            Spacer(Modifier.width(8.dp))
+            Button(onClick = { runCommand() }, enabled = command.isNotBlank()) { Text("Enviar") }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text("Segurança: sem shell do sistema, sem execução arbitrária e sem acesso fora da pasta GEIVIA.", color = Color(0xFF9AA9B8), fontSize = 10.sp, lineHeight = 14.sp)
     }
 }
 

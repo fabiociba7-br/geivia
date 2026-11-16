@@ -26,6 +26,7 @@ internal fun FirebaseAdminScreen(projectId: String, onBack: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var pendingFile by remember { mutableStateOf<File?>(null) }
     var confirmAction by remember { mutableStateOf<String?>(null) }
+    var firestoreRegion by rememberSaveable { mutableStateOf("southamerica-east1") }
     val saveFile = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         val file = pendingFile
         if (uri != null && file?.isFile == true) runCatching {
@@ -89,7 +90,8 @@ internal fun FirebaseAdminScreen(projectId: String, onBack: () -> Unit) {
         HorizontalDivider()
         Text("CRIAR E CONFIGURAR", style = MaterialTheme.typography.labelLarge)
         Text("As ações abaixo podem criar recursos e gerar cobrança. O GEIVIA consulta o estado atual antes de agir.", fontSize = 12.sp)
-        OutlinedButton(enabled = !busy, onClick = { confirmAction = "database" }, modifier = Modifier.fillMaxWidth()) { Text("Criar banco Firestore") }
+        OutlinedTextField(value = firestoreRegion, onValueChange = { firestoreRegion = it.trim() }, modifier = Modifier.fillMaxWidth(), label = { Text("Região do Firestore (ex.: southamerica-east1)") }, singleLine = true)
+        OutlinedButton(enabled = !busy && firestoreRegion.matches(Regex("^[a-z0-9-]+$")), onClick = { confirmAction = "database" }, modifier = Modifier.fillMaxWidth()) { Text("Criar banco Firestore") }
         OutlinedButton(enabled = !busy, onClick = { confirmAction = "auth" }, modifier = Modifier.fillMaxWidth()) { Text("Ativar Firebase Authentication") }
         OutlinedButton(enabled = !busy, onClick = { confirmAction = "apis" }, modifier = Modifier.fillMaxWidth()) { Text("Ativar APIs necessárias") }
         Card {
@@ -112,7 +114,7 @@ internal fun FirebaseAdminScreen(projectId: String, onBack: () -> Unit) {
 
     confirmAction?.let { action ->
         val (title, detail, command) = when (action) {
-            "database" -> Triple("Criar banco Firestore", "Cria um banco Firestore Native (default) na região nam5. A região não poderá ser alterada depois. Pode gerar cobrança conforme uso e plano.", "gcloud firestore databases create --database='(default)' --location=nam5 --type=firestore-native --project='$projectId'")
+            "database" -> Triple("Criar banco Firestore", "Cria o banco Firestore Native (default) na região $firestoreRegion. A região não poderá ser alterada depois. O GEIVIA verifica antes se o banco já existe. Pode gerar cobrança conforme uso e plano.", "if gcloud firestore databases describe --database='(default)' --project='$projectId' >/dev/null 2>&1; then echo 'O banco default já existe; nenhuma alteração foi feita.'; else gcloud firestore databases create --database='(default)' --location='$firestoreRegion' --type=firestore-native --project='$projectId'; fi")
             "auth" -> Triple("Ativar Firebase Authentication", "Ativa a API Identity Toolkit. Configurar provedores (Google, e-mail, telefone) é uma etapa separada e pode exigir dados e consentimento do proprietário.", "gcloud services enable identitytoolkit.googleapis.com --project='$projectId'")
             else -> Triple("Ativar APIs básicas Firebase", "Ativa Firebase Management, Firestore, Rules e Hosting. O uso dos serviços pode gerar cobrança.", "gcloud services enable firebase.googleapis.com firebaserules.googleapis.com firestore.googleapis.com firebasehosting.googleapis.com --project='$projectId'")
         }

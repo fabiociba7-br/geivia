@@ -32,7 +32,7 @@ A configuração inicial exibe o Debian e cada etapa da toolchain com estado ind
 
 A instalação é dividida em recuperação do dpkg, atualização dos índices, pacotes básicos, configuração do npm, Firebase CLI e verificação final. Cada etapa concluída recebe um checkpoint persistido no aparelho. Ao tentar novamente, o GEIVIA pula etapas concluídas e retoma a primeira etapa pendente ou com falha. A instalação parcialmente executada pode ser repetida.
 
-O terminal de recuperação permite ao usuário executar comandos Debian para investigar problemas sem sair do GEIVIA. Os comandos podem alterar pacotes e arquivos dentro do Debian; a interface avisa que não se trata de acesso root ao Android.
+O terminal de recuperação fica disponível na tela de diagnóstico e também dentro da seção expandida **Ver detalhes técnicos** quando a configuração inicial encontra uma falha. Assim, o usuário pode investigar e corrigir o Debian sem sair do GEIVIA e depois tocar em tentar novamente. Os comandos podem alterar pacotes e arquivos dentro do Debian; a interface avisa que não se trata de acesso root ao Android.
 
 ## Segurança e limites
 

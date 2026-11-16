@@ -237,7 +237,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                 "summary" -> SummaryScreen(answers.toMap(), costMode,
                     onBack = { page = "cost" }, onEdit = { page = "questions"; index = 0 }, onFinish = { page = "dashboard" })
                 "accounts" -> AccountsConnectionsScreen(
-                    googleConnected = prefs.getBoolean("google_cloud_cli_ready", false),
+                    googleReady = prefs.getBoolean("google_cloud_cli_ready", false),
                     githubConnected = githubConnected,
                     onGoogle = { page = "google_access" },
                     onGitHub = { page = "github" },

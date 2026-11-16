@@ -21,7 +21,7 @@ internal object GeiviaToolchainCommands {
           build-essential cmake pkg-config make
         npm config set fund false
         npm config set audit false
-        npm install --global firebase-tools@latest
+        \${firebaseCliInstallCommand()}
         printf '\nGEIVIA_TOOLCHAIN_VERSIONS\n'
         git --version
         java -version
@@ -33,6 +33,41 @@ internal object GeiviaToolchainCommands {
         """.trimIndent()
     )
 
+
+    /**
+     * Uses a dedicated npm cache and retries after cache ENOENT/rename failures.
+     * This avoids reusing a potentially damaged default /root/.npm cache.
+     */
+    private fun firebaseCliInstallCommand(): String = """
+        set -eu
+        NPM_CACHE=/root/.cache/geivia-npm
+        mkdir -p "\$NPM_CACHE/_cacache/tmp"
+        npm config set cache "\$NPM_CACHE" --global
+        npm cache verify --cache "\$NPM_CACHE" || {
+          npm cache clean --force --cache "\$NPM_CACHE" || true
+          mkdir -p "\$NPM_CACHE/_cacache/tmp"
+        }
+        for attempt in 1 2 3; do
+          echo "GEIVIA_FIREBASE_INSTALL_ATTEMPT_\$attempt"
+          if npm install --global firebase-tools@latest \
+            --cache "\$NPM_CACHE" \
+            --prefer-online \
+            --fetch-retries=5 \
+            --fetch-retry-mintimeout=20000 \
+            --fetch-retry-maxtimeout=120000; then
+            firebase --version
+            echo GEIVIA_FIREBASE_CLI_OK
+            exit 0
+          fi
+          echo "Firebase CLI install attempt \$attempt failed; rebuilding the dedicated npm cache."
+          npm cache clean --force --cache "\$NPM_CACHE" || true
+          rm -rf "\$NPM_CACHE/_cacache/tmp"
+          mkdir -p "\$NPM_CACHE/_cacache/tmp"
+          sleep "\$attempt"
+        done
+        echo GEIVIA_FIREBASE_CLI_FAILED
+        exit 1
+    """.trimIndent()
 
     data class InstallStage(
         val id: String,
@@ -68,10 +103,15 @@ internal object GeiviaToolchainCommands {
             3 * 60 * 1000L
         ),
         InstallStage(
-            "firebase_cli", "Instalação do Firebase CLI",
+            "npm_cache_recovery", "Preparação e verificação do cache do npm",
             listOf("login", "debian", "--", "/bin/sh", "-lc",
-                "set -eu; npm install --global firebase-tools@latest; echo GEIVIA_FIREBASE_CLI_OK"),
-            30 * 60 * 1000L
+                "set -eu; NPM_CACHE=/root/.cache/geivia-npm; mkdir -p \"\$NPM_CACHE/_cacache/tmp\"; npm config set cache \"\$NPM_CACHE\" --global; npm cache verify --cache \"\$NPM_CACHE\" || { npm cache clean --force --cache \"\$NPM_CACHE\" || true; mkdir -p \"\$NPM_CACHE/_cacache/tmp\"; }; echo GEIVIA_NPM_CACHE_READY"),
+            5 * 60 * 1000L
+        ),
+        InstallStage(
+            "firebase_cli", "Instalação da Firebase CLI com recuperação automática do cache",
+            listOf("login", "debian", "--", "/bin/sh", "-lc", firebaseCliInstallCommand()),
+            45 * 60 * 1000L
         ),
         InstallStage(
             "toolchain_verify", "Verificação final das ferramentas",
@@ -142,7 +182,7 @@ internal object GeiviaToolchainCommands {
         export DEBIAN_FRONTEND=noninteractive
         apt-get update
         apt-get upgrade -y
-        npm install --global firebase-tools@latest
+        \${firebaseCliInstallCommand()}
         echo 'GEIVIA_UPDATE_ALL_OK'
         """.trimIndent()
     )

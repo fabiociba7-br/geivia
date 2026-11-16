@@ -59,7 +59,7 @@ internal fun GeiviaRecoveryTerminal(controller: LinuxRuntimeController) {
                 append("\n[GEIVIA] Sessão Debian iniciada. Digite um comando e toque em Executar.\n")
                 scope.launch {
                     withContext(Dispatchers.IO) {
-                        controller.readSession(opened) { chunk -> append(chunk) }
+                        controller.readSession(opened) { chunk -> scope.launch { append(chunk) } }
                     }
                     session = null
                     append("\n[GEIVIA] Sessão encerrada.\n")

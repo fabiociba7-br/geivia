@@ -56,7 +56,7 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
                 Text("O QUE SERÁ INSTALADO", color = Color(0xFF07528D), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 Text("• Debian ARM64 dentro do GEIVIA", color = Color(0xFF102B43), fontSize = 13.sp)
                 Text("• Git, SSH, curl, wget, zip, unzip e utilitários", color = Color(0xFF102B43), fontSize = 13.sp)
-                Text("• Java 17 e ferramentas de compilação", color = Color(0xFF102B43), fontSize = 13.sp)
+                Text("• Java (versão estável do Debian) e ferramentas de compilação", color = Color(0xFF102B43), fontSize = 13.sp)
                 Text("• Node.js, npm e Firebase CLI", color = Color(0xFF102B43), fontSize = 13.sp)
                 Text("• Python 3, pip e ambientes virtuais", color = Color(0xFF102B43), fontSize = 13.sp)
             }

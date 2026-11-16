@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -24,6 +25,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -230,13 +232,15 @@ internal fun GeiviaRecoveryTerminal(
                                 .verticalScroll(scrollState)
                                 .padding(8.dp)
                         ) {
-                            Text(
-                                output.ifEmpty { " " },
-                                color = TerminalForeground,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 12.sp,
-                                lineHeight = 17.sp
-                            )
+                            SelectionContainer {
+                                Text(
+                                    output.ifEmpty { " " },
+                                    color = TerminalForeground,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 12.sp,
+                                    lineHeight = 17.sp
+                                )
+                            }
                         }
                     }
                     OutlinedTextField(
@@ -247,7 +251,22 @@ internal fun GeiviaRecoveryTerminal(
                         placeholder = { Text("Digite ou cole comandos; várias linhas são aceitas") },
                         enabled = session != null && !busy,
                         minLines = 2,
-                        maxLines = 5
+                        maxLines = 5,
+                        colors = TextFieldDefaults.colors(
+                            focusedTextColor = Color(0xFFF4F7FB),
+                            unfocusedTextColor = Color(0xFFE2EDF5),
+                            disabledTextColor = Color(0xFF9AA9B8),
+                            focusedContainerColor = Color(0xFF1B2935),
+                            unfocusedContainerColor = Color(0xFF1B2935),
+                            disabledContainerColor = Color(0xFF17232D),
+                            cursorColor = Color(0xFF7EE787),
+                            focusedIndicatorColor = Color(0xFF7EE787),
+                            unfocusedIndicatorColor = Color(0xFF607789),
+                            focusedLabelColor = Color(0xFF7EE787),
+                            unfocusedLabelColor = Color(0xFFB7C6D3),
+                            focusedPlaceholderColor = Color(0xFFB7C6D3),
+                            unfocusedPlaceholderColor = Color(0xFF9AA9B8)
+                        )
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Button(

@@ -63,9 +63,12 @@ class GeiviaToolchainCommandsTest {
         val stage = GeiviaToolchainCommands.installStages().first { it.id == "firebase_cli" }
         val command = stage.command.last()
 
-        assertTrue(command.contains("firebase-cli-arm64.tar.gz"))
         assertTrue(command.contains("FIREBASE_ROOT=/opt/geivia/firebase"))
-        assertTrue(command.contains("tar -xzf"))
+        assertTrue(command.contains("FIREBASE_VERSION=15.36.0"))
+        assertTrue(command.contains("npm install --prefix"))
+        assertTrue(command.contains("--maxsockets=1"))
+        assertTrue(command.contains("GEIVIA_FIREBASE_CACHE_RECOVERY"))
+        assertTrue(command.contains("rm -rf \"\$FIREBASE_CACHE\" \"\$FIREBASE_ROOT/node_modules\""))
         assertTrue(command.contains("GEIVIA_FIREBASE_CLI_OK"))
         assertTrue(command.contains("node /opt/geivia/firebase/node_modules/firebase-tools/lib/bin/firebase.js"))
     }
@@ -74,10 +77,11 @@ class GeiviaToolchainCommandsTest {
     fun firebaseCliInstallerUsesThePublishedReleaseAndIsIdempotent() {
         val command = GeiviaToolchainCommands.installStages().first { it.id == "firebase_cli" }.command.last()
 
-        assertTrue(command.contains("https://github.com/fabiociba7-br/geivia/releases/download/firebase-cli-arm64/firebase-cli-arm64.tar.gz"))
+        assertTrue(command.contains("https://registry.npmjs.org") || command.contains("npm install --prefix"))
         assertTrue(command.contains("if [ ! -f \"\$FIREBASE_ENTRY\" ]"))
         assertTrue(command.contains("test -f \"\$FIREBASE_ENTRY\""))
         assertTrue(command.contains("chmod 755 /usr/local/bin/firebase"))
+        assertTrue(!command.contains("releases/download/firebase-cli-arm64"))
     }
 
     @Test
@@ -86,9 +90,9 @@ class GeiviaToolchainCommandsTest {
         val updateCommand = GeiviaToolchainCommands.updateFirebaseCli().last()
         val fullUpdateCommand = GeiviaToolchainCommands.updateAll().last()
 
-        assertTrue(updateCommand.contains("firebase-cli-arm64.tar.gz"))
-        assertTrue(fullUpdateCommand.contains("firebase-cli-arm64.tar.gz"))
-        assertTrue(installCommand.contains("firebase-cli-arm64.tar.gz"))
+        assertTrue(updateCommand.contains("npm install --prefix"))
+        assertTrue(fullUpdateCommand.contains("npm install --prefix"))
+        assertTrue(installCommand.contains("npm install --prefix"))
     }
 
 }

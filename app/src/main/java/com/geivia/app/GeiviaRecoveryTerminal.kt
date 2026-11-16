@@ -1,5 +1,9 @@
 package com.geivia.app
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,6 +27,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,6 +39,7 @@ import id.or.oo.pr.engine.ProotLauncher
 @Composable
 internal fun GeiviaRecoveryTerminal(controller: LinuxRuntimeController) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var session by remember { mutableStateOf<ProotLauncher.Session?>(null) }
     var command by remember { mutableStateOf("") }
     var output by remember {
@@ -58,11 +64,16 @@ internal fun GeiviaRecoveryTerminal(controller: LinuxRuntimeController) {
                 session = opened
                 append("\n[GEIVIA] Sessão Debian iniciada. Digite um comando e toque em Executar.\n")
                 scope.launch {
-                    withContext(Dispatchers.IO) {
-                        controller.readSession(opened) { chunk -> scope.launch { append(chunk) } }
+                    try {
+                        withContext(Dispatchers.IO) {
+                            controller.readSession(opened) { chunk -> scope.launch { append(chunk) } }
+                        }
+                        append("\n[GEIVIA] Sessão encerrada.\n")
+                    } catch (error: Throwable) {
+                        append("\n[ERRO] A sessão foi encerrada: ${error.message ?: "falha de leitura do terminal"}.\n")
+                    } finally {
+                        session = null
                     }
-                    session = null
-                    append("\n[GEIVIA] Sessão encerrada.\n")
                 }
             } catch (error: Throwable) {
                 append("\n[ERRO] ${error.message ?: "Não foi possível iniciar o Debian."}\n")
@@ -110,6 +121,14 @@ internal fun GeiviaRecoveryTerminal(controller: LinuxRuntimeController) {
                 append("\n[GEIVIA] Solicitação de encerramento enviada.\n")
             }, enabled = session != null) { Text("Encerrar") }
         }
+        OutlinedButton(
+            onClick = {
+                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("GEIVIA terminal", output))
+                Toast.makeText(context, "Saída do terminal copiada.", Toast.LENGTH_SHORT).show()
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("Copiar saída do terminal") }
         Text("Sugestões para reparar o dpkg:", color = Color(0xFF102B43), fontSize = 12.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             OutlinedButton(onClick = { command = "dpkg --configure -a" }, enabled = session != null) {

@@ -4,7 +4,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.os.Build
-import android.os.Environment
 import android.os.StatFs
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -21,15 +20,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -37,6 +35,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 private val DiagnosticInk = Color(0xFF102B43)
@@ -49,13 +50,36 @@ private val DiagnosticRed = Color(0xFF9B3434)
 @Composable
 fun GeiviaDiagnosticsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val controller = remember(context) { LinuxRuntimeController(context.applicationContext) }
     var report by remember { mutableStateOf<GeiviaDiagnosticReport?>(null) }
     var running by remember { mutableStateOf(false) }
 
     fun runDiagnostics() {
+        if (running) return
         running = true
-        report = collectGeiviaDiagnostics(context)
-        running = false
+        scope.launch {
+            val liveChecks = withContext(Dispatchers.IO) {
+                runCatching {
+                    controller.prepareEngine()
+                    val debianCode = controller.execute(
+                        LinuxRuntimeCommands.testDebianBase(),
+                        timeoutMs = 60_000L
+                    ) { /* Deliberately discard raw terminal output. */ }
+                    val toolchainCode = if (debianCode == 0) {
+                        controller.execute(
+                            GeiviaToolchainCommands.verifyDefaultProfile(),
+                            timeoutMs = 90_000L
+                        ) { /* Never retain or export command output. */ }
+                    } else {
+                        -1
+                    }
+                    debianCode == 0 to (toolchainCode == 0)
+                }.getOrElse { false to false }
+            }
+            report = collectGeiviaDiagnostics(context, liveChecks.first, liveChecks.second)
+            running = false
+        }
     }
 
     LaunchedEffect(Unit) { runDiagnostics() }
@@ -67,13 +91,19 @@ fun GeiviaDiagnosticsScreen(onBack: () -> Unit) {
         Text("GEIVIA", color = DiagnosticBlue, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
         Text("Diagnóstico e solução de problemas", color = DiagnosticInk, fontSize = 25.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold)
         Text(
-            "Verifique o aparelho e o ambiente Linux. O diagnóstico é somente leitura: não apaga arquivos, não reinstala ferramentas e não altera projetos na nuvem.",
+            "O GEIVIA testa o aparelho, inicia o Debian e verifica os comandos essenciais. É uma verificação somente leitura: não instala, remove nem atualiza pacotes e não altera projetos na nuvem.",
             color = DiagnosticMuted, fontSize = 13.sp, lineHeight = 19.sp
         )
 
+        if (running) {
+            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF2F7FA)), shape = RoundedCornerShape(14.dp)) {
+                Text("Executando testes reais do ambiente Linux. Isso pode levar até alguns minutos…", modifier = Modifier.padding(15.dp), color = DiagnosticBlue, fontSize = 13.sp)
+            }
+        }
+
         report?.let { current ->
             val (headline, color) = when (current.overallStatus) {
-                GeiviaDiagnosticStatus.OK -> "Verificações básicas aprovadas" to DiagnosticGreen
+                GeiviaDiagnosticStatus.OK -> "Verificações aprovadas" to DiagnosticGreen
                 GeiviaDiagnosticStatus.ATTENTION -> "Alguns itens precisam de atenção" to DiagnosticAmber
                 GeiviaDiagnosticStatus.BLOCKED -> "Há requisitos que impedem o funcionamento" to DiagnosticRed
                 GeiviaDiagnosticStatus.NOT_CHECKED -> "Diagnóstico incompleto" to DiagnosticMuted
@@ -100,8 +130,8 @@ fun GeiviaDiagnosticsScreen(onBack: () -> Unit) {
                 Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(13.dp)) {
                     Column(Modifier.padding(14.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(finding.area.name.replace('_', ' '), color = DiagnosticBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            Text(finding.status.name, color = statusColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text(diagnosticAreaLabel(finding.area), color = DiagnosticBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text(diagnosticStatusLabel(finding.status), color = statusColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         }
                         Spacer(Modifier.height(5.dp))
                         Text(finding.userMessage, color = DiagnosticInk, fontSize = 13.sp, lineHeight = 19.sp)
@@ -124,17 +154,21 @@ fun GeiviaDiagnosticsScreen(onBack: () -> Unit) {
         }
 
         Button(onClick = { runDiagnostics() }, enabled = !running, modifier = Modifier.fillMaxWidth()) {
-            Text(if (running) "Verificando..." else "Executar diagnóstico novamente")
+            Text(if (running) "Verificando…" else "Executar diagnóstico novamente")
         }
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Voltar ao painel") }
         Text(
-            "O relatório não inclui senhas, tokens, chaves privadas, caminhos internos ou saída bruta do terminal. Quando uma correção exigir confirmação ou ação externa, o GEIVIA explicará isso antes de prosseguir.",
+            "O relatório não inclui senhas, tokens, chaves privadas, caminhos internos ou saída bruta do terminal. Os testes não executam comandos de instalação ou alteração.",
             color = DiagnosticMuted, fontSize = 10.sp, lineHeight = 15.sp
         )
     }
 }
 
-private fun collectGeiviaDiagnostics(context: Context): GeiviaDiagnosticReport {
+private fun collectGeiviaDiagnostics(
+    context: Context,
+    debianWorks: Boolean,
+    toolchainWorks: Boolean
+): GeiviaDiagnosticReport {
     val stats = runCatching { StatFs(context.filesDir.absolutePath) }.getOrNull()
     val availableBytes = stats?.availableBytes ?: 0L
     val nativeDir = runCatching { context.applicationInfo.nativeLibraryDir }.getOrNull()
@@ -150,31 +184,40 @@ private fun collectGeiviaDiagnostics(context: Context): GeiviaDiagnosticReport {
     )
 
     val findings = runtimeReport.findings.toMutableList()
-    val prefs = context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE)
-    val debianVerified = prefs.getBoolean("linux_debian_verified", false)
-    val toolchainVerified = prefs.getBoolean("linux_toolchain_verified", false)
-
     findings += GeiviaDiagnosticFinding(
         code = GeiviaDiagnosticCode.DEBIAN_NOT_VERIFIED,
         area = GeiviaDiagnosticArea.DEBIAN,
-        status = if (debianVerified) GeiviaDiagnosticStatus.OK else GeiviaDiagnosticStatus.ATTENTION,
-        severity = if (debianVerified) GeiviaDiagnosticSeverity.INFO else GeiviaDiagnosticSeverity.WARNING,
-        userMessage = if (debianVerified) "O ambiente Debian foi confirmado pela configuração inicial." else "O Debian ainda não foi confirmado neste aparelho. Conclua ou retome a configuração do ambiente.",
-        recommendedAction = if (debianVerified) GeiviaDiagnosticAction.NONE else GeiviaDiagnosticAction.RUN_ENVIRONMENT_SETUP
+        status = if (debianWorks) GeiviaDiagnosticStatus.OK else GeiviaDiagnosticStatus.ATTENTION,
+        severity = if (debianWorks) GeiviaDiagnosticSeverity.INFO else GeiviaDiagnosticSeverity.WARNING,
+        userMessage = if (debianWorks) "O Debian iniciou e executou o teste de shell e arquivos essenciais." else "O GEIVIA não conseguiu confirmar a execução do Debian. Retome a configuração do ambiente; seus arquivos não foram apagados.",
+        recommendedAction = if (debianWorks) GeiviaDiagnosticAction.NONE else GeiviaDiagnosticAction.RUN_ENVIRONMENT_SETUP
     )
     findings += GeiviaDiagnosticFinding(
         code = GeiviaDiagnosticCode.TOOLCHAIN_NOT_VERIFIED,
         area = GeiviaDiagnosticArea.TOOLCHAIN,
-        status = if (toolchainVerified) GeiviaDiagnosticStatus.OK else GeiviaDiagnosticStatus.ATTENTION,
-        severity = if (toolchainVerified) GeiviaDiagnosticSeverity.INFO else GeiviaDiagnosticSeverity.WARNING,
-        userMessage = if (toolchainVerified) "As ferramentas básicas foram confirmadas pela configuração inicial." else "A instalação das ferramentas ainda não foi confirmada. Retome a configuração para concluir e verificar os pacotes.",
-        recommendedAction = if (toolchainVerified) GeiviaDiagnosticAction.NONE else GeiviaDiagnosticAction.RUN_ENVIRONMENT_SETUP
+        status = if (toolchainWorks) GeiviaDiagnosticStatus.OK else GeiviaDiagnosticStatus.ATTENTION,
+        severity = if (toolchainWorks) GeiviaDiagnosticSeverity.INFO else GeiviaDiagnosticSeverity.WARNING,
+        userMessage = if (toolchainWorks) "Git, Java, Node.js, npm, Python e Firebase CLI responderam aos testes de versão." else if (debianWorks) "O Debian está funcionando, mas pelo menos uma ferramenta essencial não respondeu. Retome a instalação/verificação das ferramentas." else "As ferramentas não puderam ser verificadas porque o Debian não iniciou.",
+        recommendedAction = if (toolchainWorks) GeiviaDiagnosticAction.NONE else GeiviaDiagnosticAction.RUN_ENVIRONMENT_SETUP
     )
 
-    return GeiviaDiagnosticReport(
-        checkedAtEpochMillis = runtimeReport.checkedAtEpochMillis,
-        findings = findings
-    )
+    return GeiviaDiagnosticReport(runtimeReport.checkedAtEpochMillis, findings)
+}
+
+private fun diagnosticAreaLabel(area: GeiviaDiagnosticArea): String = when (area) {
+    GeiviaDiagnosticArea.DEVICE -> "APARELHO"
+    GeiviaDiagnosticArea.STORAGE -> "ARMAZENAMENTO"
+    GeiviaDiagnosticArea.LINUX_RUNTIME -> "MOTOR LINUX"
+    GeiviaDiagnosticArea.DEBIAN -> "DEBIAN"
+    GeiviaDiagnosticArea.TOOLCHAIN -> "FERRAMENTAS"
+    GeiviaDiagnosticArea.CLOUD_INTEGRATION -> "INTEGRAÇÕES"
+}
+
+private fun diagnosticStatusLabel(status: GeiviaDiagnosticStatus): String = when (status) {
+    GeiviaDiagnosticStatus.OK -> "APROVADO"
+    GeiviaDiagnosticStatus.ATTENTION -> "ATENÇÃO"
+    GeiviaDiagnosticStatus.BLOCKED -> "BLOQUEADO"
+    GeiviaDiagnosticStatus.NOT_CHECKED -> "NÃO VERIFICADO"
 }
 
 private fun diagnosticActionLabel(action: GeiviaDiagnosticAction): String = when (action) {

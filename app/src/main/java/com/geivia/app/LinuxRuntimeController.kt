@@ -19,7 +19,7 @@ internal class LinuxRuntimeController(context: Context) {
 
     fun prepareEngine() { launcher }
 
-    suspend fun execute(args: List<String>, onOutput: (String) -> Unit, timeoutMs: Long? = null): Int =
+    suspend fun execute(args: List<String>, timeoutMs: Long? = null, onOutput: (String) -> Unit): Int =
         withContext(Dispatchers.IO) {
             val session = openCommandSession(args)
             try {
@@ -47,7 +47,7 @@ internal class LinuxRuntimeController(context: Context) {
         )
         for ((label, args, timeoutMs) in stages) {
             onOutput("\n[GEIVIA] $label…\n")
-            val code = execute(args, onOutput, timeoutMs)
+            val code = execute(args, timeoutMs, onOutput)
             results += code
             onOutput("\n[GEIVIA] Etapa concluída com código $code.\n")
             check(code == 0) {

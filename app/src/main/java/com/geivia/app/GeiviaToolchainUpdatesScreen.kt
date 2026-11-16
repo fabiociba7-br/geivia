@@ -34,7 +34,8 @@ private fun parseToolUpdateReport(raw: String): Map<String, ToolUpdateStatus> =
 
 @Composable
 internal fun GeiviaToolchainUpdatesScreen(onBack: () -> Unit) {
-    val controller = remember { LinuxRuntimeController(LocalContext.current) }
+    val context = LocalContext.current
+    val controller = remember(context) { LinuxRuntimeController(context) }
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
     var report by remember { mutableStateOf("Toque em “Buscar atualizações” para consultar as versões instaladas e disponíveis.") }

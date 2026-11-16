@@ -16,3 +16,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "GEIVIA"
 include(":app")
+include(":proot-engine")
+project(":proot-engine").projectDir = file("proot-engine")

@@ -79,3 +79,16 @@ O painel oferece verificação, instalação, abertura e encerramento da sessão
 **Validação ainda pendente em aparelho físico:** o CI confirma compilação e testes JVM, mas não executa o Debian ARM64 no Android. Antes de considerar o terminal Linux pronto, validar em pelo menos um aparelho ARM64 Android 9+ (idealmente Android 16/HyperOS): inicialização do PRoot, download e extração da rootfs, `apt update`, instalação de pacotes, rede/DNS, entrada/saída interativa, cancelamento durante download, fechamento da tela e retomada após reabrir o app.
 
 O ambiente usa armazenamento privado do aplicativo. Desinstalar o GEIVIA pode apagar a distribuição e os projetos que estiverem somente nesse diretório; o usuário deve exportar/backupar os projetos antes de desinstalar ou limpar os dados.
+
+
+## Fluxo de instalação e verificação do Debian (16/11/2026)
+
+O botão **Instalar Debian** agora executa três etapas sequenciais e interrompe o fluxo na primeira falha:
+
+1. `pr-cli install debian` — baixa e instala a distribuição ARM64.
+2. `pr-cli test debian --suite distro` — executa a suíte base upstream sem solicitar instalação automática de toolchains.
+3. `pr-cli login debian -- /bin/sh -lc <smoke-check>` — executa dentro do guest verificações de `/bin/sh`, `/root`, escrita em `/root`, `id` e arquitetura, emitindo o marcador `GEIVIA_DEBIAN_SHELL_OK`.
+
+O controlador exige código de saída zero em cada etapa; uma falha impede que a interface informe instalação validada. Os vetores de argumentos têm testes JVM. Foi incluído também um teste instrumentado que executa as três etapas em um aparelho Android e confirma o marcador do shell. Esse teste faz download real do Debian e **não é executado pelo CI hospedado**; deve ser acionado manualmente em dispositivo ARM64 com rede e espaço disponíveis.
+
+A validação do terminal interativo continua sendo feita separadamente ao abrir a sessão Debian e enviar comandos. O teste instrumentado de instalação não substitui a verificação de teclado, redimensionamento do PTY, persistência após reinício, cancelamento durante download ou particularidades do HyperOS.

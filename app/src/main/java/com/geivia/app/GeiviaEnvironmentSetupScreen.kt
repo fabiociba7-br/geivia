@@ -288,7 +288,7 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
             OutlinedButton(onClick = {
                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 clipboard.setPrimaryClip(ClipData.newPlainText("Diagnóstico GEIVIA", status + "\n\n" + details))
-            }, modifier = Modifier.fillMaxWidth()) { Text("Copiar erro e detalhes técnicos") }
+            }, modifier = Modifier.fillMaxWidth()) { Text("Copiar log completo") }
             TextButton(onClick = { showDetails = !showDetails }) {
                 Text(if (showDetails) "Ocultar detalhes técnicos" else "Ver detalhes técnicos")
             }

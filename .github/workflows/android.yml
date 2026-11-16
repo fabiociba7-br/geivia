@@ -1,7 +1,7 @@
 name: GEIVIA Android Build
 
-# Builds are intentionally manual to conserve the GitHub Actions allowance.
-# Run only after a coherent development milestone is complete.
+# Pull requests validate changes; pushes to main produce the signed release APK.
+# workflow_dispatch remains available for explicitly requested rebuilds.
 on:
   push:
     branches: [main]
@@ -44,9 +44,24 @@ jobs:
 
       - name: Install Android SDK packages
         run: |
+          set -euo pipefail
           sdkmanager --install "platforms;android-35"
           sdkmanager --install "build-tools;35.0.0"
-          sdkmanager --install "ndk;27.2.12479018"
+          # Retry transient/corrupt NDK downloads and clear incomplete SDK archives.
+          ndk_installed=false
+          for attempt in 1 2 3; do
+            if sdkmanager --install "ndk;27.2.12479018"; then
+              ndk_installed=true
+              break
+            fi
+            echo "NDK download/install attempt $attempt failed; clearing incomplete package cache."
+            rm -rf "$ANDROID_HOME/ndk/27.2.12479018" "$ANDROID_HOME/.temp" "$HOME/.android/cache"
+            if [ "$attempt" -lt 3 ]; then sleep $((attempt * 5)); fi
+          done
+          if [ "$ndk_installed" != true ]; then
+            echo "NDK installation failed after three attempts."
+            exit 1
+          fi
           sdkmanager --install "cmake;3.22.1"
 
       - name: Validate Android permission policy

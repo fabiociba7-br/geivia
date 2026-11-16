@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,7 +34,8 @@ private fun parseToolUpdateReport(raw: String): Map<String, ToolUpdateStatus> =
 
 @Composable
 internal fun GeiviaToolchainUpdatesScreen(onBack: () -> Unit) {
-    val controller = remember { LinuxRuntimeController(LocalContext.current) }
+    val context = LocalContext.current
+    val controller = remember(context) { LinuxRuntimeController(context) }
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
     var report by remember { mutableStateOf("Toque em “Buscar atualizações” para consultar as versões instaladas e disponíveis.") }

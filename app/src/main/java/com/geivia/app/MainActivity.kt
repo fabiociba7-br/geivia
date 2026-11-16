@@ -254,7 +254,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                 )
                 "toolchain_updates" -> GeiviaToolchainUpdatesScreen(onBack = { page = "dashboard" })
                 "diagnostics" -> GeiviaDiagnosticsScreen(onBack = { page = "dashboard" })
-                else -> DashboardScreen(answers.toMap(), costMode, onAccounts = { page = "accounts" }, onGoogleAccess = { page = "google_access" }, onGitHub = { page = "github" }, onToolchainUpdates = { page = "toolchain_updates" }, onDiagnostics = { page = "diagnostics" }) {
+                else -> DashboardScreen(answers.toMap(), costMode, onAccounts = { page = "accounts" }, onToolchainUpdates = { page = "toolchain_updates" }, onDiagnostics = { page = "diagnostics" }) {
                     answers.clear()
                     val editor = prefs.edit()
                     answerKeys.forEach { editor.remove(it) }
@@ -567,7 +567,7 @@ private fun SummaryScreen(answers: Map<String, String>, costMode: String, onBack
 }
 
 @Composable
-private fun DashboardScreen(answers: Map<String, String>, costMode: String, onAccounts: () -> Unit, onGoogleAccess: () -> Unit, onGitHub: () -> Unit, onToolchainUpdates: () -> Unit, onDiagnostics: () -> Unit, onRestart: () -> Unit) {
+private fun DashboardScreen(answers: Map<String, String>, costMode: String, onAccounts: () -> Unit, onToolchainUpdates: () -> Unit, onDiagnostics: () -> Unit, onRestart: () -> Unit) {
     val context = LocalContext.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp)) {
         BrandMark()
@@ -803,9 +803,7 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onAc
             )
         }
         Spacer(Modifier.height(16.dp))
-        OutlinedButton(onClick = onGoogleAccess, modifier = Modifier.fillMaxWidth()) { Text("Configurar Google Cloud (opcional)") }
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = onGitHub, modifier = Modifier.fillMaxWidth()) { Text("Conectar e acompanhar GitHub") }
+        Button(onClick = onAccounts, modifier = Modifier.fillMaxWidth()) { Text("Conectar minhas contas") }
         Spacer(Modifier.height(8.dp))
         OutlinedButton(onClick = onToolchainUpdates, modifier = Modifier.fillMaxWidth()) { Text("Gerenciar atualizações das ferramentas") }
         Spacer(Modifier.height(8.dp))

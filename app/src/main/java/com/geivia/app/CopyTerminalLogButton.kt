@@ -10,7 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 
-private fun sanitizeTerminalLog(value: String): String {
+internal fun sanitizeTerminalLog(value: String): String {
     var safe = value
     val sensitivePatterns = listOf(
         Regex("(?i)(access_token|refresh_token|client_secret|password|authorization_code|verification_code|code)(\\\\s*[=:]\\\\s*)[^\\\\s]+"),

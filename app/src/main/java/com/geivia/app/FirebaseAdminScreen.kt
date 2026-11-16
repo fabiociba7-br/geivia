@@ -30,6 +30,7 @@ internal fun FirebaseAdminScreen(projectId: String, onBack: () -> Unit) {
     var pendingFile by remember { mutableStateOf<File?>(null) }
     var confirmAction by remember { mutableStateOf<String?>(null) }
     var firestoreRegion by rememberSaveable { mutableStateOf("southamerica-east1") }
+    var workflowRefresh by rememberSaveable { mutableStateOf(0) }
     val saveFile = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         val file = pendingFile
         if (uri != null && file?.isFile == true) runCatching {
@@ -91,6 +92,29 @@ internal fun FirebaseAdminScreen(projectId: String, onBack: () -> Unit) {
         Text("FIREBASE • ADMINISTRAÇÃO", style = MaterialTheme.typography.titleLarge)
         Text("Projeto: $projectId", style = MaterialTheme.typography.labelMedium)
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Voltar") }
+        listOf("Criar banco Firestore", "Ativar Firebase Authentication", "Ativar APIs necessárias").forEach { actionTitle ->
+            val stepId = "firebase_admin_" + actionTitle.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_').take(70)
+            val record = remember(projectId, stepId, workflowRefresh) { workflowStore.get(projectId, stepId) }
+            if (record.state == WorkflowStepState.WAITING_CONFIRMATION) {
+                Card {
+                    Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text("$actionTitle • aguardando execução manual", style = MaterialTheme.typography.labelMedium)
+                        Text("Após executar o comando no Google Cloud Shell, registre aqui. Isso é uma declaração sua, não uma confirmação automática do Google.", fontSize = 11.sp)
+                        OutlinedButton(onClick = {
+                            runCatching {
+                                val operationId = UUID.randomUUID().toString()
+                                workflowStore.markManualExecutionStarted(projectId, stepId, operationId, "Usuário informou que executou o comando no Google Cloud Shell.")
+                                workflowStore.appendAuditEvent(projectId, stepId, "IN_PROGRESS", operationId, "Execução manual declarada; aguardando diagnóstico atualizado.", "Declaração do usuário; ainda não é evidência do estado remoto.")
+                                workflowRefresh++
+                                log = "$actionTitle registrada como executada manualmente. Aguardando diagnóstico atualizado; não marcada como concluída."
+                            }.onFailure { log = "Não foi possível registrar a execução: ${it.message}" }
+                        }, modifier = Modifier.fillMaxWidth()) { Text("Executei no Cloud Shell") }
+                    }
+                }
+            } else if (record.state == WorkflowStepState.IN_PROGRESS) {
+                Text("$actionTitle: execução declarada; aguardando diagnóstico. Ainda não confirmada.", fontSize = 11.sp, color = androidx.compose.ui.graphics.Color(0xFF9A641B))
+            }
+        }
         Text("CONSULTAR E BAIXAR", style = MaterialTheme.typography.labelLarge)
         Button(enabled = !busy, onClick = {
             val f = File(controller.homeDir, "geivia-exports/firestore-databases.json")

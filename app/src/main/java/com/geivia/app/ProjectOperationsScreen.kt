@@ -115,17 +115,27 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                 val safeId = projectId.replace("'", "")
                 val command = """
                     set -euo pipefail
-                    PROJECT_DIR='$safeDir'
-                    PROJECT_ID='$safeId'
-                    test -d "$PROJECT_DIR" || { echo "Pasta do projeto não encontrada."; exit 20; }
-                    test -f "$PROJECT_DIR/firebase.json" || { echo "firebase.json não encontrado no ZIP."; exit 21; }
+                    PROJECT_DIR='§safeDir'
+                    PROJECT_ID='§safeId'
+                    test -d "§PROJECT_DIR" || { echo "Pasta do projeto não encontrada."; exit 20; }
+                    test -f "§PROJECT_DIR/firebase.json" || { echo "firebase.json não encontrado no ZIP."; exit 21; }
                     command -v firebase >/dev/null || { echo "Firebase CLI não está instalado no Debian do GEIVIA."; exit 22; }
-                    cd "$PROJECT_DIR"
-                    firebase projects:list >/dev/null || { echo "Firebase CLI sem sessão autenticada. Abra o Terminal Linux do GEIVIA, execute firebase login e repita."; exit 23; }
+                    command -v jq >/dev/null || { echo "jq não está instalado no Debian do GEIVIA."; exit 24; }
+                    cd "§PROJECT_DIR"
+                    firebase projects:list >/dev/null || { echo "Firebase CLI sem sessão autenticada. Conecte a conta Google no GEIVIA e repita."; exit 23; }
                     echo "Validando configuração Firebase…"
-                    firebase deploy --only hosting,firestore:rules,firestore:indexes,storage,functions --project "$PROJECT_ID" --non-interactive
-                    echo "GEIVIA_DEPLOY_SUCCESS project=$PROJECT_ID"
-                """.trimIndent()
+                    TARGETS=()
+                    jq -e '.hosting != null' firebase.json >/dev/null && TARGETS+=("hosting")
+                    jq -e '.firestore.rules != null' firebase.json >/dev/null && TARGETS+=("firestore:rules")
+                    jq -e '.firestore.indexes != null' firebase.json >/dev/null && TARGETS+=("firestore:indexes")
+                    jq -e '.storage != null' firebase.json >/dev/null && TARGETS+=("storage")
+                    jq -e '.functions != null' firebase.json >/dev/null && TARGETS+=("functions")
+                    if [ "§{#TARGETS[@]}" -eq 0 ]; then echo "Nenhum alvo compatível foi encontrado no firebase.json."; exit 25; fi
+                    TARGETS_CSV="$(IFS=,; echo "§{TARGETS[*]}")"
+                    echo "Alvos identificados: §TARGETS_CSV"
+                    firebase deploy --only "§TARGETS_CSV" --project "§PROJECT_ID" --non-interactive
+                    echo "GEIVIA_DEPLOY_SUCCESS project=§PROJECT_ID targets=§TARGETS_CSV"
+                """.trimIndent().replace("§", "$")
                 runCatching {
                     withContext(Dispatchers.IO) {
                         controller.execute(listOf("login", "debian", "--", "/bin/bash", "-lc", command), 60 * 60 * 1000L) { chunk ->

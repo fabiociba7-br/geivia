@@ -48,6 +48,7 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
     var preflight by remember(context) { mutableStateOf(collectEnvironmentPreflight(context)) }
     var busy by remember { mutableStateOf(false) }
     var cancelRequested by remember { mutableStateOf(false) }
+    var recoveryTerminalActive by remember { mutableStateOf(false) }
     var debianReady by remember { mutableStateOf(prefs.getBoolean("linux_debian_verified", false)) }
     var debianStageStatus by remember { mutableStateOf(if (prefs.getBoolean("linux_debian_verified", false)) "Concluída" else "Aguardando") }
     var complete by remember { mutableStateOf(prefs.getBoolean("linux_toolchain_verified", false)) }
@@ -73,7 +74,7 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
     fun log(chunk: String) { details = (details + chunk).takeLast(16000) }
 
     fun runSetup() {
-        if (busy || complete) return
+        if (busy || complete || recoveryTerminalActive) return
         if (!preflight.supported) {
             status = preflight.reasons.joinToString(" ")
             return
@@ -257,7 +258,7 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
                 status = "Cancelamento solicitado. As etapas concluídas foram preservadas; a etapa interrompida poderá ser repetida."
             }, modifier = Modifier.fillMaxWidth()) { Text("Cancelar configuração") }
         } else if (!complete) {
-            Button(onClick = { runSetup() }, enabled = preflight.supported, modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = { runSetup() }, enabled = preflight.supported && !recoveryTerminalActive, modifier = Modifier.fillMaxWidth()) {
                 Text(
                     when {
                         debianFailed -> "Tentar novamente: Debian ARM64"
@@ -267,6 +268,9 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
                     },
                     modifier = Modifier.padding(vertical = 5.dp)
                 )
+            }
+            if (recoveryTerminalActive) {
+                Text("Feche o terminal de recuperação antes de tentar novamente a instalação.", color = Color(0xFF9A641B), fontSize = 11.sp)
             }
             if (debianFailed || failedStage != null || nextStage != null) {
                 Text(
@@ -297,7 +301,7 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
                     Text(details, color = Color(0xFFE2E8F0), fontSize = 10.sp, lineHeight = 15.sp, fontFamily = FontFamily.Monospace)
                 }
                 Spacer(Modifier.height(8.dp))
-                GeiviaRecoveryTerminal(controller)
+                GeiviaRecoveryTerminal(controller, onSessionActive = { recoveryTerminalActive = it })
             }
         }
         Text(

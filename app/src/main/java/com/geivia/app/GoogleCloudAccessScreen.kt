@@ -61,8 +61,8 @@ internal fun GoogleCloudAccessScreen(accountEmail: String = "", projectId: Strin
         try {
             if (!ready) {
                 withContext(Dispatchers.IO) { controller.prepareEngine() }
-                controller.installAndVerifyDebian { chunk -> append(chunk) }
-                val code = controller.execute(GoogleCloudCliCommands.install()) { chunk -> append(chunk) }
+                controller.installAndVerifyDebian { chunk -> scope.launch { append(chunk) } }
+                val code = controller.execute(GoogleCloudCliCommands.install()) { chunk -> scope.launch { append(chunk) } }
                 check(code == 0) { "A instalação do Google Cloud CLI terminou com código $code." }
                 ready = true
                 prefs.edit().putBoolean("google_cloud_cli_ready", true).apply()

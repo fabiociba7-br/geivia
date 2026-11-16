@@ -22,7 +22,8 @@ object LinuxRuntimePreflight {
         "libpr-cli.so",
         "libproot.so",
         "libproot-loader.so",
-        "libptyjni.so"
+        "libptyjni.so",
+        "libptykill.so"
     )
 
     fun evaluate(

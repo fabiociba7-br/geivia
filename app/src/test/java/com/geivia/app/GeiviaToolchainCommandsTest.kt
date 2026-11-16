@@ -41,7 +41,7 @@ class GeiviaToolchainCommandsTest {
             "apt_update",
             "apt_packages",
             "npm_config",
-            "npm_cache_recovery",
+            "npm_cache_recovery_v2",
             "firebase_cli",
             "toolchain_verify"
         ))
@@ -70,10 +70,12 @@ class GeiviaToolchainCommandsTest {
 
     @Test
     fun npmCacheRecoveryUsesDedicatedCacheAndCreatesTemporaryDirectory() {
-        val stage = GeiviaToolchainCommands.installStages().first { it.id == "npm_cache_recovery" }
+        val stage = GeiviaToolchainCommands.installStages().first { it.id == "npm_cache_recovery_v2" }
         val command = stage.command.last()
 
-        assertTrue(command.contains("/root/.cache/geivia-npm"))
+        assertTrue(command.contains("/tmp/geivia-npm-cache"))
+        assertTrue(command.contains("rename-probe"))
+        assertTrue(command.contains("mv "))
         assertTrue(command.contains("_cacache/tmp"))
         assertTrue(command.contains("npm config set cache"))
         assertTrue(command.contains("npm cache verify"))
@@ -84,8 +86,10 @@ class GeiviaToolchainCommandsTest {
     fun firebaseCliInstallRetriesAndRebuildsCacheAfterFailure() {
         val command = GeiviaToolchainCommands.installStages().first { it.id == "firebase_cli" }.command.last()
 
-        assertTrue(command.contains("for attempt in 1 2 3"))
+        assertTrue(command.contains("for NPM_CACHE in /tmp/geivia-npm-cache /root/.cache/geivia-npm /root/.npm"))
         assertTrue(command.contains("--fetch-retries=5"))
+        assertTrue(command.contains("--no-audit"))
+        assertTrue(command.contains("--no-fund"))
         assertTrue(command.contains("npm cache clean --force"))
         assertTrue(command.contains("rm -rf"))
         assertTrue(command.contains("_cacache/tmp"))
@@ -97,8 +101,8 @@ class GeiviaToolchainCommandsTest {
         val updateCommand = GeiviaToolchainCommands.updateFirebaseCli().last()
         val fullUpdateCommand = GeiviaToolchainCommands.updateAll().last()
 
-        assertTrue(updateCommand.contains("/root/.cache/geivia-npm"))
-        assertTrue(fullUpdateCommand.contains("/root/.cache/geivia-npm"))
+        assertTrue(updateCommand.contains("/tmp/geivia-npm-cache"))
+        assertTrue(fullUpdateCommand.contains("/tmp/geivia-npm-cache"))
     }
 
 }

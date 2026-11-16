@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 internal fun AccountsConnectionsScreen(
-    googleConnected: Boolean,
+    googleReady: Boolean,
     githubConnected: Boolean,
     onGoogle: () -> Unit,
     onGitHub: () -> Unit,
@@ -35,10 +35,10 @@ internal fun AccountsConnectionsScreen(
                         Text("Google Cloud + Firebase", color = Color(0xFF102B43), fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         Text("Uma autorização Google para acessar os projetos Cloud e Firebase.", color = Color(0xFF587083), fontSize = 12.sp, lineHeight = 17.sp)
                     }
-                    Text(if (googleConnected) "Conectado" else "Pendente", color = if (googleConnected) Color(0xFF236342) else Color(0xFF9A641B), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text(if (googleReady) "Ferramentas prontas" else "Configurar", color = if (googleConnected) Color(0xFF236342) else Color(0xFF9A641B), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
                 Button(onClick = onGoogle, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (googleConnected) "Abrir Google Cloud e Firebase" else "Conectar conta Google")
+                    Text(if (googleReady) "Conectar / gerenciar conta Google" else "Preparar e conectar Google")
                 }
             }
         }

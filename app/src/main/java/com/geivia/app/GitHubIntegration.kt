@@ -10,6 +10,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URI
 import java.io.InputStream
+import java.io.File
 import java.io.ByteArrayOutputStream
 import java.net.URLEncoder
 import java.security.KeyStore
@@ -101,7 +102,8 @@ object GitHubOAuth {
             "state" to state,
             "code_challenge" to codeChallenge(verifier),
             "code_challenge_method" to "S256",
-            "allow_signup" to "false"
+            "allow_signup" to "false",
+            "scope" to "repo,workflow"
         )
         return "https://github.com/login/oauth/authorize?" + params.entries.joinToString("&") {
             "${encode(it.key)}=${encode(it.value)}"
@@ -428,5 +430,70 @@ object GitHubApiClient {
                 htmlUrl = item.optString("html_url")
             )
         }
+    }
+
+    private fun writeJson(accessToken: String, method: String, path: String, payload: JSONObject): JSONObject {
+        val connection = (URL("https://api.github.com$path").openConnection() as HttpURLConnection).apply {
+            requestMethod = method
+            connectTimeout = 20_000
+            readTimeout = 60_000
+            doOutput = true
+            setRequestProperty("Authorization", "Bearer $accessToken")
+            setRequestProperty("Accept", "application/vnd.github+json")
+            setRequestProperty("Content-Type", "application/json")
+            setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
+        }
+        try {
+            connection.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
+            val status = connection.responseCode
+            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+            val response = readUtf8Limited(stream, 2 * 1024 * 1024)
+            if (status !in 200..299) throw IllegalStateException("GitHub recusou a gravação (HTTP $status): ${response.take(1200)}")
+            return JSONObject(response)
+        } finally { connection.disconnect() }
+    }
+
+    /** Creates one Git commit containing the imported project tree; secrets and generated folders are excluded. */
+    fun pushProjectDirectory(accessToken: String, repository: String, branch: String, root: File, onProgress: (String) -> Unit): String {
+        val repo = repositoryPath(repository)
+        require(branch.matches(Regex("^[A-Za-z0-9._/-]{1,200}$")) && !branch.contains("..")) { "Nome de branch inválido." }
+        val base = root.canonicalFile
+        require(base.isDirectory) { "Pasta do projeto importado não encontrada." }
+        val encodedBranch = URLEncoder.encode(branch, "UTF-8").replace("+", "%20")
+        val ref = JSONObject(getJson(accessToken, "/repos/$repo/git/ref/heads/$encodedBranch"))
+        val parentSha = ref.getJSONObject("object").getString("sha")
+        val parentCommit = JSONObject(getJson(accessToken, "/repos/$repo/git/commits/$parentSha"))
+        val baseTree = parentCommit.getJSONObject("tree").getString("sha")
+        val ignored = setOf(".git", "node_modules", "build", ".gradle", ".idea", ".dart_tool")
+        val files = base.walkTopDown().onEnter { dir -> dir.name !in ignored }.filter {
+            it.isFile && it.name != "local.properties" && !it.name.startsWith(".env") &&
+                !it.name.endsWith(".jks") && !it.name.endsWith(".keystore") &&
+                !it.name.contains("service-account", true)
+        }.toList()
+        require(files.isNotEmpty()) { "Não há arquivos seguros para enviar ao repositório." }
+        require(files.size <= 5000) { "O projeto tem mais de 5.000 arquivos. Remova arquivos gerados e tente novamente." }
+        val tree = JSONArray()
+        var totalBytes = 0L
+        files.forEachIndexed { index, file ->
+            val bytes = file.length()
+            require(bytes <= 80L * 1024 * 1024) { "Arquivo maior que 80 MB não pode ser enviado pelo GEIVIA: ${file.name}" }
+            totalBytes += bytes
+            require(totalBytes <= 200L * 1024 * 1024) { "O envio excederia o limite de 200 MB por operação." }
+            val relative = file.relativeTo(base).invariantSeparatorsPath
+            require(!relative.split("/").any { it == ".." }) { "Caminho de arquivo inseguro." }
+            val blob = writeJson(accessToken, "POST", "/repos/$repo/git/blobs", JSONObject()
+                .put("content", java.util.Base64.getEncoder().encodeToString(file.readBytes()))
+                .put("encoding", "base64"))
+            val mode = if (file.canExecute()) "100755" else "100644"
+            tree.put(JSONObject().put("path", relative).put("mode", mode).put("type", "blob").put("sha", blob.getString("sha")))
+            onProgress("Preparando arquivo ${index + 1}/${files.size}: $relative")
+        }
+        val createdTree = writeJson(accessToken, "POST", "/repos/$repo/git/trees", JSONObject().put("base_tree", baseTree).put("tree", tree))
+        val commit = writeJson(accessToken, "POST", "/repos/$repo/git/commits", JSONObject()
+            .put("message", "Importação de projeto pelo GEIVIA")
+            .put("tree", createdTree.getString("sha"))
+            .put("parents", JSONArray().put(parentSha)))
+        writeJson(accessToken, "PATCH", "/repos/$repo/git/refs/heads/$encodedBranch", JSONObject().put("sha", commit.getString("sha")).put("force", false))
+        return commit.optString("html_url").ifBlank { "https://github.com/$repo/commit/${commit.getString("sha")}" }
     }
 }

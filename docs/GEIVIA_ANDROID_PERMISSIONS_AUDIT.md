@@ -130,6 +130,19 @@ Nenhuma função que dependa de acesso protegido poderá ser considerada pronta 
 
 **Compromisso de produto:** pedir acesso quando necessário, explicar por quê, respeitar a escolha do usuário e nunca pedir acesso ao sistema inteiro por conveniência.
 
+## 9. Recursos de arquivos já presentes no aplicativo
+
+O painel já oferece duas ações que usam o seletor oficial do Android via Activity Result API:
+
+- **Exportar backup do histórico**: `ActivityResultContracts.CreateDocument("application/json")`. O usuário escolhe o destino e o app grava somente na URI retornada.
+- **Verificar integridade de backup**: `ActivityResultContracts.OpenDocument()`. O usuário escolhe o arquivo; o app lê somente a URI retornada e limita a leitura a 5 MiB.
+
+Esses fluxos não precisam de `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE` ou `MANAGE_EXTERNAL_STORAGE`. A interface informa que somente o arquivo escolhido será acessado. Não é solicitada permissão persistente porque essas operações são pontuais e não precisam reabrir o documento automaticamente depois.
+
+## 10. Proteção automática no CI
+
+O script `scripts/validate-android-permissions.mjs` é executado no GitHub Actions. Ele falha se permissões de acesso amplo/restrito incluídas na lista de bloqueio forem adicionadas ao manifesto ou se uma permissão declarada não estiver justificada neste documento. Qualquer nova necessidade deve passar por revisão explícita da política e dos testes de autorização.
+
 ## Referências oficiais
 
 - Android app-specific storage: https://developer.android.com/training/data-storage/app-specific

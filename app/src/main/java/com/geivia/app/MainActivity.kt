@@ -676,7 +676,7 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
                 }
                 Spacer(Modifier.height(6.dp))
                 OutlinedButton(
-                    onClick = { workflowBackupValidationLauncher.launch(arrayOf("application/json", "text/json")) },
+                    onClick = { workflowBackupValidationLauncher.launch(AndroidAccessUseCase.VALIDATE_HISTORY_BACKUP.mimeTypes.toTypedArray()) },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Verificar integridade de backup")

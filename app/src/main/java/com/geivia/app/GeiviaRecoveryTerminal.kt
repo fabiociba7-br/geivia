@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -34,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,6 +57,9 @@ internal fun GeiviaRecoveryTerminal(
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val initialCols = (configuration.screenWidthDp / 7).coerceIn(20, 160)
+    val initialRows = (configuration.screenHeightDp / 18).coerceIn(8, 100)
     var session by remember { mutableStateOf<ProotLauncher.Session?>(null) }
     var command by remember { mutableStateOf("") }
     var output by remember {
@@ -76,7 +81,7 @@ internal fun GeiviaRecoveryTerminal(
             try {
                 val opened = withContext(Dispatchers.IO) {
                     controller.prepareEngine()
-                    controller.startDebianShell()
+                    controller.startDebianShell(rows = initialRows, cols = initialCols)
                 }
                 session = opened
                 onSessionActive(true)
@@ -206,21 +211,34 @@ internal fun GeiviaRecoveryTerminal(
                         OutlinedButton(onClick = { copyOutput() }) { Text("Copiar") }
                         OutlinedButton(onClick = { pasteInput() }, enabled = session != null) { Text("Colar") }
                     }
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                            .background(TerminalBackground, RoundedCornerShape(6.dp))
-                            .verticalScroll(scrollState)
-                            .padding(8.dp)
+                    BoxWithConstraints(
+                        modifier = Modifier.weight(1f).fillMaxWidth()
                     ) {
-                        Text(
-                            output.ifEmpty { " " },
-                            color = TerminalForeground,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp,
-                            lineHeight = 17.sp
-                        )
+                        val terminalCols = (maxWidth.value / 7f).toInt().coerceIn(20, 160)
+                        val terminalRows = (maxHeight.value / 17f).toInt().coerceIn(8, 100)
+                        LaunchedEffect(session, terminalCols, terminalRows) {
+                            val active = session
+                            if (active != null) {
+                                withContext(Dispatchers.IO) {
+                                    runCatching { controller.resize(active, terminalRows, terminalCols) }
+                                }
+                            }
+                        }
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(TerminalBackground, RoundedCornerShape(6.dp))
+                                .verticalScroll(scrollState)
+                                .padding(8.dp)
+                        ) {
+                            Text(
+                                output.ifEmpty { " " },
+                                color = TerminalForeground,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 12.sp,
+                                lineHeight = 17.sp
+                            )
+                        }
                     }
                     OutlinedTextField(
                         value = command,

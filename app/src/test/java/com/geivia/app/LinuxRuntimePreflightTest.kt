@@ -62,7 +62,8 @@ class LinuxRuntimePreflightTest {
         val result = LinuxRuntimePreflight.evaluate(
             androidApi = 26,
             supportedAbis = listOf("armeabi-v7a"),
-            availableBytes = 0
+            availableBytes = 0,
+            availableNativeLibraries = emptySet()
         )
         assertFalse(result.supported)
         assertTrue(result.reasons.size == 4)

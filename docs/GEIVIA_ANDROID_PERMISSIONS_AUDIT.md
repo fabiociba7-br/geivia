@@ -183,3 +183,16 @@ Limites defensivos atuais:
 - arquivos são gravados primeiro em temporário privado e renomeados após a cópia concluída.
 
 A importação de pasta percorre apenas a árvore selecionada e copia arquivos; não mantém autorização persistente nem sincroniza alterações posteriores. O usuário pode acessar o conteúdo importado pelo terminal em `imports/`, por exemplo com `ls imports`. Cancelar o seletor não altera o workspace. Não foi adicionada permissão de armazenamento ao manifesto.
+
+## 13. Compatibilidade Xiaomi / Redmi / POCO (HyperOS)
+
+O aplicativo identifica a família Xiaomi por `Build.MANUFACTURER` e `Build.BRAND` (Xiaomi, Redmi e POCO) e exibe no painel um bloco contextual com fabricante/modelo, versão Android/API e orientações de configuração. O bloco oferece atalhos para Informações do app do GEIVIA e Configurações do aparelho.
+
+Orientações para HyperOS:
+- Arquivos: manter Storage Access Framework (`OpenMultipleDocuments` / `OpenDocumentTree`); nunca tentar contornar o seletor por caminhos absolutos ou pedir `MANAGE_EXTERNAL_STORAGE` para os fluxos atuais.
+- Inicialização automática: só orientar a habilitação manual quando uma função futura realmente precisar iniciar em segundo plano. O GEIVIA atual não registra serviço persistente/boot receiver e não deve pedir autostart preventivamente.
+- Bateria: não pedir isenção de otimização nem desativar economia de bateria para importação ou uso normal do painel. Só avaliar “Sem restrições” para uma função de segundo plano concreta, explicando impacto de bateria.
+- Permissões: solicitar runtime permission no momento da ação e revalidar após retorno das Configurações. Se o fabricante alterar/ocultar o fluxo, manter alternativa de abrir Informações do app e instruir o usuário.
+- Acesso ao sistema: não existe mecanismo legítimo para forçar silenciosamente permissões especiais, autostart, bateria sem restrições ou root. O usuário precisa confirmar nas Configurações; root e áreas protegidas continuam indisponíveis em app comum.
+
+Os nomes/caminhos dos menus variam por versão, região e modelo. O texto do app usa caminhos indicativos e não depende de intents Xiaomi privadas, que não são API pública estável. Testes unitários cobrem detecção Xiaomi/Redmi/POCO e fabricantes não Xiaomi.

@@ -57,6 +57,7 @@ fun GeiviaDiagnosticsScreen(onBack: () -> Unit) {
     val controller = remember(context) { LinuxRuntimeController(context.applicationContext) }
     var report by remember { mutableStateOf<GeiviaDiagnosticReport?>(null) }
     var running by remember { mutableStateOf(false) }
+    var recoveryTerminalActive by remember { mutableStateOf(false) }
     var pendingExportText by remember { mutableStateOf<String?>(null) }
     val exportReportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/plain")
@@ -186,9 +187,9 @@ fun GeiviaDiagnosticsScreen(onBack: () -> Unit) {
             ) { Text("Salvar relatório para compartilhar com o Termux") }
         }
 
-        GeiviaRecoveryTerminal(controller)
+        GeiviaRecoveryTerminal(controller, onSessionActive = { recoveryTerminalActive = it })
 
-        Button(onClick = { runDiagnostics() }, enabled = !running, modifier = Modifier.fillMaxWidth()) {
+        Button(onClick = { runDiagnostics() }, enabled = !running && !recoveryTerminalActive, modifier = Modifier.fillMaxWidth()) {
             Text(if (running) "Verificando…" else "Executar diagnóstico novamente")
         }
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Voltar ao painel") }

@@ -726,6 +726,7 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onOp
             "storage" to "Cloud Storage"
         )
         val workflowRecords = if (workflowStorageError == null) workflowStore.allForProject(chosenProjectId).associateBy { it.stepId } else emptyMap()
+        val workflowHistory = if (workflowStorageError == null) workflowStore.historyForProject(chosenProjectId).take(30) else emptyList()
         Spacer(Modifier.height(16.dp))
         Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(15.dp)) {
             Column(Modifier.padding(16.dp)) {
@@ -790,7 +791,33 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onOp
                     if (record?.message?.isNotBlank() == true) Text(record.message, color = Muted, fontSize = 10.sp, lineHeight = 14.sp)
                     Divider(color = Color(0xFFE7EEF2))
                 }
-                Text("As etapas são vinculadas ao Project ID. Uma operação pendente ou desconhecida não é repetida automaticamente.", color = Muted, fontSize = 10.sp, lineHeight = 15.sp)
+                Divider(color = Color(0xFFE7EEF2))
+                Spacer(Modifier.height(8.dp))
+                Text("HISTÓRICO DETALHADO • ÚLTIMAS 30 AÇÕES", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                if (chosenProjectId.isBlank()) {
+                    Text("Selecione um Project ID para consultar o histórico.", color = Muted, fontSize = 10.sp)
+                } else if (workflowHistory.isEmpty()) {
+                    Text("Ainda não há operações registradas para este projeto.", color = Muted, fontSize = 10.sp)
+                } else {
+                    workflowHistory.forEach { event ->
+                        Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Text(event.stepId.replace('_', ' ').uppercase(), color = Ink, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Text(android.text.format.DateFormat.format("dd/MM/yyyy HH:mm:ss", event.updatedAt).toString(), color = Muted, fontSize = 9.sp)
+                            }
+                            Text(event.state, color = when {
+                                event.state.contains("FAIL", true) || event.state.contains("UNKNOWN", true) -> Color(0xFFB05A18)
+                                event.state.contains("SUCCESS", true) || event.state.contains("COMPLETED", true) -> Color(0xFF238653)
+                                else -> Muted
+                            }, fontSize = 10.sp)
+                            if (event.message.isNotBlank()) Text(event.message, color = Muted, fontSize = 10.sp, lineHeight = 14.sp)
+                            if (event.operationId.isNotBlank()) Text("Operação: " + event.operationId, color = Muted, fontSize = 9.sp)
+                            if (event.evidence.isNotBlank()) Text("Evidência: " + event.evidence, color = Muted, fontSize = 9.sp, lineHeight = 13.sp)
+                        }
+                        Divider(color = Color(0xFFE7EEF2))
+                    }
+                }
+                Text("Histórico isolado por Project ID. Operações pendentes ou desconhecidas não são repetidas automaticamente.", color = Muted, fontSize = 10.sp, lineHeight = 15.sp)
             }
         }
         Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(15.dp)) {

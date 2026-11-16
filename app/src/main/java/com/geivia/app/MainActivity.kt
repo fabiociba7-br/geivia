@@ -211,12 +211,13 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                             .putString("preflight_firebase_project", preflightFirebaseProject)
                             .putString("preflight_github_repo", preflightGithubRepo)
                             .putString("preflight_project_id", preflightProjectId.trim())
+                            .putString("selected_project_id", preflightCloudProjectId.trim().ifBlank { preflightFirebaseProjectId.trim() }.ifBlank { preflightProjectId.trim() })
                             .putBoolean("preflight_completed", true)
                             .putLong("preflight_completed_at", System.currentTimeMillis())
                             .apply()
                         val hasExistingCloud = preflightCloudProject == "yes" || preflightFirebaseProject == "yes"
                         val shouldLoginNow = hasExistingCloud && preflightGoogleAccount == "yes"
-                        prefs.edit().putBoolean("preflight_auto_cloud_login", shouldLoginNow).apply()
+                        prefs.edit().putBoolean("preflight_auto_cloud_login", shouldLoginNow).putBoolean("preflight_return_to_workspace", shouldLoginNow).apply()
                         page = if (shouldLoginNow) "google_access" else if (prefs.contains("workflow_checkpoint")) savedCheckpoint else "workspace_setup"
                     }
                 )
@@ -274,7 +275,12 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     projectId = prefs.getString("preflight_cloud_project_id", "").orEmpty().ifBlank { prefs.getString("preflight_firebase_project_id", "").orEmpty() }.ifBlank { prefs.getString("preflight_project_id", "").orEmpty() },
                     autoStartLogin = prefs.getBoolean("preflight_auto_cloud_login", false),
                     onAutoStartConsumed = { prefs.edit().putBoolean("preflight_auto_cloud_login", false).apply() },
-                    onBack = { page = "dashboard" }
+                    onBack = {
+                        page = if (prefs.getBoolean("preflight_return_to_workspace", false)) {
+                            prefs.edit().putBoolean("preflight_return_to_workspace", false).apply()
+                            "workspace_setup"
+                        } else "dashboard"
+                    }
                 )
                 "toolchain_updates" -> GeiviaToolchainUpdatesScreen(onBack = { page = "dashboard" })
                 "diagnostics" -> GeiviaDiagnosticsScreen(onBack = { page = "dashboard" })

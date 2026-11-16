@@ -55,7 +55,7 @@ class GeiviaToolchainCommandsTest {
     @Test
     fun packageRepairStagePrecedesAptUpdateAndPackageInstall() {
         val stages = GeiviaToolchainCommands.installStages()
-        val recovery = stages.first { it.id == "dpkg_recovery" }.command.last()
+        val recovery = stages.first { it.id == "dpkg_recovery_v2" }.command.last()
         val packages = stages.first { it.id == "apt_packages" }.command.last()
 
         assertTrue(recovery.contains("dpkg --configure -a"))

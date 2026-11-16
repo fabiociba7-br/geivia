@@ -13,9 +13,9 @@ import androidx.compose.ui.platform.LocalContext
 internal fun sanitizeTerminalLog(value: String): String {
     var safe = value
     val sensitivePatterns = listOf(
-        Regex("(?i)(access_token|refresh_token|client_secret|password|authorization_code|verification_code|code)(\\\\s*[=:]\\\\s*)[^\\\\s]+"),
-        Regex("(?i)(--token\\\\s+)[^\\\\s]+"),
-        Regex("\\\\b[A-Z0-9]{4}-[A-Z0-9]{4}\\\\b")
+        Regex("(?i)(access_token|refresh_token|client_secret|password|authorization_code|verification_code|code)(\\s*[=:]\\s*)[^\\s]+"),
+        Regex("(?i)(--token\\s+)[^\\s]+"),
+        Regex("\\b[A-Z0-9]{4}-[A-Z0-9]{4}\\b")
     )
     sensitivePatterns.forEachIndexed { index, pattern ->
         safe = if (index == 2) safe.replace(pattern, "[CÓDIGO REDIGIDO]")

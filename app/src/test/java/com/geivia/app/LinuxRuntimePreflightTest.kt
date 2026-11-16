@@ -45,6 +45,19 @@ class LinuxRuntimePreflightTest {
         assertTrue(result.reasons.any { it.contains("armazenamento") })
     }
 
+    @Test fun rejectsApkMissingNativeRuntimeComponents() {
+        val available = LinuxRuntimePreflight.REQUIRED_NATIVE_LIBRARIES - "libproot-loader.so"
+        val result = LinuxRuntimePreflight.evaluate(
+            androidApi = 35,
+            supportedAbis = listOf("arm64-v8a"),
+            availableBytes = LinuxRuntimePreflight.DEFAULT_REQUIRED_BYTES,
+            availableNativeLibraries = available
+        )
+        assertFalse(result.supported)
+        assertTrue(result.missingNativeLibraries == listOf("libproot-loader.so"))
+        assertTrue(result.reasons.any { it.contains("libproot-loader.so") })
+    }
+
     @Test fun reportsAllIncompatibilitiesTogether() {
         val result = LinuxRuntimePreflight.evaluate(
             androidApi = 26,
@@ -52,6 +65,6 @@ class LinuxRuntimePreflightTest {
             availableBytes = 0
         )
         assertFalse(result.supported)
-        assertTrue(result.reasons.size == 3)
+        assertTrue(result.reasons.size == 4)
     }
 }

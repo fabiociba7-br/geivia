@@ -4,7 +4,7 @@ name: GEIVIA Android Build
 # workflow_dispatch remains available for explicitly requested rebuilds.
 on:
   push:
-    branches: [main]
+    branches: [main, "feat/full-project-import-and-deploy"]
   pull_request:
     branches: [main]
   workflow_dispatch:

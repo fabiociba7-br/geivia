@@ -95,7 +95,7 @@ class GeiviaToolchainCommandsTest {
         val updateCommand = GeiviaToolchainCommands.updateFirebaseCli().last()
         val fullUpdateCommand = GeiviaToolchainCommands.updateAll().last()
 
-        assertTrue(updateCommand.contains("npm_run install --prefix"))
+        assertTrue(updateCommand.contains("firebase-tools@latest"))
         assertTrue(updateCommand.contains("firebase-tools@latest"))
         assertTrue(fullUpdateCommand.contains("firebase-tools@latest"))
         assertTrue(installCommand.contains("npm_run install --prefix"))

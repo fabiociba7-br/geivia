@@ -155,16 +155,24 @@ internal fun FirebaseAdminScreen(projectId: String, onBack: () -> Unit) {
                             Triple("firebase_admin_ativar_firebase_authentication", authEnabled, "Firebase Authentication / Identity Toolkit"),
                             Triple("firebase_admin_ativar_apis_b_sicas_firebase", apiSetComplete, "APIs básicas Firebase")
                         )
-                        checks.forEach { (stepId, confirmed, label) ->
+                        val pending = checks.mapNotNull { (stepId, currentlyPresent, label) ->
                             val record = workflowStore.get(projectId, stepId)
-                            if (confirmed && (record.state == WorkflowStepState.IN_PROGRESS || record.state == WorkflowStepState.UNKNOWN)) {
-                                workflowStore.reconcileCompleted(projectId, stepId, "Diagnóstico Google somente leitura; Project ID validado: $projectId; $label confirmado. $evidence")
-                                workflowStore.appendAuditEvent(projectId, stepId, "COMPLETED", record.operationId, "$label confirmado por diagnóstico", evidence)
-                            }
+                            if (record.state == WorkflowStepState.IN_PROGRESS || record.state == WorkflowStepState.UNKNOWN) {
+                                val status = if (currentlyPresent) "ESTADO ATUAL CONFIRMADO" else "ESTADO ATUAL NÃO CONFIRMADO"
+                                workflowStore.appendAuditEvent(
+                                    projectId, stepId, "DIAGNOSTIC_ONLY", record.operationId,
+                                    "$label • $status; operação não reconciliada",
+                                    "Consulta somente leitura do estado atual. Sem snapshot anterior à operação, não é possível provar que este recurso foi criado/ativado por ela. $evidence"
+                                )
+                                "$label: $status; operação permanece pendente."
+                            } else null
                         }
                         workflowRefresh++
-                        log = evidence + "\n\nEtapas pendentes sem evidência suficiente permaneceram pendentes. Nenhuma alteração foi feita na nuvem."
-                    }.onFailure { log = "Diagnóstico concluído, mas não foi possível atualizar o histórico: ${it.message}\n$evidence" }
+                        log = evidence + "\\n\\n" +
+                            if (pending.isEmpty()) "Nenhuma operação em andamento precisava de reconciliação."
+                            else pending.joinToString("\\n") +
+                                "\\n\\nO estado atual, isoladamente, não prova que a operação preparada causou a alteração. Nenhuma etapa foi marcada como concluída. Nenhuma alteração foi feita na nuvem."
+                    }.onFailure { log = "Diagnóstico concluído, mas não foi possível atualizar o histórico: ${it.message}\\n$evidence" }
                 }.onFailure { log = "Falha no diagnóstico: ${it.message}. Nenhuma alteração foi feita na nuvem." }
                 busy = false
             }

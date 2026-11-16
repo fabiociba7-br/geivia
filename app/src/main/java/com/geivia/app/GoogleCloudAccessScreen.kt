@@ -47,23 +47,23 @@ internal fun GoogleCloudAccessScreen(onBack: () -> Unit) {
     fun append(message: String) { output = (output + message).takeLast(24000) }
 
     Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(20.dp)) {
-        Text("ACESSO AO GOOGLE CLOUD", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+        Text("ACESSO AO GOOGLE CLOUD", color = Color(0xFF173B5E), fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
         Spacer(Modifier.height(8.dp))
-        Text("Tudo dentro do GEIVIA", color = Ink, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+        Text("Tudo dentro do GEIVIA", color = Color(0xFF17212B), fontSize = 25.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
         Text(
             "O aplicativo prepara o Linux e instala as ferramentas automaticamente. Você não precisa abrir Shell, Termux ou digitar comandos de instalação.",
-            color = Muted, fontSize = 14.sp, lineHeight = 21.sp
+            color = Color(0xFF657382), fontSize = 14.sp, lineHeight = 21.sp
         )
         Spacer(Modifier.height(14.dp))
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF4FA)), shape = RoundedCornerShape(14.dp)) {
             Column(Modifier.padding(14.dp)) {
-                Text("O QUE SERÁ FEITO", color = DeepBlue, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                Text("O QUE SERÁ FEITO", color = Color(0xFF173B5E), fontWeight = FontWeight.Bold, fontSize = 11.sp)
                 Spacer(Modifier.height(6.dp))
-                Text("1. Verificar e preparar Debian ARM64", color = Ink, fontSize = 13.sp)
-                Text("2. Instalar Google Cloud CLI dentro do Debian", color = Ink, fontSize = 13.sp)
-                Text("3. Iniciar a autorização oficial da conta Google", color = Ink, fontSize = 13.sp)
-                Text("4. Consultar os projetos disponíveis sem criar ou alterar nada", color = Ink, fontSize = 13.sp)
+                Text("1. Verificar e preparar Debian ARM64", color = Color(0xFF17212B), fontSize = 13.sp)
+                Text("2. Instalar Google Cloud CLI dentro do Debian", color = Color(0xFF17212B), fontSize = 13.sp)
+                Text("3. Iniciar a autorização oficial da conta Google", color = Color(0xFF17212B), fontSize = 13.sp)
+                Text("4. Consultar os projetos disponíveis sem criar ou alterar nada", color = Color(0xFF17212B), fontSize = 13.sp)
             }
         }
         Spacer(Modifier.height(14.dp))
@@ -98,10 +98,10 @@ internal fun GoogleCloudAccessScreen(onBack: () -> Unit) {
         }
         Spacer(Modifier.height(14.dp))
         if (ready) {
-            Text("CONTA GOOGLE", color = DeepBlue, fontWeight = FontWeight.Black, fontSize = 11.sp)
+            Text("CONTA GOOGLE", color = Color(0xFF173B5E), fontWeight = FontWeight.Black, fontSize = 11.sp)
             Text(
                 "A autorização é feita pelo fluxo oficial do Google. O GEIVIA inicia o login no terminal integrado; o Google poderá pedir uma confirmação no navegador. Não informe senha ou código a ninguém.",
-                color = Muted, fontSize = 12.sp, lineHeight = 18.sp
+                color = Color(0xFF657382), fontSize = 12.sp, lineHeight = 18.sp
             )
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -161,7 +161,7 @@ internal fun GoogleCloudAccessScreen(onBack: () -> Unit) {
             }
         }
         Spacer(Modifier.height(12.dp))
-        Text("SAÍDA DO PROCESSO", color = DeepBlue, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+        Text("SAÍDA DO PROCESSO", color = Color(0xFF173B5E), fontWeight = FontWeight.Bold, fontSize = 11.sp)
         Column(
             Modifier.fillMaxWidth().heightIn(min = 180.dp, max = 360.dp)
                 .background(Color(0xFF101D2B), RoundedCornerShape(12.dp))
@@ -172,7 +172,7 @@ internal fun GoogleCloudAccessScreen(onBack: () -> Unit) {
         Spacer(Modifier.height(12.dp))
         Text(
             "Importante: o primeiro login do Google pode exigir abrir um endereço oficial e confirmar um código. Isso é uma proteção do Google. O GEIVIA não armazena sua senha. Nenhum projeto será criado ou modificado nesta etapa.",
-            color = Muted, fontSize = 11.sp, lineHeight = 16.sp
+            color = Color(0xFF657382), fontSize = 11.sp, lineHeight = 16.sp
         )
         Spacer(Modifier.height(12.dp))
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Voltar") }

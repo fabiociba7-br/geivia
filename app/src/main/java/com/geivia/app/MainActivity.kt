@@ -2298,12 +2298,50 @@ private fun GitHubScreen(
 private fun TerminalPanel() {
     val context = LocalContext.current
     val engine = remember { LocalTerminalEngine(context.filesDir) }
+    val importer = remember { TerminalWorkspaceImporter(context, context.filesDir) }
+    val scope = rememberCoroutineScope()
     var command by rememberSaveable { mutableStateOf("") }
     var output by remember {
         mutableStateOf(listOf("GEIVIA Terminal 1.0", "Terminal local integrado ao painel.", "Digite help para ver os comandos disponíveis."))
     }
     var expanded by rememberSaveable { mutableStateOf(false) }
+    var importing by remember { mutableStateOf(false) }
     val scroll = rememberScrollState()
+
+    fun appendOutput(message: String) {
+        output = (output + message.lines()).takeLast(300)
+        expanded = true
+    }
+
+    val filesLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isNotEmpty()) {
+            scope.launch {
+                importing = true
+                runCatching { withContext(Dispatchers.IO) { importer.importFiles(uris) } }
+                    .onSuccess { imported ->
+                        appendOutput("Importados ${imported.size} arquivo(s) em imports/:\n" +
+                            imported.joinToString("\n") { it.name })
+                    }
+                    .onFailure { error -> appendOutput("Falha na importação: ${error.message ?: "erro desconhecido"}") }
+                importing = false
+            }
+        }
+    }
+    val folderLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) {
+            scope.launch {
+                importing = true
+                runCatching { withContext(Dispatchers.IO) { importer.importTree(uri) } }
+                    .onSuccess { imported ->
+                        val names = imported.take(20).joinToString("\n") { it.name } +
+                            if (imported.size > 20) "\n… e mais ${imported.size - 20} arquivo(s)" else ""
+                        appendOutput("Importados ${imported.size} arquivo(s) da pasta para imports/:\n$names")
+                    }
+                    .onFailure { error -> appendOutput("Falha na importação da pasta: ${error.message ?: "erro desconhecido"}") }
+                importing = false
+            }
+        }
+    }
 
     LaunchedEffect(output.size) { scroll.animateScrollTo(scroll.maxValue) }
 
@@ -2367,9 +2405,30 @@ private fun TerminalPanel() {
                     Spacer(Modifier.width(8.dp))
                     Button(onClick = { runCommand() }, enabled = command.isNotBlank()) { Text("Executar") }
                 }
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(
+                        onClick = { filesLauncher.launch(arrayOf("*/*")) },
+                        enabled = !importing,
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Importar arquivos") }
+                    OutlinedButton(
+                        onClick = { folderLauncher.launch(null) },
+                        enabled = !importing,
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Importar pasta") }
+                }
+                if (importing) {
+                    Spacer(Modifier.height(6.dp))
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
                 Spacer(Modifier.height(7.dp))
                 Text(
-                    "Nesta fase, os comandos disponíveis são internos e restritos à pasta privada do GEIVIA. O motor Linux integrado está em desenvolvimento.",
+                    "Os itens escolhidos são copiados para a pasta privada imports/ do terminal. Limites: 5 MB por arquivo, 25 MB por importação e 100 arquivos. Nenhum acesso amplo ao armazenamento é solicitado.",
+                    color = Color(0xFF9AA9B8), fontSize = 10.sp, lineHeight = 14.sp
+                )
+                Text(
+                    "O terminal ainda usa comandos locais restritos; o motor Linux integrado está em desenvolvimento.",
                     color = Color(0xFF9AA9B8), fontSize = 10.sp, lineHeight = 14.sp
                 )
             } else {
@@ -2379,7 +2438,6 @@ private fun TerminalPanel() {
         }
     }
 }
-
 @Composable
 private fun BrandMark() {
     Box(Modifier.fillMaxWidth().height(170.dp), contentAlignment = Alignment.Center) {

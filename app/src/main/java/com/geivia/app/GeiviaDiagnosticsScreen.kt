@@ -100,7 +100,7 @@ fun GeiviaDiagnosticsScreen(onBack: () -> Unit) {
                     } else {
                         -1
                     }
-                    debianCode == 0 to (toolchainCode == 0)
+                    Pair(debianCode == 0, toolchainCode == 0)
                 }.getOrElse { false to false }
             }
             report = collectGeiviaDiagnostics(context, liveChecks.first, liveChecks.second)

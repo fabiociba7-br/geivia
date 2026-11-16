@@ -1,56 +1,58 @@
 # GEIVIA Terminal — experiência integrada e motor Linux
 
-## Experiência atual
+## Dois terminais com funções diferentes
 
-O Terminal GEIVIA aparece recolhido dentro do painel principal. O usuário pode expandi-lo, executar comandos locais e recolhê-lo sem navegar para outra tela ou abrir outro aplicativo. A sessão mantém o histórico enquanto a tela permanece ativa.
+O GEIVIA mantém duas experiências complementares:
 
-## Recursos locais disponíveis nesta fase
+1. **Terminal do painel:** interpretador local restrito, com comandos seguros para manipular arquivos dentro da área privada de trabalho. Não executa shell arbitrário.
+2. **Terminal de recuperação:** disponível na tela **Diagnóstico e solução de problemas**. Abre uma sessão interativa do Debian ARM64 pelo motor PRoot integrado ao aplicativo. É destinado à manutenção do ambiente Linux e à recuperação de instalações.
 
-`help`, `pwd`, `ls`, `mkdir`, `touch`, `cat`, `echo`, `date`, `whoami`, `version` e `clear`.
+O usuário não precisa instalar nem abrir Termux. O terminal de recuperação usa o armazenamento privado do GEIVIA e não é um terminal root do Android.
 
-O comando `cat` limita a leitura a 64 KB. A entrada de cada comando é limitada a 2.048 caracteres. Caminhos são canonicalizados e qualquer tentativa de sair da pasta privada do terminal é rejeitada.
+## Runtime Linux atual
 
-## Segurança e limites atuais
+O módulo `:proot-engine` integra o motor PRoot Android do submódulo `oonid/pr`. O `GeiviaProotHost` prepara os diretórios privados em `files/linux/`, valida os componentes nativos ARM64 extraídos pelo Android e cria os links executáveis usados pelo `pr-cli`.
 
-- Não invoca `/system/bin/sh`, `Runtime.exec` ou `ProcessBuilder`.
-- Não executa comandos arbitrários nem scripts.
-- Não acessa arquivos privados de outros aplicativos.
-- Não recebe tokens, senhas ou chaves.
-- Não executa ações no Google Cloud ou GitHub.
-- A pasta de trabalho é privada do aplicativo e removida quando o app é desinstalado ou seus dados são apagados.
-- A integração externa com Termux foi removida da experiência padrão: o GEIVIA não exige nem procura esse aplicativo.
+O `LinuxRuntimeController` oferece:
+- execução de comandos Debian com saída incremental e timeout;
+- abertura de sessão interativa por PTY;
+- envio de comandos para a sessão;
+- encerramento da sessão ativa;
+- instalação e verificação básica do Debian.
 
-Este terminal ainda é um interpretador local restrito; não é uma distribuição Linux e não deve apresentar comandos Linux como disponíveis antes da integração real do runtime.
+O runtime exige Android compatível e ABI `arm64-v8a`. A disponibilidade real depende também do espaço livre, dos componentes nativos presentes no APK e do funcionamento do PRoot no aparelho.
 
-## Próxima arquitetura: Linux embarcado
+## Instalação recuperável das ferramentas
 
-A próxima fase deve introduzir um runtime Linux em espaço privado do GEIVIA, sem root e sem depender do Termux instalado pelo usuário. A implementação deverá ser dividida em componentes verificáveis:
+A configuração inicial exibe o Debian e cada etapa da toolchain com estado individual:
+- Aguardando;
+- Em andamento;
+- Concluída;
+- Falhou.
 
-1. **Runtime isolado:** avaliar e integrar uma solução PRoot compatível com Android/ABI do aparelho, executada no sandbox do próprio GEIVIA.
-2. **Distribuição:** provisionar uma rootfs ARM64 mínima por download verificável, com checksum, versão e espaço em disco informado antes da instalação.
-3. **Gerenciador de pacotes:** instalar ferramentas sob demanda, sem incluir uma distribuição inteira no APK.
-4. **Processos e terminal:** execução assíncrona, saída incremental, cancelamento, limites de CPU/memória/tempo e proteção contra caminhos fora do workspace.
-5. **Ferramentas de desenvolvimento:** Git, Node.js, Python e Firebase CLI, verificando compatibilidade e tamanho antes de habilitar cada pacote.
-6. **Segurança:** nenhuma credencial embutida; operações de nuvem exigem autenticação do próprio usuário, revisão e confirmação explícita.
+A instalação é dividida em recuperação do dpkg, atualização dos índices, pacotes básicos, configuração do npm, Firebase CLI e verificação final. Cada etapa concluída recebe um checkpoint persistido no aparelho. Ao tentar novamente, o GEIVIA pula etapas concluídas e retoma a primeira etapa pendente ou com falha. A instalação parcialmente executada pode ser repetida.
 
-### Critérios de aceite do runtime
+O terminal de recuperação permite ao usuário executar comandos Debian para investigar problemas sem sair do GEIVIA. Os comandos podem alterar pacotes e arquivos dentro do Debian; a interface avisa que não se trata de acesso root ao Android.
 
-- Funcionar sem Termux e sem root em dispositivos Android suportados.
-- Não solicitar permissões desnecessárias.
-- Verificar integridade dos downloads antes de extrair ou executar.
-- Não executar comandos como root.
-- Não anunciar ferramenta instalada antes de validar sua execução.
-- Permitir remover/atualizar a distribuição sem apagar os projetos do usuário.
-- Ter testes de isolamento, cancelamento, limites e recuperação de instalação interrompida.
+## Segurança e limites
 
-A escolha do runtime não deve ser tratada como concluída até que a compatibilidade Android, a licença, a manutenção e a origem dos binários sejam verificadas.
+- Não solicita root Android nem tenta contornar o sandbox do sistema.
+- Não acessa dados privados de outros aplicativos.
+- Não embute tokens, senhas ou chaves privadas.
+- O terminal de recuperação executa comandos no Debian/PRoot do próprio aplicativo; portanto, comandos digitados pelo usuário podem modificar esse ambiente.
+- O terminal local restrito do painel continua limitado ao workspace privado.
+- Operações no Google Cloud/Firebase seguem o fluxo de autenticação e confirmação descrito na documentação de integração; a instalação local de ferramentas não significa que um deploy esteja autorizado.
+- Os dados guardados exclusivamente no diretório privado do app podem ser apagados se o GEIVIA for desinstalado ou tiver seus dados limpos. Faça backup dos projetos antes disso.
 
+## Validação ainda necessária em aparelho físico
 
-## Ambiente Linux e pacotes de desenvolvimento
+A compilação e os testes JVM não comprovam que a distribuição Debian inicia corretamente em todos os aparelhos. Antes de considerar o runtime pronto para produção, validar em dispositivo ARM64 Android 9+ (idealmente Android 16/HyperOS):
+1. inicialização do PRoot e instalação do Debian;
+2. rede, DNS e execução de `apt-get update`;
+3. instalação de pacotes e recuperação de uma transação dpkg interrompida;
+4. entrada/saída interativa, teclado e encerramento do PTY;
+5. cancelamento durante instalação e durante um comando;
+6. fechamento e reabertura da tela, preservando os checkpoints;
+7. atualização do APK por cima da versão instalada, sem apagar os dados do ambiente.
 
-O catálogo inicial de ferramentas está versionado em `app/src/main/assets/linux-toolchain-manifest.json`. Ele descreve os perfis Base, Java 17, Node.js/npm, Python 3, ferramentas de compilação e Firebase CLI, além do Google Cloud CLI como perfil opcional condicionado à validação ARM64. A especificação de instalação, segurança, compatibilidade e deploy está em [GEIVIA_LINUX_TOOLCHAIN.md](GEIVIA_LINUX_TOOLCHAIN.md).
-
-**Importante:** o manifesto é apenas o catálogo para a futura instalação. Ele não instala nem executa os pacotes. O runtime PRoot ainda precisa ser integrado, compatibilizado com a cadeia Android atual e testado em aparelho real antes de habilitar a instalação de ferramentas.
-
-
-A classe `LinuxRuntimePreflight` verifica API Android, ABI ARM64 e espaço livre antes de uma futura instalação do runtime. Ela não instala pacotes nem altera o terminal local atual.
+O CI não executa o Debian ARM64 em aparelho real. O teste instrumentado de instalação, quando acionado manualmente, faz download real da distribuição e exige rede e espaço disponíveis.

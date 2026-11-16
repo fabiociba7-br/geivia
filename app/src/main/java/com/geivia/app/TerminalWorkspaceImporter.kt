@@ -6,7 +6,6 @@ import android.provider.DocumentsContract
 import android.provider.DocumentsContract.Document
 import java.io.File
 import java.io.InputStream
-import java.util.Locale
 
 /**
  * Copies only user-selected documents into the app-private terminal workspace.
@@ -141,7 +140,7 @@ internal class TerminalWorkspaceImporter(private val context: Context, filesDir:
         fun sanitizeDisplayName(displayName: String): String {
             val leaf = displayName.replace('\\', '/').substringAfterLast('/')
             val cleaned = leaf
-                .replace(Regex("[^\\p{L}\\p{N}._() -]"), "_")
+                .replace(Regex("[^\\p{L}\\p{N}._()-]"), "_")
                 .trim()
                 .trim('.')
                 .take(100)

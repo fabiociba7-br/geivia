@@ -151,3 +151,18 @@ O script `scripts/validate-android-permissions.mjs` é executado no GitHub Actio
 - Android 14+ foreground service types: https://developer.android.com/about/versions/14/changes/fgs-types-required
 - Android package visibility: https://developer.android.com/training/package-visibility
 - PRoot behavior and limitations: https://github.com/termux/proot-distro
+
+
+## 11. Política centralizada implementada no código
+
+A política compartilhada está em `AndroidAccessPolicy.kt`, com casos explícitos para:
+- workspace privado do app: sem permissão de armazenamento;
+- exportação de backup: seletor `CreateDocument`;
+- validação de backup e importação do inventário Cloud: seletor `OpenDocument`;
+- seleção futura de pasta: `OpenDocumentTree`, somente quando necessária;
+- permissões runtime: permitidas apenas para uma função concreta que realmente dependa delas;
+- root e áreas protegidas do sistema: classificados como privilégio não concedível por permissão comum.
+
+A interface usa as orientações dessa política nos fluxos de backup e importação de inventário. Os testes unitários verificam que arquivos privados e seletores não pedem permissões runtime, que root não é apresentado como permissão concedível e que a lista atual do manifesto permanece restrita a `INTERNET`.
+
+A existência da política não significa que o GEIVIA já implemente acesso root, leitura de todo o armazenamento ou controle privilegiado do Android. Essas operações continuam fora do escopo suportado em aparelhos sem root.

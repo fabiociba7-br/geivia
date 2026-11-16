@@ -10,9 +10,7 @@ internal object GeiviaToolchainCommands {
         export DEBIAN_FRONTEND=noninteractive
         # Recover an interrupted dpkg transaction before starting a new install.
         echo 'GEIVIA_PACKAGE_RECOVERY_BEGIN'
-        dpkg --configure -a || true
-        apt-get -f install -y
-        dpkg --configure -a
+        ${dpkgRecoveryCommand()}
         echo 'GEIVIA_PACKAGE_RECOVERY_OK'
         apt-get update
         apt-get install -y --no-install-recommends \
@@ -33,6 +31,24 @@ internal object GeiviaToolchainCommands {
         """.trimIndent()
     )
 
+
+    /** Strict, repeatable repair: never hide a failed dpkg configure operation. */
+    private fun dpkgRecoveryCommand(): String = """
+        if ! dpkg --configure -a; then
+          echo GEIVIA_DPKG_CONFIGURE_REPAIR
+          apt-get -f install -y
+          dpkg --configure -a
+        fi
+        apt-get -f install -y
+        dpkg --configure -a
+        DPKG_AUDIT="$(dpkg --audit)"
+        if [ -n "$DPKG_AUDIT" ]; then
+          printf '%s\\n' "$DPKG_AUDIT"
+          echo GEIVIA_DPKG_AUDIT_FAILED
+          exit 1
+        fi
+        echo GEIVIA_DPKG_RECOVERY_OK
+    """.trimIndent()
 
     /**
      * Installs Firebase CLI from the public npm registry.
@@ -110,9 +126,9 @@ internal object GeiviaToolchainCommands {
     /** Small idempotent stages allow the UI to checkpoint and resume after a failure. */
     fun installStages(): List<InstallStage> = listOf(
         InstallStage(
-            "dpkg_recovery", "Recuperação do gerenciador de pacotes (dpkg)",
+            "dpkg_recovery_v2", "Recuperação do gerenciador de pacotes (dpkg)",
             listOf("login", "debian", "--", "/bin/sh", "-lc",
-                "set -eu; export DEBIAN_FRONTEND=noninteractive; dpkg --configure -a || true; apt-get -f install -y; dpkg --configure -a; echo GEIVIA_DPKG_RECOVERY_OK"),
+                "set -eu; export DEBIAN_FRONTEND=noninteractive; ${dpkgRecoveryCommand()}"),
             15 * 60 * 1000L
         ),
         InstallStage(
@@ -124,7 +140,7 @@ internal object GeiviaToolchainCommands {
         InstallStage(
             "apt_packages", "Instalação dos pacotes básicos",
             listOf("login", "debian", "--", "/bin/sh", "-lc",
-                """set -eu; export DEBIAN_FRONTEND=noninteractive; apt-get install -y --no-install-recommends ca-certificates curl wget git openssh-client unzip zip xz-utils tar jq nano less default-jdk-headless nodejs npm python3 python3-pip python3-venv build-essential cmake pkg-config make; echo GEIVIA_APT_PACKAGES_OK"""),
+                """set -eu; export DEBIAN_FRONTEND=noninteractive; echo GEIVIA_PACKAGE_RECOVERY_BEGIN; ${dpkgRecoveryCommand()}; echo GEIVIA_PACKAGE_RECOVERY_OK; apt-get install -y --no-install-recommends ca-certificates curl wget git openssh-client unzip zip xz-utils tar jq nano less default-jdk-headless nodejs npm python3 python3-pip python3-venv build-essential cmake pkg-config make; echo GEIVIA_APT_PACKAGES_OK"""),
             45 * 60 * 1000L
         ),
         InstallStage(

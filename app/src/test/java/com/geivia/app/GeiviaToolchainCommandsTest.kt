@@ -59,7 +59,7 @@ class GeiviaToolchainCommandsTest {
     }
 
     @Test
-    fun firebaseCliStageDownloadsThePrebuiltArm64Bundle() {
+    fun firebaseCliStageInstallsFirebaseCliFromNpmWithCacheRecovery() {
         val stage = GeiviaToolchainCommands.installStages().first { it.id == "firebase_cli" }
         val command = stage.command.last()
 
@@ -74,7 +74,7 @@ class GeiviaToolchainCommandsTest {
     }
 
     @Test
-    fun firebaseCliInstallerUsesThePublishedReleaseAndIsIdempotent() {
+    fun firebaseCliInstallerUsesPublicNpmRegistryAndIsIdempotent() {
         val command = GeiviaToolchainCommands.installStages().first { it.id == "firebase_cli" }.command.last()
 
         assertTrue(command.contains("https://registry.npmjs.org") || command.contains("npm install --prefix"))

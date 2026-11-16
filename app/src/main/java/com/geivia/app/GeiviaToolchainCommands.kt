@@ -10,8 +10,9 @@ internal object GeiviaToolchainCommands {
         export DEBIAN_FRONTEND=noninteractive
         # Recover an interrupted dpkg transaction before starting a new install.
         echo 'GEIVIA_PACKAGE_RECOVERY_BEGIN'
-        dpkg --configure -a
+        dpkg --configure -a || true
         apt-get -f install -y
+        dpkg --configure -a
         echo 'GEIVIA_PACKAGE_RECOVERY_OK'
         apt-get update
         apt-get install -y --no-install-recommends \

@@ -187,7 +187,6 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onContinue = { page = "summary" })
                 "summary" -> SummaryScreen(answers.toMap(), costMode,
                     onBack = { page = "cost" }, onEdit = { page = "questions"; index = 0 }, onFinish = { page = "dashboard" })
-                "terminal" -> TerminalScreen(onBack = { page = "dashboard" })
                 "github" -> GitHubScreen(
                     connected = githubConnected,
                     callbackMessage = githubCallbackMessage,
@@ -202,7 +201,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onBack = { page = "dashboard" },
                     onContinue = { page = "dashboard" }
                 )
-                else -> DashboardScreen(answers.toMap(), costMode, onGoogleAccess = { page = "google_access" }, onGitHub = { page = "github" }, onTerminal = { page = "terminal" }) {
+                else -> DashboardScreen(answers.toMap(), costMode, onGoogleAccess = { page = "google_access" }, onGitHub = { page = "github" }) {
                     answers.clear()
                     val editor = prefs.edit()
                     answerKeys.forEach { editor.remove(it) }
@@ -429,7 +428,7 @@ private fun SummaryScreen(answers: Map<String, String>, costMode: String, onBack
 }
 
 @Composable
-private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGoogleAccess: () -> Unit, onGitHub: () -> Unit, onTerminal: () -> Unit, onRestart: () -> Unit) {
+private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGoogleAccess: () -> Unit, onGitHub: () -> Unit, onRestart: () -> Unit) {
     val context = LocalContext.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp)) {
         BrandMark()
@@ -664,7 +663,7 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
         Spacer(Modifier.height(8.dp))
         OutlinedButton(onClick = onGitHub, modifier = Modifier.fillMaxWidth()) { Text("Conectar e acompanhar GitHub") }
         Spacer(Modifier.height(8.dp))
-        Button(onClick = onTerminal, modifier = Modifier.fillMaxWidth()) { Text("Abrir Terminal GEIVIA") }
+        TerminalPanel()
         Spacer(Modifier.height(8.dp))
         Button(onClick = { shareProjectPlan(context = context, answers = answers, costMode = costMode) }, modifier = Modifier.fillMaxWidth()) { Text("Compartilhar plano do projeto") }
         Spacer(Modifier.height(8.dp))
@@ -2149,40 +2148,17 @@ private fun GitHubScreen(
 
 
 @Composable
-private fun TerminalScreen(onBack: () -> Unit) {
+private fun TerminalPanel() {
     val context = LocalContext.current
     val engine = remember { LocalTerminalEngine(context.filesDir) }
     var command by rememberSaveable { mutableStateOf("") }
     var output by remember {
-        mutableStateOf(listOf("GEIVIA Terminal 1.0", "Ambiente local restrito • Digite help para começar.", ""))
+        mutableStateOf(listOf("GEIVIA Terminal 1.0", "Terminal local integrado ao painel.", "Digite help para ver os comandos disponíveis."))
     }
-    var confirmTermux by remember { mutableStateOf(false) }
+    var expanded by rememberSaveable { mutableStateOf(false) }
     val scroll = rememberScrollState()
 
     LaunchedEffect(output.size) { scroll.animateScrollTo(scroll.maxValue) }
-
-    fun sendToTermux() {
-        val submitted = command.trim()
-        if (submitted.isEmpty()) return
-        val termuxIntent = Intent("com.termux.RUN_COMMAND").apply {
-            setPackage("com.termux")
-            putExtra("com.termux.RUN_COMMAND_PATH", "/data/data/com.termux/files/usr/bin/bash")
-            putExtra("com.termux.RUN_COMMAND_ARGUMENTS", arrayOf("-lc", submitted))
-            putExtra("com.termux.RUN_COMMAND_WORKDIR", "/data/data/com.termux/files/home")
-            putExtra("com.termux.RUN_COMMAND_BACKGROUND", false)
-        }
-        try {
-            context.startActivity(termuxIntent)
-            output = (output + "Solicitação enviada ao Termux:" + submitted + "O Termux pode solicitar autorização. A saída do processo aparece no próprio Termux.").takeLast(300)
-            command = ""
-        } catch (_: android.content.ActivityNotFoundException) {
-            output = (output + "Termux não encontrado. Instale o Termux e tente novamente.").takeLast(300)
-        } catch (_: SecurityException) {
-            output = (output + "Permissão negada. No Termux, habilite a execução de comandos externos para GEIVIA e tente novamente.").takeLast(300)
-        } catch (error: Exception) {
-            output = (output + "Não foi possível abrir o Termux: ${error.message ?: "erro desconhecido"}").takeLast(300)
-        }
-    }
 
     fun runCommand() {
         val submitted = command.trim()
@@ -2190,68 +2166,70 @@ private fun TerminalScreen(onBack: () -> Unit) {
         val result = engine.execute(submitted)
         output = if (result == "__CLEAR__") emptyList() else (output + "geivia@local:~$ $submitted" + result.lines()).takeLast(300)
         command = ""
+        expanded = true
     }
 
-    Column(
-        Modifier.fillMaxSize().background(Color(0xFF0B1420)).padding(16.dp)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF0B1420)),
+        shape = RoundedCornerShape(16.dp)
     ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("GEIVIA TERMINAL", color = Color(0xFF7EE787), fontSize = 15.sp, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
-            TextButton(onClick = onBack) { Text("Fechar", color = Color.White) }
-        }
-        Text("Sessão local • pasta privada do aplicativo", color = Color(0xFF9AA9B8), fontSize = 11.sp)
-        Spacer(Modifier.height(12.dp))
-        Column(
-            Modifier.weight(1f).fillMaxWidth().background(Color(0xFF101D2B), RoundedCornerShape(12.dp))
-                .verticalScroll(scroll).padding(12.dp)
-        ) {
-            output.forEach { line ->
-                Text(line, color = if (line.startsWith("geivia@")) Color(0xFF7EE787) else Color(0xFFE2E8F0), fontSize = 12.sp, lineHeight = 18.sp)
+        Column(Modifier.padding(14.dp)) {
+            Row(
+                Modifier.fillMaxWidth().clickable { expanded = !expanded },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("TERMINAL GEIVIA", color = Color(0xFF7EE787), fontSize = 12.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    Text("Integrado ao painel • sem abrir outro aplicativo", color = Color(0xFF9AA9B8), fontSize = 10.sp)
+                }
+                Text(if (expanded) "Recolher" else "Abrir", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             }
-        }
-        Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                value = command,
-                onValueChange = { command = it.take(LocalTerminalEngine.MAX_COMMAND_LENGTH) },
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("Digite um comando", color = Color(0xFF9AA9B8)) },
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedBorderColor = Color(0xFF7EE787),
-                    unfocusedBorderColor = Color(0xFF526273),
-                    cursorColor = Color(0xFF7EE787)
+            if (expanded) {
+                Spacer(Modifier.height(12.dp))
+                Column(
+                    Modifier.fillMaxWidth().heightIn(min = 110.dp, max = 240.dp)
+                        .background(Color(0xFF101D2B), RoundedCornerShape(10.dp))
+                        .verticalScroll(scroll).padding(10.dp)
+                ) {
+                    output.forEach { line ->
+                        Text(
+                            line,
+                            color = if (line.startsWith("geivia@")) Color(0xFF7EE787) else Color(0xFFE2E8F0),
+                            fontSize = 11.sp,
+                            lineHeight = 16.sp
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = command,
+                        onValueChange = { command = it.take(LocalTerminalEngine.MAX_COMMAND_LENGTH) },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("Digite um comando", color = Color(0xFF9AA9B8)) },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = Color(0xFF7EE787),
+                            unfocusedBorderColor = Color(0xFF526273),
+                            cursorColor = Color(0xFF7EE787)
+                        )
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Button(onClick = { runCommand() }, enabled = command.isNotBlank()) { Text("Executar") }
+                }
+                Spacer(Modifier.height(7.dp))
+                Text(
+                    "Nesta fase, os comandos disponíveis são internos e restritos à pasta privada do GEIVIA. O motor Linux integrado está em desenvolvimento.",
+                    color = Color(0xFF9AA9B8), fontSize = 10.sp, lineHeight = 14.sp
                 )
-            )
-            Spacer(Modifier.width(8.dp))
-            Button(onClick = { runCommand() }, enabled = command.isNotBlank()) { Text("Local") }
-        }
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(
-            onClick = { confirmTermux = true },
-            enabled = command.isNotBlank(),
-            modifier = Modifier.fillMaxWidth()
-        ) { Text("Executar no Termux instalado") }
-        Spacer(Modifier.height(8.dp))
-        Text("Local: comandos internos restritos. Termux: comandos Linux enviados ao aplicativo Termux após sua confirmação.", color = Color(0xFF9AA9B8), fontSize = 10.sp, lineHeight = 14.sp)
-    }
-    if (confirmTermux) {
-        AlertDialog(
-            onDismissRequest = { confirmTermux = false },
-            title = { Text("Executar comando no Termux?") },
-            text = { Text("O comando será enviado ao Termux com a conta e as permissões configuradas nele. Revise antes de continuar:\n\n$command") },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmTermux = false
-                    sendToTermux()
-                }) { Text("Executar") }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmTermux = false }) { Text("Cancelar") }
+            } else {
+                Spacer(Modifier.height(6.dp))
+                Text("Toque em Abrir para usar os comandos locais sem sair do painel.", color = Color(0xFF9AA9B8), fontSize = 10.sp)
             }
-        )
+        }
     }
 }
 

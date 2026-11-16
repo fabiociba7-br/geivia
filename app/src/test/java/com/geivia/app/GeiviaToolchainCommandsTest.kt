@@ -29,7 +29,9 @@ class GeiviaToolchainCommandsTest {
 
         assertTrue(command.contains("export DEBIAN_FRONTEND=noninteractive"))
         assertTrue(command.contains("GEIVIA_TOOLCHAIN_OK"))
-        assertTrue(command.contains("firebase-cli-arm64.tar.gz"))
+        assertTrue(command.contains("NPM_VERSION=11.6.2"))
+        assertTrue(command.contains("FIREBASE_VERSION=15.36.0"))
+        assertTrue(command.contains("https://registry.npmjs.org/"))
     }
 
     @Test
@@ -65,6 +67,9 @@ class GeiviaToolchainCommandsTest {
 
         assertTrue(command.contains("FIREBASE_ROOT=/opt/geivia/firebase"))
         assertTrue(command.contains("FIREBASE_VERSION=15.36.0"))
+        assertTrue(command.contains("npm install --global"))
+        assertTrue(command.contains("NPM_VERSION=11.6.2"))
+        assertTrue(command.contains("node \"\\$NPM_CLI\""))
         assertTrue(command.contains("npm install --prefix"))
         assertTrue(command.contains("--maxsockets=1"))
         assertTrue(command.contains("GEIVIA_FIREBASE_CACHE_RECOVERY"))

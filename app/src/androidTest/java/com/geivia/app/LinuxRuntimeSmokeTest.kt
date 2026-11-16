@@ -27,6 +27,25 @@ class LinuxRuntimeSmokeTest {
         assertEquals("pr-cli list must exit successfully", 0, exitCode)
         assertFalse("pr-cli list should produce diagnostic output", output.isBlank())
     }
+
+    @Test
+    fun debianCanInstallAndRunARealGuestShellCommand() = runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val controller = LinuxRuntimeController(context)
+        controller.prepareEngine()
+
+        val output = StringBuilder()
+        val stageExitCodes = controller.installAndVerifyDebian { chunk ->
+            output.append(chunk)
+        }
+
+        assertEquals("install, distro test and guest shell must all succeed", listOf(0, 0, 0), stageExitCodes)
+        assertTrue(
+            "A shell command must execute inside Debian; output was: $output",
+            output.contains("GEIVIA_DEBIAN_SHELL_OK")
+        )
+    }
+
     @Test
     fun nativeCancellationTerminatesPtyProcessGroup() {
         val (fd, pid) = PtyNative.forkPtyWithPid(

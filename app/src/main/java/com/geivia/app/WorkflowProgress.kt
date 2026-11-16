@@ -179,6 +179,7 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
         check(current.state == WorkflowStepState.WAITING_CONFIRMATION) {
             "A etapa não está aguardando execução manual. Estado atual: ${current.state}."
         }
+        check(operationId != current.operationId) { "Cada execução manual precisa de um identificador novo." }
         return save(current.copy(
             state = WorkflowStepState.IN_PROGRESS,
             updatedAt = System.currentTimeMillis(),

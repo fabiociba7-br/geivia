@@ -161,10 +161,10 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
             title = { Text("Revisar deploy Firebase") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Projeto: $projectId\\nPasta importada no aparelho: $projectDir")
+                    Text("Projeto: $projectId\nPasta importada no aparelho: $projectDir")
                     Text("Alvos detectados no firebase.json: ${deployTargets.joinToString(", ")}. O deploy pode substituir conteúdo publicado e alterar regras de segurança. Nenhum comando será executado pelo GEIVIA.")
                     Text("ANTES DE EXECUTAR", style = androidx.compose.material3.MaterialTheme.typography.labelMedium)
-                    Text("1. Envie o mesmo ZIP para o ambiente Google Cloud Shell.\\n2. Entre na pasta que contém firebase.json.\\n3. Confira os alvos e as regras.\\n4. Execute o comando abaixo somente depois da revisão.")
+                    Text("1. Envie o mesmo ZIP para o ambiente Google Cloud Shell.\n2. Entre na pasta que contém firebase.json.\n3. Confira os alvos e as regras.\n4. Execute o comando abaixo somente depois da revisão.")
                     SelectionContainer { Text(deployCommand, fontSize = 12.sp, color = Color(0xFF1565C0)) }
                     Text("O deploy pode gerar cobrança e afetar usuários. A confirmação nesta tela apenas prepara e copia o comando; não publica o projeto.", fontSize = 12.sp)
                 }
@@ -188,7 +188,7 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                             )
                             val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                             clipboard.setPrimaryClip(android.content.ClipData.newPlainText("GEIVIA • Deploy Firebase", deployCommand))
-                            output = "DEPLOY PREPARADO\\nProject ID: $projectId\\n\\nComando copiado para a área de transferência:\\n$deployCommand\\n\\nO GEIVIA não executou o deploy. Envie o mesmo ZIP ao Google Cloud Shell, entre na pasta do projeto, revise firebase.json e as regras, então execute o comando manualmente. Depois retorne ao GEIVIA e rode um novo diagnóstico. O histórico permanece aguardando confirmação até haver evidência atualizada."
+                            output = "DEPLOY PREPARADO\nProject ID: $projectId\n\nComando copiado para a área de transferência:\n$deployCommand\n\nO GEIVIA não executou o deploy. Envie o mesmo ZIP ao Google Cloud Shell, entre na pasta do projeto, revise firebase.json e as regras, então execute o comando manualmente. Depois retorne ao GEIVIA e rode um novo diagnóstico. O histórico permanece aguardando confirmação até haver evidência atualizada."
                         }.onFailure { output = "Não foi possível preparar o deploy: ${it.message}" }
                     }
                     showDeployConfirm = false

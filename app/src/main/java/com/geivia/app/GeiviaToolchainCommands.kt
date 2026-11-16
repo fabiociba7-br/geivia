@@ -11,7 +11,7 @@ internal object GeiviaToolchainCommands {
         apt-get update
         apt-get install -y --no-install-recommends \
           ca-certificates curl wget git openssh-client unzip zip xz-utils tar jq nano less \
-          openjdk-17-jdk-headless nodejs npm python3 python3-pip python3-venv \
+          default-jdk-headless nodejs npm python3 python3-pip python3-venv \
           build-essential cmake pkg-config make
         npm config set fund false
         npm config set audit false

@@ -62,6 +62,8 @@ object AndroidAccessPolicy {
         useCase.mechanism != AndroidAccessMechanism.UNSUPPORTED_PRIVILEGE
 
     fun requiredManifestPermissionsForCurrentFeatures(): Set<String> = setOf(
-        "android.permission.INTERNET"
+        "android.permission.INTERNET",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
     )
 }

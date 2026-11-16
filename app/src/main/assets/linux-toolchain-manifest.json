@@ -13,7 +13,7 @@
     {
       "id": "java",
       "title": "Java",
-      "apt": ["openjdk-17-jdk-headless"]
+      "apt": ["default-jdk-headless"]
     },
     {
       "id": "node",

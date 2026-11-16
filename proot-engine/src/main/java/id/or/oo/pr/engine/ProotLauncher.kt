@@ -71,7 +71,11 @@ class ProotLauncher(private val host: ProotHost) {
         fun write(data: ByteArray): Int { if (closed) return -1; return PtyNative.write(masterFd, data, 0, data.size) }
         fun resize(rows: Int, cols: Int): Int { if (closed) return -1; return PtyNative.resize(masterFd, rows, cols) }
         @Synchronized fun close() {
-            if (!closed) { closed = true; try { PtyNative.close(masterFd) } catch (_: Exception) {} }
+            if (!closed) {
+                closed = true
+                if (pid > 0) { try { PtyNative.kill(pid) } catch (_: Exception) {} }
+                try { PtyNative.close(masterFd) } catch (_: Exception) {}
+            }
         }
     }
 }

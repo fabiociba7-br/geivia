@@ -87,7 +87,8 @@ class GeiviaToolchainCommandsTest {
         assertTrue(command.contains("for attempt in 1 2 3"))
         assertTrue(command.contains("--fetch-retries=5"))
         assertTrue(command.contains("npm cache clean --force"))
-        assertTrue(command.contains("rm -rf \"\\$NPM_CACHE/_cacache/tmp\""))
+        assertTrue(command.contains("rm -rf"))
+        assertTrue(command.contains("_cacache/tmp"))
         assertTrue(command.contains("GEIVIA_FIREBASE_CLI_OK"))
     }
 

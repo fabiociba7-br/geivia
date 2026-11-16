@@ -33,6 +33,53 @@ internal object GeiviaToolchainCommands {
         """.trimIndent()
     )
 
+
+    data class InstallStage(
+        val id: String,
+        val title: String,
+        val command: List<String>,
+        val timeoutMs: Long
+    )
+
+    /** Small idempotent stages allow the UI to checkpoint and resume after a failure. */
+    fun installStages(): List<InstallStage> = listOf(
+        InstallStage(
+            "dpkg_recovery", "Recuperação do gerenciador de pacotes (dpkg)",
+            listOf("login", "debian", "--", "/bin/sh", "-lc",
+                "set -eu; export DEBIAN_FRONTEND=noninteractive; dpkg --configure -a || true; apt-get -f install -y; dpkg --configure -a; echo GEIVIA_DPKG_RECOVERY_OK"),
+            15 * 60 * 1000L
+        ),
+        InstallStage(
+            "apt_update", "Atualização dos índices do Debian",
+            listOf("login", "debian", "--", "/bin/sh", "-lc",
+                "set -eu; apt-get update; echo GEIVIA_APT_UPDATE_OK"),
+            15 * 60 * 1000L
+        ),
+        InstallStage(
+            "apt_packages", "Instalação dos pacotes básicos",
+            listOf("login", "debian", "--", "/bin/sh", "-lc",
+                """set -eu; export DEBIAN_FRONTEND=noninteractive; apt-get install -y --no-install-recommends ca-certificates curl wget git openssh-client unzip zip xz-utils tar jq nano less default-jdk-headless nodejs npm python3 python3-pip python3-venv build-essential cmake pkg-config make; echo GEIVIA_APT_PACKAGES_OK"""),
+            45 * 60 * 1000L
+        ),
+        InstallStage(
+            "npm_config", "Configuração do npm",
+            listOf("login", "debian", "--", "/bin/sh", "-lc",
+                "set -eu; npm config set fund false; npm config set audit false; echo GEIVIA_NPM_CONFIG_OK"),
+            3 * 60 * 1000L
+        ),
+        InstallStage(
+            "firebase_cli", "Instalação do Firebase CLI",
+            listOf("login", "debian", "--", "/bin/sh", "-lc",
+                "set -eu; npm install --global firebase-tools@latest; echo GEIVIA_FIREBASE_CLI_OK"),
+            30 * 60 * 1000L
+        ),
+        InstallStage(
+            "toolchain_verify", "Verificação final das ferramentas",
+            verifyDefaultProfile(),
+            3 * 60 * 1000L
+        )
+    )
+
     fun verifyDefaultProfile(): List<String> = listOf(
         "login", "debian", "--",
         "/bin/sh", "-lc",

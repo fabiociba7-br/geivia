@@ -112,7 +112,7 @@ internal fun GeiviaRecoveryTerminal(
         scope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    controller.send(active, value.toByteArray(Charsets.UTF_8).let { String(it, Charsets.UTF_8) })
+                    controller.send(active, value)
                 }
             } catch (error: Throwable) {
                 append("\n[ERRO DE ENTRADA] ${error.message ?: "Não foi possível enviar os dados."}\n")
@@ -245,9 +245,7 @@ internal fun GeiviaRecoveryTerminal(
                         OutlinedButton(
                             onClick = {
                                 controller.cancel()
-                                session = null
-                                onSessionActive(false)
-                                append("\n[GEIVIA] Encerramento solicitado.\n")
+                                append("\n[GEIVIA] Encerramento solicitado. Aguarde a confirmação de fechamento da sessão.\n")
                             },
                             enabled = session != null
                         ) { Text("Encerrar") }

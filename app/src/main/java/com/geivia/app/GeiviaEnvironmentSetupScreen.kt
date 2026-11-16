@@ -14,6 +14,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -108,6 +111,13 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
             }
         }
         if (details.isNotBlank()) {
+            OutlinedButton(
+                onClick = {
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    clipboard.setPrimaryClip(ClipData.newPlainText("Diagnóstico GEIVIA", status + "\n\n" + details))
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Copiar erro e detalhes técnicos") }
             TextButton(onClick = { showDetails = !showDetails }) {
                 Text(if (showDetails) "Ocultar detalhes técnicos" else "Ver detalhes técnicos")
             }

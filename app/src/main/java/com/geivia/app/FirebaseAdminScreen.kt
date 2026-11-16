@@ -77,7 +77,7 @@ internal fun FirebaseAdminScreen(projectId: String, onBack: () -> Unit) {
                 set -euo pipefail
                 mkdir -p '${f.parent}'
                 TOKEN="§(gcloud auth print-access-token)"
-                curl -fsS -H "Authorization: Bearer §TOKEN" "https://firebaserules.googleapis.com/v1/projects/§projectId/releases/cloud.firestore" > release.json
+                curl -fsS -H "Authorization: Bearer §TOKEN" "https://firebaserules.googleapis.com/v1/projects/$projectId/releases/cloud.firestore" > release.json
                 NAME="§(jq -r '.rulesetName // empty' release.json)"
                 test -n "$NAME" || { echo "Nenhuma release de regras Firestore foi encontrada."; exit 4; }
                 curl -fsS -H "Authorization: Bearer $TOKEN" "https://firebaserules.googleapis.com/v1/§NAME" > '${f.absolutePath}'

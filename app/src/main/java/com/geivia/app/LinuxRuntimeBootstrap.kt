@@ -17,6 +17,7 @@ internal class GeiviaProotHost(context: Context) : ProotHost {
     override val homeDir: File = File(appContext.filesDir, "linux/home")
     override val packageName: String = appContext.packageName
     override val cacheDir: File = File(appContext.cacheDir, "linux-runtime")
+    override val nativeLibraryDir: File = File(appContext.applicationInfo.nativeLibraryDir)
 
     fun prepare(): ProotLauncher {
         listOf(prefixDir, homeDir, cacheDir, File(prefixDir, "bin")).forEach { directory ->

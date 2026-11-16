@@ -37,6 +37,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import org.json.JSONObject
 import java.util.UUID
 
 @Composable
@@ -52,6 +53,7 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
     var githubBranch by rememberSaveable { mutableStateOf("main") }
     var busy by rememberSaveable { mutableStateOf(false) }
     var showDeployConfirm by remember { mutableStateOf(false) }
+    var deployTargets by rememberSaveable { mutableStateOf(emptyList<String>()) }
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", android.content.Context.MODE_PRIVATE) }
     LaunchedEffect(projectId) { prefs.edit().putString("selected_project_id", projectId).apply() }
     val zipPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -85,7 +87,23 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Publicação Firebase", color = Color(0xFF102B43))
                 Text("Prepara o comando de deploy para revisão e execução manual no Google Cloud Shell. O GEIVIA não publica automaticamente.", color = Color(0xFF587083), fontSize = 12.sp)
-                Button(onClick = { showDeployConfirm = true }, enabled = !busy && projectDir.isNotBlank() && projectId.matches(Regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$")), modifier = Modifier.fillMaxWidth()) { Text("Preparar comando de deploy Firebase") }
+                Button(onClick = {
+    runCatching {
+        val configFile = File(projectDir, "firebase.json")
+        require(configFile.isFile) { "firebase.json não encontrado na raiz do projeto importado." }
+        val config = JSONObject(configFile.readText())
+        val targets = mutableListOf<String>()
+        if (config.has("hosting") && config.opt("hosting") != JSONObject.NULL) targets += "hosting"
+        val firestore = config.optJSONObject("firestore")
+        if (firestore?.has("rules") == true) targets += "firestore:rules"
+        if (firestore?.has("indexes") == true) targets += "firestore:indexes"
+        if (config.has("storage") && config.opt("storage") != JSONObject.NULL) targets += "storage"
+        if (config.has("functions") && config.opt("functions") != JSONObject.NULL) targets += "functions"
+        require(targets.isNotEmpty()) { "Nenhum alvo Hosting, Firestore, Storage ou Functions foi encontrado no firebase.json." }
+        deployTargets = targets.distinct()
+        showDeployConfirm = true
+    }.onFailure { output = "Não foi possível preparar o deploy: ${it.message}" }
+}, enabled = !busy && projectDir.isNotBlank() && projectId.matches(Regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$")), modifier = Modifier.fillMaxWidth()) { Text("Preparar comando de deploy Firebase") }
                 Text("Firebase CLI precisa estar instalado e autenticado no Debian do GEIVIA.", color = Color(0xFF587083), fontSize = 11.sp)
             }
         }
@@ -137,16 +155,16 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
     }
 
     if (showDeployConfirm) {
-        val deployCommand = "firebase deploy --project '$projectId'"
+        val deployCommand = "firebase deploy --only '${deployTargets.joinToString(",")}' --project '$projectId'"
         AlertDialog(
             onDismissRequest = { showDeployConfirm = false },
             title = { Text("Revisar deploy Firebase") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Projeto: $projectId\\nPasta importada no aparelho: $projectDir")
-                    Text("O deploy pode substituir conteúdo publicado e alterar regras de segurança. Nenhum comando será executado pelo GEIVIA.")
+                    Text("Alvos detectados no firebase.json: ${deployTargets.joinToString(", ")}. O deploy pode substituir conteúdo publicado e alterar regras de segurança. Nenhum comando será executado pelo GEIVIA.")
                     Text("ANTES DE EXECUTAR", style = androidx.compose.material3.MaterialTheme.typography.labelMedium)
-                    Text("1. Envie/importa o mesmo ZIP para o ambiente Google Cloud Shell.\\n2. Entre na pasta que contém firebase.json.\\n3. Confira os alvos e as regras.\\n4. Execute o comando abaixo somente depois da revisão.")
+                    Text("1. Envie o mesmo ZIP para o ambiente Google Cloud Shell.\\n2. Entre na pasta que contém firebase.json.\\n3. Confira os alvos e as regras.\\n4. Execute o comando abaixo somente depois da revisão.")
                     SelectionContainer { Text(deployCommand, fontSize = 12.sp, color = Color(0xFF1565C0)) }
                     Text("O deploy pode gerar cobrança e afetar usuários. A confirmação nesta tela apenas prepara e copia o comando; não publica o projeto.", fontSize = 12.sp)
                 }

@@ -84,7 +84,7 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F7FB))) {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Publicação Firebase", color = Color(0xFF102B43))
-                Text("Executa Firebase CLI no projeto importado e publica os alvos declarados no firebase.json.", color = Color(0xFF587083), fontSize = 12.sp)
+                Text("Prepara o comando de deploy para revisão e execução manual no Google Cloud Shell. O GEIVIA não publica automaticamente.", color = Color(0xFF587083), fontSize = 12.sp)
                 Button(onClick = { showDeployConfirm = true }, enabled = !busy && projectDir.isNotBlank() && projectId.matches(Regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$")), modifier = Modifier.fillMaxWidth()) { Text("Publicar Hosting, Rules, Storage e Functions") }
                 Text("Firebase CLI precisa estar instalado e autenticado no Debian do GEIVIA.", color = Color(0xFF587083), fontSize = 11.sp)
             }
@@ -136,83 +136,47 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
         }, modifier = Modifier.fillMaxWidth()) { Text("Copiar log") }
     }
 
-    if (showDeployConfirm) AlertDialog(
-        onDismissRequest = { showDeployConfirm = false },
-        title = { Text("Confirmar deploy Firebase") },
-        text = { Text("Projeto: $projectId\nPasta: $projectDir\n\nO deploy pode substituir conteúdo publicado e alterar regras de segurança. Revise os arquivos antes de continuar.") },
-        confirmButton = { TextButton(onClick = {
-            showDeployConfirm = false
-            val operationId = UUID.randomUUID().toString()
-            val stepId = "firebase_deploy"
-            val historyError = workflowStore.healthError()
-            if (historyError != null) {
-                output = "Deploy bloqueado: $historyError"
-                return@TextButton
-            }
-            runCatching {
-                workflowStore.appendAuditEvent(
-                    projectId, stepId, "STARTED", operationId, "Deploy Firebase solicitado",
-                    "Pasta: $projectDir; alvos serão lidos do firebase.json; exige confirmação explícita."
-                )
-            }.onFailure {
-                output = "Deploy bloqueado: não foi possível registrar o histórico. ${it.message}"
-                return@TextButton
-            }
-            busy = true
-            output = "Project ID: $projectId\nOperação: $operationId\nVerificando projeto e autenticação Firebase…\n"
-            scope.launch {
-                val safeDir = projectDir.replace("'", "'\\''")
-                val safeId = projectId.replace("'", "")
-                val command = """
-                    set -euo pipefail
-                    PROJECT_DIR='${safeDir}'
-                    PROJECT_ID='${safeId}'
-                    test -d "§PROJECT_DIR" || { echo "Pasta do projeto não encontrada."; exit 20; }
-                    test -f "§PROJECT_DIR/firebase.json" || { echo "firebase.json não encontrado no ZIP."; exit 21; }
-                    command -v firebase >/dev/null || { echo "Firebase CLI não está instalado no Debian do GEIVIA."; exit 22; }
-                    command -v jq >/dev/null || { echo "jq não está instalado no Debian do GEIVIA."; exit 24; }
-                    cd "§PROJECT_DIR"
-                    firebase projects:list >/dev/null || { echo "Firebase CLI sem sessão autenticada. Conecte a conta Google no GEIVIA e repita."; exit 23; }
-                    echo "Validando configuração Firebase…"
-                    TARGETS=()
-                    jq -e '.hosting != null' firebase.json >/dev/null && TARGETS+=("hosting")
-                    jq -e '.firestore.rules != null' firebase.json >/dev/null && TARGETS+=("firestore:rules")
-                    jq -e '.firestore.indexes != null' firebase.json >/dev/null && TARGETS+=("firestore:indexes")
-                    jq -e '.storage != null' firebase.json >/dev/null && TARGETS+=("storage")
-                    jq -e '.functions != null' firebase.json >/dev/null && TARGETS+=("functions")
-                    if [ "§{#TARGETS[@]}" -eq 0 ]; then echo "Nenhum alvo compatível foi encontrado no firebase.json."; exit 25; fi
-                    TARGETS_CSV="$(IFS=,; echo "§{TARGETS[*]}")"
-                    echo "Alvos identificados: §TARGETS_CSV"
-                    firebase deploy --only "§TARGETS_CSV" --project "§PROJECT_ID" --non-interactive
-                    echo "GEIVIA_DEPLOY_SUCCESS project=§PROJECT_ID targets=§TARGETS_CSV"
-                """.trimIndent().replace("§", "$")
-                runCatching {
-                    withContext(Dispatchers.IO) {
-                        controller.execute(listOf("login", "debian", "--", "/bin/bash", "-lc", command), 60 * 60 * 1000L) { chunk ->
-                            scope.launch { output = (output + chunk).takeLast(120000) }
-                        }
-                    }
-                }.onSuccess { code ->
-                    output += "\nProcesso finalizado com código $code. " + if (code == 0) "Consulte a saída de cada alvo publicado." else "A publicação não foi confirmada."
-                    runCatching {
-                        workflowStore.appendAuditEvent(
-                            projectId, stepId, if (code == 0) "SUCCEEDED" else "FAILED", operationId,
-                            "Deploy Firebase • código de saída $code",
-                            "Project ID: $projectId; exitCode=$code; " + if (code == 0) "verifique a saída dos alvos e o estado remoto" else "o deploy não foi confirmado; faça novo diagnóstico antes de repetir"
-                        )
-                    }.onFailure { output += "\nFalha ao registrar o resultado no histórico: ${it.message}" }
-                }.onFailure {
-                    output += "\nFalha ao executar: " + (it.message ?: "erro desconhecido")
-                    runCatching {
-                        workflowStore.appendAuditEvent(
-                            projectId, stepId, "FAILED", operationId, "Deploy Firebase interrompido",
-                            "Resultado não confirmado; verificar estado remoto antes de repetir."
-                        )
-                    }.onFailure { output += "\nFalha ao registrar histórico: ${it.message}" }
+    if (showDeployConfirm) {
+        val deployCommand = "firebase deploy --project '$projectId'"
+        AlertDialog(
+            onDismissRequest = { showDeployConfirm = false },
+            title = { Text("Revisar deploy Firebase") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Projeto: $projectId\\nPasta importada no aparelho: $projectDir")
+                    Text("O deploy pode substituir conteúdo publicado e alterar regras de segurança. Nenhum comando será executado pelo GEIVIA.")
+                    Text("ANTES DE EXECUTAR", style = androidx.compose.material3.MaterialTheme.typography.labelMedium)
+                    Text("1. Envie/importa o mesmo ZIP para o ambiente Google Cloud Shell.\\n2. Entre na pasta que contém firebase.json.\\n3. Confira os alvos e as regras.\\n4. Execute o comando abaixo somente depois da revisão.")
+                    SelectionContainer { Text(deployCommand, fontSize = 12.sp, color = Color(0xFF1565C0)) }
+                    Text("O deploy pode gerar cobrança e afetar usuários. A confirmação nesta tela apenas prepara e copia o comando; não publica o projeto.", fontSize = 12.sp)
                 }
-                busy = false
-            }
-        }) { Text("Confirmar e executar") } },
-        dismissButton = { TextButton(onClick = { showDeployConfirm = false }) { Text("Cancelar") } }
-    )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val stepId = "firebase_deploy"
+                    val historyError = workflowStore.healthError()
+                    if (historyError != null) {
+                        output = "Deploy bloqueado: $historyError"
+                    } else {
+                        runCatching {
+                            workflowStore.waitForConfirmation(
+                                projectId, stepId,
+                                "Comando de deploy revisado; aguardando execução manual no Google Cloud Shell e diagnóstico posterior."
+                            )
+                            workflowStore.appendAuditEvent(
+                                projectId, stepId, "WAITING_CONFIRMATION", UUID.randomUUID().toString(),
+                                "Deploy Firebase preparado para execução manual",
+                                "Pasta importada: $projectDir; comando: $deployCommand; exige upload do mesmo projeto ao Cloud Shell e execução manual."
+                            )
+                            val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("GEIVIA • Deploy Firebase", deployCommand))
+                            output = "DEPLOY PREPARADO\\nProject ID: $projectId\\n\\nComando copiado para a área de transferência:\\n$deployCommand\\n\\nO GEIVIA não executou o deploy. Envie o mesmo ZIP ao Google Cloud Shell, entre na pasta do projeto, revise firebase.json e as regras, então execute o comando manualmente. Depois retorne ao GEIVIA e rode um novo diagnóstico. O histórico permanece aguardando confirmação até haver evidência atualizada."
+                        }.onFailure { output = "Não foi possível preparar o deploy: ${it.message}" }
+                    }
+                    showDeployConfirm = false
+                }) { Text("Copiar comando e preparar") }
+            },
+            dismissButton = { TextButton(onClick = { showDeployConfirm = false }) { Text("Voltar") } }
+        )
+    }
 }

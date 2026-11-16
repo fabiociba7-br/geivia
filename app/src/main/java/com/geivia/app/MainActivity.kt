@@ -73,7 +73,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
         }
     }
     var workspaceName by rememberSaveable { mutableStateOf(prefs.getString("workspace_name", "GEIVIA-" + workspaceId.removePrefix("GEIVIA-")) ?: ("GEIVIA-" + workspaceId.removePrefix("GEIVIA-"))) }
-    val validWorkflowPages = setOf("workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "google_access", "github", "terminal")
+    val validWorkflowPages = setOf("workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "google_access", "github", "terminal", "toolchain_updates")
     val savedCheckpoint = remember {
         prefs.getString("workflow_checkpoint", null)?.takeIf { it in validWorkflowPages }
             ?.let { when (it) { "cloud_setup" -> "questions"; "terminal" -> "dashboard"; else -> it } }
@@ -245,7 +245,8 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                 "google_access" -> GoogleCloudAccessScreen(
                     onBack = { page = "dashboard" }
                 )
-                else -> DashboardScreen(answers.toMap(), costMode, onGoogleAccess = { page = "google_access" }, onGitHub = { page = "github" }) {
+                "toolchain_updates" -> GeiviaToolchainUpdatesScreen(onBack = { page = "dashboard" })
+                else -> DashboardScreen(answers.toMap(), costMode, onGoogleAccess = { page = "google_access" }, onGitHub = { page = "github" }, onToolchainUpdates = { page = "toolchain_updates" }) {
                     answers.clear()
                     val editor = prefs.edit()
                     answerKeys.forEach { editor.remove(it) }
@@ -558,7 +559,7 @@ private fun SummaryScreen(answers: Map<String, String>, costMode: String, onBack
 }
 
 @Composable
-private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGoogleAccess: () -> Unit, onGitHub: () -> Unit, onRestart: () -> Unit) {
+private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGoogleAccess: () -> Unit, onGitHub: () -> Unit, onToolchainUpdates: () -> Unit, onRestart: () -> Unit) {
     val context = LocalContext.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp)) {
         BrandMark()
@@ -797,6 +798,8 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
         OutlinedButton(onClick = onGoogleAccess, modifier = Modifier.fillMaxWidth()) { Text("Configurar Google Cloud (opcional)") }
         Spacer(Modifier.height(8.dp))
         OutlinedButton(onClick = onGitHub, modifier = Modifier.fillMaxWidth()) { Text("Conectar e acompanhar GitHub") }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(onClick = onToolchainUpdates, modifier = Modifier.fillMaxWidth()) { Text("Gerenciar atualizações das ferramentas") }
         Spacer(Modifier.height(8.dp))
         XiaomiCompatibilityCard()
         Spacer(Modifier.height(8.dp))

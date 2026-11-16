@@ -43,6 +43,9 @@ jobs:
           sdkmanager --install "platforms;android-35"
           sdkmanager --install "build-tools;35.0.0"
 
+      - name: Validate Android permission policy
+        run: node scripts/validate-android-permissions.mjs
+
       - name: Validate Linux toolchain manifest
         run: node scripts/validate-linux-toolchain.mjs
 

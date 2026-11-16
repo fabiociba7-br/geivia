@@ -124,7 +124,6 @@ internal fun GeiviaRecoveryTerminal(
             OutlinedButton(onClick = {
                 controller.cancel()
                 session = null
-                onSessionActive(false)
                 append("\n[GEIVIA] Solicitação de encerramento enviada.\n")
             }, enabled = session != null) { Text("Encerrar") }
         }

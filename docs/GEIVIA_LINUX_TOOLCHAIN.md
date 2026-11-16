@@ -16,7 +16,7 @@ A opção técnica prioritária para prototipação é integrar um motor PRoot A
 - execução, encerramento e cancelamento de processos no ciclo de vida Android;
 - extração segura e integridade criptográfica da rootfs.
 
-O motor candidato declara minSdk 28, compileSdk 37 e ABI arm64-v8a. Portanto, não deve ser conectado cegamente ao app atual: isso poderia excluir aparelhos Android 8/8.1 e exigir atualização da cadeia de build.
+O módulo `:proot-engine` atualmente declara minSdk 28, compileSdk 35 e ABI arm64-v8a. O app principal mantém minSdk 26, mas o preflight bloqueia a preparação do Linux em Android abaixo da API 28; essa diferença precisa permanecer explícita e coberta pelos testes de instalação.
 
 ## Pacotes planejados
 
@@ -45,7 +45,7 @@ A tela **Configurar GEIVIA**, exibida antes das perguntas sobre contas e projeto
 6. instala a Firebase CLI;
 7. valida as versões reais de `git`, `java`, `node`, `npm`, `python3` e `firebase`.
 
-A interface apresenta os estados Aguardando, Em andamento, Concluída e Falhou. O resultado de cada etapa concluída é salvo localmente; ao retomar, as etapas confirmadas são puladas e a primeira etapa pendente/falha é repetida. O cancelamento interrompe a operação ativa e mantém os checkpoints já confirmados. O terminal de recuperação, na tela de diagnóstico, permite investigar e corrigir o ambiente Debian.
+A interface apresenta os estados Aguardando, Em andamento, Concluída e Falhou. O resultado de cada etapa concluída é salvo localmente; ao retomar, as etapas confirmadas são puladas e a primeira etapa pendente/falha é repetida. O cancelamento interrompe a operação ativa e mantém os checkpoints já confirmados. O terminal de recuperação, na tela de diagnóstico e nos detalhes técnicos da configuração inicial com falha, permite investigar e corrigir o ambiente Debian.
 
 O APK não carrega a rootfs inteira nem todos os pacotes. A distribuição e os pacotes são instalados sob demanda no armazenamento privado do app.
 

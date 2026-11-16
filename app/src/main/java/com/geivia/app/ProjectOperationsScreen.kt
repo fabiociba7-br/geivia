@@ -84,8 +84,8 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
         Button(onClick = { zipPicker.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Selecionar ZIP do projeto") }
         if (projectDir.isNotBlank()) Text("Pasta importada: $projectDir", color = Color(0xFF18794E), fontSize = 11.sp)
         OutlinedTextField(value = projectId, onValueChange = { projectId = it.trim() }, modifier = Modifier.fillMaxWidth(), label = { Text("Firebase Project ID") }, singleLine = true)
-        val deployRecord = remember(projectId, workflowRefresh) { workflowStore.get(projectId, "firebase_deploy") }
-        if (deployRecord.state == WorkflowStepState.WAITING_CONFIRMATION) {
+        val deployRecord = remember(projectId, workflowRefresh) { if (projectId.isBlank()) null else workflowStore.get(projectId, "firebase_deploy") }
+        if (deployRecord?.state == WorkflowStepState.WAITING_CONFIRMATION) {
             Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF5E6))) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("DEPLOY AGUARDANDO EXECUÇÃO MANUAL", color = Color(0xFF77501A))
@@ -101,7 +101,7 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                     }, modifier = Modifier.fillMaxWidth()) { Text("Executei no Cloud Shell") }
                 }
             }
-        } else if (deployRecord.state == WorkflowStepState.IN_PROGRESS) {
+        } else if (deployRecord?.state == WorkflowStepState.IN_PROGRESS) {
             Text("Deploy declarado como executado. Aguardando diagnóstico atualizado do projeto $projectId; ainda não está confirmado.", color = Color(0xFF9A641B), fontSize = 12.sp)
         }
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F7FB))) {

@@ -30,6 +30,10 @@ class AndroidAccessPolicyTest {
 
     @Test
     fun manifestPermissionAllowlistMatchesCurrentFeatures() {
-        assertEquals(setOf("android.permission.INTERNET"), AndroidAccessPolicy.requiredManifestPermissionsForCurrentFeatures())
+        assertEquals(setOf(
+            "android.permission.INTERNET",
+            "android.permission.POST_NOTIFICATIONS",
+            "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
+        ), AndroidAccessPolicy.requiredManifestPermissionsForCurrentFeatures())
     }
 }

@@ -21,7 +21,7 @@ internal object GeiviaToolchainCommands {
           build-essential cmake pkg-config make
         npm config set fund false
         npm config set audit false
-        \${firebaseCliInstallCommand()}
+        ${firebaseCliInstallCommand()}
         printf '\nGEIVIA_TOOLCHAIN_VERSIONS\n'
         git --version
         java -version
@@ -172,7 +172,7 @@ internal object GeiviaToolchainCommands {
 
     fun updateFirebaseCli(): List<String> = listOf(
         "login", "debian", "--", "/bin/sh", "-lc",
-        "set -eu; npm install --global firebase-tools@latest; firebase --version"
+        firebaseCliInstallCommand() + "\nfirebase --version"
     )
 
     fun updateAll(): List<String> = listOf(
@@ -182,7 +182,7 @@ internal object GeiviaToolchainCommands {
         export DEBIAN_FRONTEND=noninteractive
         apt-get update
         apt-get upgrade -y
-        \${firebaseCliInstallCommand()}
+        ${firebaseCliInstallCommand()}
         echo 'GEIVIA_UPDATE_ALL_OK'
         """.trimIndent()
     )

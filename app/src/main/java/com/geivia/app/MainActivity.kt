@@ -231,13 +231,8 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onBack = { page = "dashboard" },
                     onConnectedChanged = { githubConnected = it }
                 )
-                "google_access" -> CloudShellSetupScreen(
-                    workspaceName = workspaceName,
-                    workspaceId = workspaceId,
-                    answers = answers.toMap(),
-                    costMode = costMode,
-                    onBack = { page = "dashboard" },
-                    onContinue = { page = if (answers.isEmpty()) "questions" else "dashboard" }
+                "google_access" -> GoogleCloudAccessScreen(
+                    onBack = { page = "dashboard" }
                 )
                 else -> DashboardScreen(answers.toMap(), costMode, onGoogleAccess = { page = "google_access" }, onGitHub = { page = "github" }) {
                     answers.clear()

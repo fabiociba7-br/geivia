@@ -187,7 +187,14 @@ fun GeiviaDiagnosticsScreen(onBack: () -> Unit) {
             ) { Text("Salvar relatório para compartilhar com o Termux") }
         }
 
-        GeiviaRecoveryTerminal(controller, onSessionActive = { recoveryTerminalActive = it })
+        if (!running) {
+            GeiviaRecoveryTerminal(controller, onSessionActive = { recoveryTerminalActive = it })
+        } else {
+            Text("O terminal de recuperação ficará disponível assim que a verificação terminar.", color = DiagnosticMuted, fontSize = 11.sp)
+        }
+        if (recoveryTerminalActive) {
+            Text("Feche o terminal antes de executar um novo diagnóstico.", color = DiagnosticAmber, fontSize = 11.sp)
+        }
 
         Button(onClick = { runDiagnostics() }, enabled = !running && !recoveryTerminalActive, modifier = Modifier.fillMaxWidth()) {
             Text(if (running) "Verificando…" else "Executar diagnóstico novamente")

@@ -16,6 +16,7 @@ object PtyNative {
     fun resize(fd: Int, rows: Int, cols: Int): Int = nativeResize(fd, rows, cols)
     internal fun waitPid(pid: Int): Int = nativeWaitPid(pid)
     fun close(fd: Int) = nativeClose(fd)
+    fun kill(pid: Int): Int = nativeKill(pid)
     private external fun nativeForkPty(cmd: String, args: Array<String>?, envVars: Array<String>?, rows: Int, cols: Int, pidOut: IntArray): Int
     private external fun nativeRead(fd: Int, buf: ByteArray, offset: Int, length: Int): Int
     private external fun nativeWrite(fd: Int, buf: ByteArray, offset: Int, length: Int): Int
@@ -23,4 +24,5 @@ object PtyNative {
     private external fun nativeWaitPid(pid: Int): Int
     private external fun nativeWaitPidBlocking(pid: Int): Int
     private external fun nativeClose(fd: Int)
+    private external fun nativeKill(pid: Int): Int
 }

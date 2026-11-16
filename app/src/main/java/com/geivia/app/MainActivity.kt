@@ -166,7 +166,8 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     page = "environment_setup"
                 })
                 "welcome" -> WelcomeScreen(hasCheckpoint = prefs.contains("workflow_checkpoint")) {
-                    page = if (!prefs.getBoolean("environment_setup_completed", false)) "environment_setup"
+                    page = if (!prefs.getBoolean("device_access_completed", false)) "device_access"
+                        else if (!prefs.getBoolean("environment_setup_completed", false)) "environment_setup"
                         else if (prefs.getBoolean("preflight_completed", false)) savedCheckpoint else "preflight"
                     if (page == "questions") index = prefs.getInt("workflow_question_index", 0).coerceAtLeast(0)
                 }

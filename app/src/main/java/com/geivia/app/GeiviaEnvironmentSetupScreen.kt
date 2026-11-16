@@ -24,12 +24,24 @@ import kotlinx.coroutines.withContext
 @Composable
 internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
     val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE) }
     val scope = rememberCoroutineScope()
     val controller = remember { LinuxRuntimeController(context) }
     var busy by remember { mutableStateOf(false) }
-    var complete by remember { mutableStateOf(false) }
+    // Persist each completed stage. Android may recreate the Activity while apt/npm
+    // are running; without checkpoints the UI starts over and reinstalls Debian.
+    var debianReady by remember { mutableStateOf(prefs.getBoolean("linux_debian_verified", false)) }
+    var complete by remember { mutableStateOf(prefs.getBoolean("linux_toolchain_verified", false)) }
     var showDetails by remember { mutableStateOf(false) }
-    var status by remember { mutableStateOf("Pronto para preparar o ambiente Linux integrado.") }
+    var status by remember {
+        mutableStateOf(
+            when {
+                prefs.getBoolean("linux_toolchain_verified", false) -> "Configuração concluída. Debian e ferramentas principais já foram verificados."
+                prefs.getBoolean("linux_debian_verified", false) -> "Debian já está instalado. Pronto para continuar a configuração das ferramentas."
+                else -> "Pronto para preparar o ambiente Linux integrado."
+            }
+        )
+    }
     var details by remember { mutableStateOf("") }
 
     DisposableEffect(controller) {
@@ -46,7 +58,7 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
     ) {
         Text("PRIMEIRO PASSO • CONFIGURAÇÃO DO GEIVIA", color = Color(0xFF07528D), fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
         LinearProgressIndicator(
-            progress = if (complete) 1f else if (busy) 0.55f else 0.08f,
+            progress = if (complete) 1f else if (busy) 0.72f else if (debianReady) 0.48f else 0.08f,
             modifier = Modifier.fillMaxWidth().height(5.dp)
         )
         Text("Vamos preparar tudo antes de perguntar sobre suas contas.", color = Color(0xFF102B43), fontSize = 24.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold)
@@ -69,10 +81,13 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
             color = Color(0xFF587083), fontSize = 12.sp, lineHeight = 18.sp
         )
         Text(status, color = if (complete) Color(0xFF18794E) else Color(0xFF173B5E), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        if (debianReady && !complete) {
+            Text("DEBIAN VERIFICADO • esta etapa será preservada mesmo se o aplicativo reiniciar.", color = Color(0xFF18794E), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        }
         if (busy) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
             OutlinedButton(
-                onClick = { controller.cancel(); status = "Cancelamento solicitado. Você poderá tentar novamente." },
+                onClick = { controller.cancel(); status = "Cancelamento solicitado. O progresso confirmado será preservado." },
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Cancelar configuração") }
         } else if (!complete) {
@@ -80,31 +95,60 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
                 onClick = {
                     scope.launch {
                         busy = true
-                        status = "Verificando o aparelho e preparando o Debian…"
                         details = ""
                         try {
                             withContext(Dispatchers.IO) { controller.prepareEngine() }
-                            controller.installAndVerifyDebian { chunk -> scope.launch { log(chunk) } }
-                            status = "Debian pronto. Instalando Git, Java, Node.js, Python e Firebase CLI…"
-                            val exitCode = controller.execute(GeiviaToolchainCommands.installDefaultProfile()) { chunk ->
-                                scope.launch { log(chunk) }
+
+                            if (!debianReady) {
+                                // Recover safely if Android killed the app after Debian
+                                // installation but before the checkpoint was committed.
+                                status = "Verificando se o Debian já está instalado…"
+                                val existingCheck = controller.execute(LinuxRuntimeCommands.testDebianBase(), 60_000L) { chunk ->
+                                    scope.launch { log(chunk) }
+                                }
+                                if (existingCheck == 0) {
+                                    debianReady = true
+                                    check(prefs.edit().putBoolean("linux_debian_verified", true).commit()) {
+                                        "Não foi possível salvar o progresso da instalação do Debian."
+                                    }
+                                    log("\\n[GEIVIA] Debian existente validado; instalação ignorada.\\n")
+                                } else {
+                                    status = "Preparando o Debian ARM64…"
+                                    controller.installAndVerifyDebian { chunk -> scope.launch { log(chunk) } }
+                                    debianReady = true
+                                    check(prefs.edit().putBoolean("linux_debian_verified", true).commit()) {
+                                        "Debian foi verificado, mas não foi possível salvar o progresso."
+                                    }
+                                }
                             }
+
+                            status = "Debian preservado. Instalando ou retomando Git, Java, Node.js, Python e Firebase CLI…"
+                            val exitCode = controller.execute(
+                                GeiviaToolchainCommands.installDefaultProfile(),
+                                45 * 60 * 1000L
+                            ) { chunk -> scope.launch { log(chunk) } }
                             check(exitCode == 0) { "A instalação das ferramentas terminou com código $exitCode." }
-                            val verifyCode = controller.execute(GeiviaToolchainCommands.verifyDefaultProfile()) { chunk ->
-                                scope.launch { log(chunk) }
-                            }
+
+                            val verifyCode = controller.execute(
+                                GeiviaToolchainCommands.verifyDefaultProfile(),
+                                3 * 60 * 1000L
+                            ) { chunk -> scope.launch { log(chunk) } }
                             check(verifyCode == 0) { "A verificação final das ferramentas falhou (código $verifyCode)." }
+
+                            check(prefs.edit().putBoolean("linux_toolchain_verified", true).commit()) {
+                                "As ferramentas foram verificadas, mas não foi possível salvar a conclusão."
+                            }
                             complete = true
                             status = "Configuração concluída. Debian e ferramentas principais foram instalados e verificados."
                         } catch (error: Exception) {
-                            status = "Não foi possível concluir: ${error.message ?: "erro não identificado"}. Nenhuma repetição automática será iniciada."
+                            status = "Não foi possível concluir: ${error.message ?: "erro não identificado"}. O progresso confirmado foi preservado; toque novamente para retomar."
                         } finally {
                             busy = false
                         }
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("Configurar GEIVIA automaticamente", modifier = Modifier.padding(vertical = 5.dp)) }
+            ) { Text(if (debianReady) "Continuar configuração das ferramentas" else "Configurar GEIVIA automaticamente", modifier = Modifier.padding(vertical = 5.dp)) }
         } else {
             Button(onClick = onCompleted, modifier = Modifier.fillMaxWidth()) {
                 Text("Continuar para configurar minhas contas", modifier = Modifier.padding(vertical = 5.dp))
@@ -114,7 +158,7 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
             OutlinedButton(
                 onClick = {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("Diagnóstico GEIVIA", status + "\n\n" + details))
+                    clipboard.setPrimaryClip(ClipData.newPlainText("Diagnóstico GEIVIA", status + "\\n\\n" + details))
                 },
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Copiar erro e detalhes técnicos") }

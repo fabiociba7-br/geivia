@@ -21,7 +21,6 @@ android {
     }
 
     sourceSets.getByName("main") {
-        java.srcDir("../third_party/pr/android/proot-engine/src/main/java")
         jniLibs.srcDir("../third_party/pr/android/proot-engine/src/main/jniLibs")
     }
 

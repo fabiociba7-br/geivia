@@ -266,6 +266,36 @@ class WorkflowProgressStoreTest {
     }
 
     @Test
+    fun detailedAuditHistoryIsIsolatedByProjectAndKeepsEvidence() {
+        val preferences = InMemorySharedPreferences()
+        val store = WorkflowProgressStore(preferences)
+        store.appendAuditEvent("project-a", "firebase_deploy", "STARTED", "op-a", "Deploy solicitado", "comando revisado")
+        store.appendAuditEvent("project-a", "firebase_deploy", "SUCCEEDED", "op-a", "Deploy concluído", "exitCode=0")
+        store.appendAuditEvent("project-b", "firebase_deploy", "FAILED", "op-b", "Falha em outro projeto", "exitCode=1")
+
+        val historyA = store.historyForProject("project-a")
+        assertEquals(2, historyA.size)
+        assertEquals("SUCCEEDED", historyA.first().state)
+        assertEquals("op-a", historyA.first().operationId)
+        assertEquals("exitCode=0", historyA.first().evidence)
+        assertEquals(1, store.historyForProject("project-b").size)
+
+        val reopened = WorkflowProgressStore(preferences)
+        assertEquals("Deploy concluído", reopened.historyForProject("project-a").first().message)
+    }
+
+    @Test
+    fun corruptedDetailedHistoryBlocksFurtherOperations() {
+        val preferences = InMemorySharedPreferences()
+        preferences.edit().putString("workflow_step_history_v1", "{invalid-json").apply()
+        val store = WorkflowProgressStore(preferences)
+        assertTrue(store.healthError().orEmpty().contains("histórico detalhado"))
+        org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+            store.appendAuditEvent("project-a", "deploy", "STARTED", "op-a", "No start", "")
+        }
+    }
+
+    @Test
     fun recordsAreIsolatedByProjectId() {
         val store = store()
         store.waitForConfirmation("project-a", "api", "Review A")

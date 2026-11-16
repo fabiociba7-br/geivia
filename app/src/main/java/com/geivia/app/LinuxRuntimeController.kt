@@ -28,27 +28,48 @@ internal class LinuxRuntimeController(context: Context) {
         args: List<String>,
         onOutput: (String) -> Unit
     ): Int = withContext(Dispatchers.IO) {
-        check(activeSession == null) { "Já existe uma sessão Linux em execução." }
-        val session = launcher.runCommand(args)
-            ?: throw IllegalStateException("O motor Linux não conseguiu iniciar o comando.")
-        activeSession = session
+        val session = openCommandSession(args)
         try {
             readUntilClosed(session, onOutput)
             awaitExitCode(session)
         } finally {
             session.close()
-            activeSession = null
+            releaseSession(session)
         }
     }
 
-    fun startDebianShell(): ProotLauncher.Session {
+    /**
+     * Installs Debian, runs the upstream distro smoke suite, then executes a real
+     * command inside the guest. A non-zero stage stops the sequence immediately.
+     */
+    suspend fun installAndVerifyDebian(onOutput: (String) -> Unit): List<Int> {
+        val results = mutableListOf<Int>()
+        val stages = listOf(
+            "Instalando Debian ARM64" to LinuxRuntimeCommands.installDebian(),
+            "Validando a distribuição e o PRoot" to LinuxRuntimeCommands.testDebianBase(),
+            "Testando shell, diretórios e execução de comandos" to LinuxRuntimeCommands.smokeCheckDebian()
+        )
+        for ((label, args) in stages) {
+            onOutput("\n[GEIVIA] $label…\n")
+            val code = execute(args, onOutput)
+            results += code
+            onOutput("\n[GEIVIA] Etapa concluída com código $code.\n")
+            check(code == 0) {
+                "$label falhou (código $code). Consulte a saída acima; a próxima etapa não foi executada."
+            }
+        }
+        onOutput("\n[GEIVIA] Debian instalado e verificado. Procure o marcador GEIVIA_DEBIAN_SHELL_OK acima.\n")
+        return results
+    }
+
+    fun startDebianShell(): ProotLauncher.Session = synchronized(this) {
         check(activeSession == null) { "Já existe uma sessão Linux em execução." }
         val session = launcher.startSession("debian")
             ?: throw IllegalStateException(
                 "Debian ainda não está instalado. Use primeiro Preparar Debian."
             )
         activeSession = session
-        return session
+        session
     }
 
     suspend fun readSession(
@@ -60,7 +81,7 @@ internal class LinuxRuntimeController(context: Context) {
             awaitExitCode(session)
         } finally {
             session.close()
-            if (activeSession === session) activeSession = null
+            releaseSession(session)
         }
     }
 
@@ -71,6 +92,20 @@ internal class LinuxRuntimeController(context: Context) {
 
     fun cancel() {
         activeSession?.close()
+    }
+
+    @Synchronized
+    private fun openCommandSession(args: List<String>): ProotLauncher.Session {
+        check(activeSession == null) { "Já existe uma sessão Linux em execução." }
+        val session = launcher.runCommand(args)
+            ?: throw IllegalStateException("O motor Linux não conseguiu iniciar o comando.")
+        activeSession = session
+        return session
+    }
+
+    @Synchronized
+    private fun releaseSession(session: ProotLauncher.Session) {
+        if (activeSession === session) activeSession = null
     }
 
     private fun readUntilClosed(session: ProotLauncher.Session, onOutput: (String) -> Unit) {

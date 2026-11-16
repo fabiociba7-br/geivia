@@ -25,7 +25,7 @@ O manifesto versionado em `app/src/main/assets/linux-toolchain-manifest.json` de
 | Perfil | Ferramentas |
 |---|---|
 | Base | Git, SSH, curl, wget, certificados, unzip, zip, tar, xz, jq, nano |
-| Java | OpenJDK 17 headless |
+| Java | JDK headless padrão da versão estável do Debian (OpenJDK 21 no Debian 13) |
 | Node.js | Node.js e npm |
 | Python | Python 3, pip e venv |
 | Build | build-essential, make, CMake e pkg-config |
@@ -36,7 +36,7 @@ O perfil padrão será Base + Java + Node.js + Python + Build + Firebase. Google
 
 ## Instalação e atualização
 
-A experiência pretendida é uma ação única **Preparar ambiente de desenvolvimento**, com:
+A experiência pretendida é uma primeira tela **Configurar GEIVIA**, exibida antes das perguntas sobre contas e projetos, com:
 1. verificação de arquitetura, espaço livre e conectividade;
 2. instalação da distribuição no armazenamento privado;
 3. configuração de repositórios assinados;

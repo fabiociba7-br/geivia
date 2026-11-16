@@ -21,7 +21,7 @@ internal object GeiviaToolchainCommands {
           build-essential cmake pkg-config make
         npm config set fund false
         npm config set audit false
-        ${firebaseCliInstallCommand()}
+        ${updateFirebaseCli().last()}
         printf '\nGEIVIA_TOOLCHAIN_VERSIONS\n'
         git --version
         java -version

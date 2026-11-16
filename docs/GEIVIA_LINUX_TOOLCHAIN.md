@@ -42,12 +42,20 @@ A tela **Configurar GEIVIA**, exibida antes das perguntas sobre contas e projeto
 3. atualiza os índices do Debian;
 4. instala os pacotes básicos, Java, Node.js/npm, Python e ferramentas de compilação;
 5. configura o npm;
-6. instala a Firebase CLI;
-7. valida as versões reais de `git`, `java`, `node`, `npm`, `python3` e `firebase`.
+6. cria e verifica um cache dedicado do npm, separado do cache padrão `/root/.npm`;
+7. instala a Firebase CLI com até três tentativas, limpeza/recriação do cache e repetição automática em caso de falha;
+8. valida as versões reais de `git`, `java`, `node`, `npm`, `python3` e `firebase`.
 
 A interface apresenta os estados Aguardando, Em andamento, Concluída e Falhou. O resultado de cada etapa concluída é salvo localmente; ao retomar, as etapas confirmadas são puladas e a primeira etapa pendente/falha é repetida. O cancelamento interrompe a operação ativa e mantém os checkpoints já confirmados. O terminal de recuperação, na tela de diagnóstico e nos detalhes técnicos da configuração inicial com falha, permite investigar e corrigir o ambiente Debian.
 
 O APK não carrega a rootfs inteira nem todos os pacotes. A distribuição e os pacotes são instalados sob demanda no armazenamento privado do app.
+
+
+### Recuperação do cache npm (erro ENOENT ao renomear arquivos)
+
+A instalação da Firebase CLI usa o cache dedicado `/root/.cache/geivia-npm`, em vez de reutilizar o cache padrão `/root/.npm`. Antes da instalação, o GEIVIA cria `_cacache/tmp`, configura o npm para usar esse diretório e executa `npm cache verify`. Se a verificação falhar, limpa e recria o cache. A instalação da CLI tem até três tentativas, com cinco retries de rede por tentativa; após uma tentativa malsucedida, limpa e recria o diretório temporário antes de tentar novamente. O mesmo procedimento é usado na atualização da Firebase CLI e na atualização geral da toolchain.
+
+Essa correção trata a classe de falhas `ENOENT`/rename observada no cache do npm, mas a confirmação definitiva depende da execução da instalação em um Debian/PRoot real com rede. Falhas de rede, falta de espaço ou problemas no sistema de arquivos ainda podem impedir a instalação; nesse caso, o app mantém a etapa marcada como falha e permite retomá-la.
 
 ## Firebase Hosting
 

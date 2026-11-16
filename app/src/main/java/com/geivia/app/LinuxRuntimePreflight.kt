@@ -12,7 +12,7 @@ data class LinuxRuntimePreflightResult(
     val availableBytes: Long,
     val requiredBytes: Long,
     val missingNativeLibraries: List<String> = emptyList()
-
+)
 
 object LinuxRuntimePreflight {
     const val MIN_ANDROID_API = 28

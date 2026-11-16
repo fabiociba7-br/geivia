@@ -29,6 +29,7 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
     val controller = remember { LinuxRuntimeController(context) }
     val stages = remember { GeiviaToolchainCommands.installStages() }
     var busy by remember { mutableStateOf(false) }
+    var cancelRequested by remember { mutableStateOf(false) }
     var debianReady by remember { mutableStateOf(prefs.getBoolean("linux_debian_verified", false)) }
     var debianStageStatus by remember { mutableStateOf(if (prefs.getBoolean("linux_debian_verified", false)) "Concluída" else "Aguardando") }
     var complete by remember { mutableStateOf(prefs.getBoolean("linux_toolchain_verified", false)) }
@@ -55,6 +56,7 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
 
     fun runSetup() {
         if (busy || complete) return
+        cancelRequested = false
         scope.launch {
             busy = true
             details = ""
@@ -65,12 +67,14 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
                     status = "Verificando se o Debian já está instalado…"
                     debianStageStatus = "Em andamento"
                     val existingCheck = controller.execute(LinuxRuntimeCommands.testDebianBase(), 60_000L) { chunk -> scope.launch { log(chunk) } }
+                    check(!cancelRequested) { "Configuração interrompida pelo usuário." }
                     if (existingCheck == 0) {
                         log("\n[GEIVIA] Debian existente validado; instalação ignorada.\n")
                         debianStageStatus = "Concluída"
                     } else {
                         status = "Preparando o Debian ARM64…"
                         controller.installAndVerifyDebian { chunk -> scope.launch { log(chunk) } }
+                        check(!cancelRequested) { "Configuração interrompida pelo usuário." }
                         debianStageStatus = "Concluída"
                     }
                     check(prefs.edit().putBoolean("linux_debian_verified", true).commit()) {
@@ -89,6 +93,7 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
                     status = "Em andamento: ${stage.title}"
                     log("\n[GEIVIA] ETAPA: ${stage.title}\n")
                     val exitCode = controller.execute(stage.command, stage.timeoutMs) { chunk -> scope.launch { log(chunk) } }
+                    check(!cancelRequested) { "Configuração interrompida pelo usuário." }
                     if (exitCode != 0) {
                         stageStates = stageStates + (stage.id to "Falhou")
                         status = "A etapa '${stage.title}' falhou (código $exitCode). As etapas concluídas foram preservadas."
@@ -108,6 +113,9 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
                 currentStage = ""
                 status = "Configuração concluída. Debian e ferramentas principais foram instalados e verificados."
             } catch (error: Exception) {
+                if (cancelRequested) {
+                    status = "Configuração interrompida. As etapas concluídas foram preservadas; toque em tentar novamente para continuar."
+                }
                 if (currentStage == "Debian ARM64" && !debianReady) {
                     debianStageStatus = "Falhou"
                 }
@@ -203,11 +211,12 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
             }
         }
 
-        Text(status, color = if (complete) Color(0xFF18794E) else if (failedStage != null) Color(0xFFB3261E) else Color(0xFF173B5E), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(status, color = if (complete) Color(0xFF18794E) else if (debianFailed || failedStage != null) Color(0xFFB3261E) else Color(0xFF173B5E), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         if (busy) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
             OutlinedButton(onClick = {
                 controller.cancel()
+                cancelRequested = true
                 status = "Cancelamento solicitado. As etapas concluídas foram preservadas; a etapa interrompida poderá ser repetida."
             }, modifier = Modifier.fillMaxWidth()) { Text("Cancelar configuração") }
         } else if (!complete) {

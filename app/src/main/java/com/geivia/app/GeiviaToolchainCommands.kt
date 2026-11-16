@@ -47,6 +47,7 @@ internal object GeiviaToolchainCommands {
           npm cache clean --force --cache "\$NPM_CACHE" || true
           mkdir -p "\$NPM_CACHE/_cacache/tmp"
         }
+        INSTALLED=0
         for attempt in 1 2 3; do
           echo "GEIVIA_FIREBASE_INSTALL_ATTEMPT_\$attempt"
           if npm install --global firebase-tools@latest \
@@ -57,6 +58,7 @@ internal object GeiviaToolchainCommands {
             --fetch-retry-maxtimeout=120000; then
             firebase --version
             echo GEIVIA_FIREBASE_CLI_OK
+            INSTALLED=1
             break
           fi
           echo "Firebase CLI install attempt \$attempt failed; rebuilding the dedicated npm cache."
@@ -65,7 +67,7 @@ internal object GeiviaToolchainCommands {
           mkdir -p "\$NPM_CACHE/_cacache/tmp"
           sleep "\$attempt"
         done
-        if ! command -v firebase >/dev/null 2>&1; then
+        if [ "\$INSTALLED" -ne 1 ]; then
           echo GEIVIA_FIREBASE_CLI_FAILED
           exit 1
         fi

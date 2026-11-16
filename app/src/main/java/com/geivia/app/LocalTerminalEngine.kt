@@ -89,10 +89,10 @@ class LocalTerminalEngine(filesDir: File) {
         const val HELP = """GEIVIA Terminal — comandos disponíveis:
 help                 mostra esta ajuda
 pwd                  mostra a pasta de trabalho
-ls [diretório]       lista arquivos do espaço GEIVIA
+ls [diretório]       lista arquivos do espaço GEIVIA (inclui imports/)
 mkdir <nome>         cria uma pasta
 touch <arquivo>      cria um arquivo vazio
-cat <arquivo>        lê um arquivo de texto (máx. 64 KB)
+cat <arquivo>        lê um arquivo de texto (máx. 64 KB; use imports/nome)
 echo <texto>         imprime texto
 date                 mostra data e hora do aparelho
 whoami               identifica o ambiente local

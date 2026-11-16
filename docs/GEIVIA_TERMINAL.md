@@ -44,3 +44,10 @@ A próxima fase deve introduzir um runtime Linux em espaço privado do GEIVIA, s
 - Ter testes de isolamento, cancelamento, limites e recuperação de instalação interrompida.
 
 A escolha do runtime não deve ser tratada como concluída até que a compatibilidade Android, a licença, a manutenção e a origem dos binários sejam verificadas.
+
+
+## Ambiente Linux e pacotes de desenvolvimento
+
+O catálogo inicial de ferramentas está versionado em `app/src/main/assets/linux-toolchain-manifest.json`. Ele descreve os perfis Base, Java 17, Node.js/npm, Python 3, ferramentas de compilação e Firebase CLI, além do Google Cloud CLI como perfil opcional condicionado à validação ARM64. A especificação de instalação, segurança, compatibilidade e deploy está em [GEIVIA_LINUX_TOOLCHAIN.md](GEIVIA_LINUX_TOOLCHAIN.md).
+
+**Importante:** o manifesto é apenas o catálogo para a futura instalação. Ele não instala nem executa os pacotes. O runtime PRoot ainda precisa ser integrado, compatibilizado com a cadeia Android atual e testado em aparelho real antes de habilitar a instalação de ferramentas.

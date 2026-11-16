@@ -118,7 +118,7 @@ internal fun FirebaseAdminScreen(projectId: String, onBack: () -> Unit) {
         }
         }
         Text("DIAGNÓSTICO DE OPERAÇÕES PENDENTES", style = MaterialTheme.typography.labelLarge)
-        Text("Consulta somente leitura ao mesmo Project ID. Só marca uma etapa como concluída quando a resposta do Google confirma o recurso ou todas as APIs esperadas.", fontSize = 11.sp)
+        Text("Consulta somente leitura ao mesmo Project ID. O estado atual é registrado como evidência, mas não prova que a operação preparada causou a alteração; sem comparação com um estado anterior, a etapa permanece pendente.", fontSize = 11.sp)
         OutlinedButton(enabled = !busy && projectId.isNotBlank(), onClick = {
             if (busy || projectId.isBlank()) return@OutlinedButton
             busy = true

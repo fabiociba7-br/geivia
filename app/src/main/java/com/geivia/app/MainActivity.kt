@@ -2429,6 +2429,7 @@ private fun TerminalPanel() {
                         )
                     }
                 }
+                CopyTerminalLogButton(output.joinToString("\n"), modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
@@ -2583,6 +2584,7 @@ private fun TerminalPanel() {
                     ) {
                         Text(linuxTranscript.takeLast(16000), color = Color(0xFFE2E8F0), fontSize = 10.sp, lineHeight = 14.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
                     }
+                    CopyTerminalLogButton(linuxTranscript.takeLast(16000), modifier = Modifier.fillMaxWidth())
                     if (linuxSession != null) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             OutlinedTextField(

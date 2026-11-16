@@ -251,8 +251,8 @@ internal fun GeiviaRecoveryTerminal(
                         ) { Text("Encerrar") }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        OutlinedButton(onClick = { command += "\t" }, enabled = session != null) { Text("Tab") }
-                        OutlinedButton(onClick = { command += "\u0004" }, enabled = session != null) { Text("Ctrl+D") }
+                        OutlinedButton(onClick = { sendText("\t") }, enabled = session != null && !busy) { Text("Tab") }
+                        OutlinedButton(onClick = { sendText("\u0004") }, enabled = session != null && !busy) { Text("Ctrl+D") }
                         OutlinedButton(onClick = { command = "" }) { Text("Apagar entrada") }
                     }
                     Spacer(Modifier.height(2.dp))

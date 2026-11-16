@@ -13,14 +13,21 @@ for (const required of ["base", "java", "node", "python", "build", "firebase"]) 
 }
 assert.ok(profiles.get("java").apt.includes("default-jdk-headless"));
 assert.ok(profiles.get("base").apt.includes("git"));
-assert.equal(profiles.get("firebase").bundle.provider, "github-release");
-assert.equal(profiles.get("firebase").bundle.asset, "firebase-cli-arm64.tar.gz");
-assert.equal(profiles.get("firebase").bundle.architecture, "arm64");
-assert.ok(profiles.get("firebase").requires.includes("node"));
+
+const firebase = profiles.get("firebase");
+assert.equal(firebase.bundle.provider, "npm-registry");
+assert.equal(firebase.bundle.package, "firebase-tools");
+assert.equal(firebase.bundle.version, "15.36.0");
+assert.equal(firebase.bundle.architecture, "arm64");
+assert.ok(firebase.requires.includes("node"));
 assert.ok(manifest.defaultProfiles.includes("firebase"));
 assert.ok(manifest.optionalProfiles.includes("gcloud"));
 assert.equal(
   profiles.get("gcloud").aptExternal[0].requiresSignedRepositoryKey,
   true
+);
+assert.ok(
+  manifest.notes.some((note) => note.includes("public npm registry")),
+  "Firebase CLI must be documented as installed from the public npm registry"
 );
 console.log("Linux toolchain manifest: OK");

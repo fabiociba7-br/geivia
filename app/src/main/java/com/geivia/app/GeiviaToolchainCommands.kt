@@ -153,8 +153,8 @@ internal object GeiviaToolchainCommands {
         apt-get update
         check_apt() {
           package="$1"
-          installed="$(dpkg-query -W -f='${' "$package" 2>/dev/null || true)"
-          candidate="$(apt-cache policy "$package" | awk '/Candidate:/{print ${'}')"
+          installed="$(dpkg-query -W -f='${'$'}{Version}' "$package" 2>/dev/null || true)"
+          candidate="$(apt-cache policy "$package" | awk '/Candidate:/{print ${'$'}2; exit}')"
           [ -n "$installed" ] || installed="não instalado"
           [ -n "$candidate" ] || candidate="(none)"
           available=0
@@ -292,7 +292,7 @@ internal object GeiviaToolchainCommands {
         export DEBIAN_FRONTEND=noninteractive
         apt-get update
         apt-get upgrade -y
-        ${firebaseCliInstallCommand()}
+        ${updateFirebaseCli().last()}
         echo 'GEIVIA_UPDATE_ALL_OK'
         """.trimIndent()
     )

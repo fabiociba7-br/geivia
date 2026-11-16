@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 
 private fun collectEnvironmentPreflight(context: Context): LinuxRuntimePreflightResult {

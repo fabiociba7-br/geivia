@@ -662,7 +662,7 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
                 Text("ACOMPANHAMENTO DAS ETAPAS", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    AndroidAccessPolicy.guidance(AndroidAccessUseCase.VALIDATE_HISTORY_BACKUP) + " Não precisa liberar acesso geral ao armazenamento.",
+                    AndroidAccessPolicy.guidance(AndroidAccessUseCase.EXPORT_HISTORY_BACKUP) + " " + AndroidAccessPolicy.guidance(AndroidAccessUseCase.VALIDATE_HISTORY_BACKUP) + " Não precisa liberar acesso geral ao armazenamento.",
                     color = Muted, fontSize = 11.sp, lineHeight = 16.sp
                 )
                 Spacer(Modifier.height(8.dp))

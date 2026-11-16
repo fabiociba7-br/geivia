@@ -8,6 +8,11 @@ internal object GeiviaToolchainCommands {
         """
         set -eu
         export DEBIAN_FRONTEND=noninteractive
+        # Recover an interrupted dpkg transaction before starting a new install.
+        echo 'GEIVIA_PACKAGE_RECOVERY_BEGIN'
+        dpkg --configure -a
+        apt-get -f install -y
+        echo 'GEIVIA_PACKAGE_RECOVERY_OK'
         apt-get update
         apt-get install -y --no-install-recommends \
           ca-certificates curl wget git openssh-client unzip zip xz-utils tar jq nano less \

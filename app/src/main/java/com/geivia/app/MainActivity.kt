@@ -660,7 +660,7 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
             )
         }
         Spacer(Modifier.height(16.dp))
-        OutlinedButton(onClick = onGoogleAccess, modifier = Modifier.fillMaxWidth()) { Text("Acessar Google Cloud com minha conta") }
+        OutlinedButton(onClick = onGoogleAccess, modifier = Modifier.fillMaxWidth()) { Text("Configurar Google Cloud (opcional)") }
         Spacer(Modifier.height(8.dp))
         OutlinedButton(onClick = onGitHub, modifier = Modifier.fillMaxWidth()) { Text("Conectar e acompanhar GitHub") }
         Spacer(Modifier.height(8.dp))

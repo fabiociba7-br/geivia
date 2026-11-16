@@ -537,6 +537,11 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
         Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(15.dp)) {
             Column(Modifier.padding(16.dp)) {
                 Text("ACOMPANHAMENTO DAS ETAPAS", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Quando você exportar ou verificar um backup, o Android abrirá o seletor de arquivos. O GEIVIA acessará somente o arquivo que você escolher; não precisa liberar acesso geral ao armazenamento.",
+                    color = Muted, fontSize = 11.sp, lineHeight = 16.sp
+                )
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(
                     onClick = {

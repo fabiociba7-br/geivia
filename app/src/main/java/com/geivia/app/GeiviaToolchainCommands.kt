@@ -35,43 +35,30 @@ internal object GeiviaToolchainCommands {
 
 
     /**
-     * Installs Firebase CLI using serialized npm fetches and isolated caches.
-     * A successful existing installation is reused on later setup attempts.
-     * The official standalone Linux binary is not selected because its published
-     * Linux asset is not architecture-aware and can fail on ARM64 devices.
+     * Installs the prebuilt dependency bundle produced on a native Linux ARM64 runner.
+     * This avoids npm resolving and writing hundreds of packages on the user's phone.
      */
     private fun firebaseCliInstallCommand(): String = """
         set -eu
-        if command -v firebase >/dev/null 2>&1 && firebase --version; then
+        if command -v firebase >/dev/null 2>&1 && firebase --version >/dev/null 2>&1; then
           echo GEIVIA_FIREBASE_CLI_OK
           exit 0
         fi
-        INSTALLED=0
-        for NPM_CACHE in /tmp/geivia-npm-cache /root/.cache/geivia-npm /root/.npm; do
-          echo "GEIVIA_NPM_CACHE_LOCATION_$NPM_CACHE"
-          rm -rf "$NPM_CACHE/_cacache/tmp" || true
-          mkdir -p "$NPM_CACHE/_cacache/tmp"
-          if npm install --global firebase-tools@latest \
-              --cache "$NPM_CACHE" \
-              --prefer-online \
-              --no-audit \
-              --no-fund \
-              --fetch-retries=5 \
-              --fetch-timeout=120000 \
-              --maxsockets=1; then
-            if command -v firebase >/dev/null 2>&1 && firebase --version; then
-              echo GEIVIA_FIREBASE_CLI_OK
-              INSTALLED=1
-              break
-            fi
-          fi
-          echo "Firebase CLI installation failed with cache $NPM_CACHE; cleaning before fallback."
-          npm cache clean --force --cache "$NPM_CACHE" || true
-        done
-        if [ "$INSTALLED" -ne 1 ]; then
-          echo GEIVIA_FIREBASE_CLI_FAILED
-          exit 1
-        fi
+        BUNDLE_URL="https://github.com/fabiociba7-br/geivia/releases/download/firebase-cli-arm64/firebase-cli-arm64.tar.gz"
+        WORK_DIR="$(mktemp -d /tmp/geivia-firebase.XXXXXX)"
+        trap 'rm -rf "$WORK_DIR"' EXIT
+        echo "Baixando pacote Firebase CLI preparado para Linux ARM64..."
+        curl --fail --location --retry 4 --retry-delay 2 "$BUNDLE_URL" -o "$WORK_DIR/firebase-cli-arm64.tar.gz"
+        mkdir -p /opt/geivia/firebase
+        tar -xzf "$WORK_DIR/firebase-cli-arm64.tar.gz" -C /opt/geivia/firebase
+        test -f /opt/geivia/firebase/node_modules/firebase-tools/lib/bin/firebase.js
+        cat > /usr/local/bin/firebase <<'GEIVIA_FIREBASE_LAUNCHER'
+#!/bin/sh
+exec node /opt/geivia/firebase/node_modules/firebase-tools/lib/bin/firebase.js "$@"
+GEIVIA_FIREBASE_LAUNCHER
+        chmod 755 /usr/local/bin/firebase
+        firebase --version
+        echo GEIVIA_FIREBASE_CLI_OK
     """.trimIndent()
 
     data class InstallStage(

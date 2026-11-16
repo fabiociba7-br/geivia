@@ -27,8 +27,7 @@ A geração de APK e os testes automatizados são realizados pelo GitHub Actions
 
 ## Terminal integrado
 
-A fase 1 do Terminal GEIVIA está implementada como um interpretador local restrito, acessível pelo painel. Ele oferece comandos internos para arquivos dentro de uma pasta privada do aplicativo, sem executar shell arbitrário ou acessar dados de outros apps. Não é ainda um ambiente Linux completo nem substitui Termux. Consulte [a arquitetura e o roteiro do terminal](docs/GEIVIA_TERMINAL.md).
-
+O Terminal GEIVIA fica incorporado ao painel principal e não exige Termux. A fase atual oferece comandos locais restritos; o runtime Linux próprio, isolado no sandbox do aplicativo, está em desenvolvimento. Consulte [a arquitetura e os critérios de aceite](docs/GEIVIA_TERMINAL.md).
 ## Integração com GitHub
 
 A primeira fase da integração já está implementada no Android: GitHub App Authorization Code + PKCE S256, token cifrado com Android Keystore e renovação automática, listagem paginada de repositórios, perfil, branches, commits, pull requests, GitHub Actions, jobs e metadados de artefatos. A conexão é somente leitura; o GEIVIA não faz push, commit, merge ou alteração de workflows.

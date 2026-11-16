@@ -73,7 +73,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
         }
     }
     var workspaceName by rememberSaveable { mutableStateOf(prefs.getString("workspace_name", "GEIVIA-" + workspaceId.removePrefix("GEIVIA-")) ?: ("GEIVIA-" + workspaceId.removePrefix("GEIVIA-"))) }
-    val validWorkflowPages = setOf("workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "google_access", "github", "terminal", "toolchain_updates", "diagnostics")
+    val validWorkflowPages = setOf("workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "accounts", "google_access", "github", "terminal", "toolchain_updates", "diagnostics")
     val savedCheckpoint = remember {
         prefs.getString("workflow_checkpoint", null)?.takeIf { it in validWorkflowPages }
             ?.let { when (it) { "cloud_setup" -> "questions"; "terminal" -> "dashboard"; else -> it } }
@@ -236,7 +236,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onContinue = { page = "summary" })
                 "summary" -> SummaryScreen(answers.toMap(), costMode,
                     onBack = { page = "cost" }, onEdit = { page = "questions"; index = 0 }, onFinish = { page = "dashboard" })
-                "github" -> GitHubScreen(
+                "accounts" -> AccountsConnectionsScreen(\n                    googleConnected = prefs.getBoolean("google_cloud_cli_ready", false),\n                    githubConnected = githubConnected,\n                    onGoogle = { page = "google_access" },\n                    onGitHub = { page = "github" },\n                    onBack = { page = "dashboard" }\n                )\n                "github" -> GitHubScreen(
                     connected = githubConnected,
                     callbackMessage = githubCallbackMessage,
                     onBack = { page = "dashboard" },
@@ -247,7 +247,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                 )
                 "toolchain_updates" -> GeiviaToolchainUpdatesScreen(onBack = { page = "dashboard" })
                 "diagnostics" -> GeiviaDiagnosticsScreen(onBack = { page = "dashboard" })
-                else -> DashboardScreen(answers.toMap(), costMode, onGoogleAccess = { page = "google_access" }, onGitHub = { page = "github" }, onToolchainUpdates = { page = "toolchain_updates" }, onDiagnostics = { page = "diagnostics" }) {
+                else -> DashboardScreen(answers.toMap(), costMode, onAccounts = { page = "accounts" }, onGoogleAccess = { page = "google_access" }, onGitHub = { page = "github" }, onToolchainUpdates = { page = "toolchain_updates" }, onDiagnostics = { page = "diagnostics" }) {
                     answers.clear()
                     val editor = prefs.edit()
                     answerKeys.forEach { editor.remove(it) }
@@ -560,7 +560,7 @@ private fun SummaryScreen(answers: Map<String, String>, costMode: String, onBack
 }
 
 @Composable
-private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGoogleAccess: () -> Unit, onGitHub: () -> Unit, onToolchainUpdates: () -> Unit, onDiagnostics: () -> Unit, onRestart: () -> Unit) {
+private fun DashboardScreen(answers: Map<String, String>, costMode: String, onAccounts: () -> Unit, onGoogleAccess: () -> Unit, onGitHub: () -> Unit, onToolchainUpdates: () -> Unit, onDiagnostics: () -> Unit, onRestart: () -> Unit) {
     val context = LocalContext.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp)) {
         BrandMark()

@@ -46,6 +46,8 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
     var projectDir by rememberSaveable { mutableStateOf("") }
     var projectId by rememberSaveable { mutableStateOf(context.getSharedPreferences("geivia_onboarding", 0).getString("selected_project_id", "").orEmpty()) }
     var output by rememberSaveable { mutableStateOf("Importe um ZIP do seu projeto para começar. O GEIVIA extrairá os arquivos no Debian privado e executará os comandos no próprio aparelho.") }
+    var githubRepo by rememberSaveable { mutableStateOf("") }
+    var githubBranch by rememberSaveable { mutableStateOf("main") }
     var busy by rememberSaveable { mutableStateOf(false) }
     var showDeployConfirm by remember { mutableStateOf(false) }
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", android.content.Context.MODE_PRIVATE) }
@@ -87,9 +89,38 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
         }
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF5E6))) {
             Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("GitHub — envio do repositório", color = Color(0xFF102B43))
-                Text("A integração GitHub atual só tem permissão de leitura. O push exige Contents: Read and write na GitHub App. Não vou expor tokens em comandos ou logs.", color = Color(0xFF77501A), fontSize = 12.sp)
-                OutlinedButton(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth()) { Text("Envio GitHub aguardando permissão de escrita") }
+                Text("GitHub — enviar projeto", color = Color(0xFF102B43))
+                OutlinedTextField(value = githubRepo, onValueChange = { githubRepo = it.trim() }, modifier = Modifier.fillMaxWidth(), label = { Text("Repositório: usuário/nome") }, singleLine = true)
+                OutlinedTextField(value = githubBranch, onValueChange = { githubBranch = it.trim() }, modifier = Modifier.fillMaxWidth(), label = { Text("Branch") }, singleLine = true)
+                Text("A autorização GitHub deve incluir escrita de conteúdo e workflows. Se conectou antes desta atualização, reconecte a conta para aprovar as novas permissões. Arquivos .env, chaves e pastas geradas são excluídos automaticamente.", color = Color(0xFF77501A), fontSize = 12.sp)
+                Button(onClick = {
+                    val tokenStore = GitHubTokenStore(context)
+                    val token = tokenStore.accessToken()
+                    val repo = githubRepo
+                    val branch = githubBranch
+                    if (token == null) {
+                        output = "Conecte sua conta GitHub primeiro na tela Conectar minhas contas."
+                    } else {
+                        busy = true
+                        output = "Preparando envio seguro ao GitHub…\n"
+                        scope.launch {
+                            runCatching {
+                                withContext(Dispatchers.IO) {
+                                    val clientId = prefs.getString("github_client_id", "").orEmpty()
+                                    val callback = prefs.getString("github_callback_url", "").orEmpty()
+                                    val exchange = prefs.getString("github_exchange_url", "").orEmpty()
+                                    val fresh = GitHubAuthClient.ensureFreshAccessToken(exchange, clientId, callback, tokenStore)
+                                        ?: error("Conecte novamente a conta GitHub.")
+                                    GitHubApiClient.pushProjectDirectory(fresh, repo, branch, File(projectDir)) { message ->
+                                        scope.launch { output = (output + message + "\n").takeLast(100000) }
+                                    }
+                                }
+                            }.onSuccess { url -> output += "\nCommit publicado: $url" }
+                                .onFailure { output += "\nFalha no envio: ${it.message}. Se o GitHub indicar falta de escopo, desconecte e conecte novamente a conta para autorizar escrita." }
+                            busy = false
+                        }
+                    }
+                }, enabled = !busy && projectDir.isNotBlank() && githubRepo.matches(Regex("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")) && githubBranch.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Enviar projeto e criar commit") }
             }
         }
         if (busy) Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { CircularProgressIndicator(); Text("Operação em andamento…") }

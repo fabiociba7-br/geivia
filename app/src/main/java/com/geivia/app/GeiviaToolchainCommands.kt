@@ -35,12 +35,8 @@ internal object GeiviaToolchainCommands {
 
 
     /**
-     * Tries independent cache locations. PRoot-backed filesystems can expose
-     * rename/ENOENT races in npm's cacache; retrying the same directory is not
-     * sufficient, so each fallback uses a fresh cache root.
-     */
-    /**
-     * Installs Firebase CLI using a serialized npm download and isolated caches.
+     * Installs Firebase CLI using serialized npm fetches and isolated caches.
+     * A successful existing installation is reused on later setup attempts.
      * The official standalone Linux binary is not selected because its published
      * Linux asset is not architecture-aware and can fail on ARM64 devices.
      */
@@ -112,7 +108,7 @@ internal object GeiviaToolchainCommands {
             3 * 60 * 1000L
         ),
         InstallStage(
-            "firebase_cli", "Instalação da Firebase CLI com recuperação automática do cache",
+            "firebase_cli", "Instalação da Firebase CLI com download serializado e recuperação do cache",
             listOf("login", "debian", "--", "/bin/sh", "-lc", firebaseCliInstallCommand()),
             45 * 60 * 1000L
         ),

@@ -81,7 +81,7 @@ internal fun FirebaseAdminScreen(projectId: String, onBack: () -> Unit) {
                 TOKEN="${'$'}(gcloud auth print-access-token)"
                 curl -fsS -H "Authorization: Bearer ${'$'}TOKEN" "https://firebaserules.googleapis.com/v1/projects/$projectId/releases/cloud.firestore" > release.json
                 NAME="${'$'}(jq -r '.rulesetName // empty' release.json)"
-                test -n "${' { echo "Nenhuma release de regras Firestore foi encontrada."; exit 4; }
+                test -n "${'$'}NAME" || { echo "Nenhuma release de regras Firestore foi encontrada."; exit 4; }
                 curl -fsS -H "Authorization: Bearer ${'$'}TOKEN" "https://firebaserules.googleapis.com/v1/${'$'}NAME" > '${f.absolutePath}'
                 cat '${f.absolutePath}'
             """.trimIndent()

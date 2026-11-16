@@ -33,9 +33,9 @@ internal fun AccountsConnectionsScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("Google Cloud + Firebase", color = Color(0xFF102B43), fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                        Text("Uma autorização Google para acessar os projetos Cloud e Firebase.", color = Color(0xFF587083), fontSize = 12.sp, lineHeight = 17.sp)
+                        Text("Use a mesma conta Google para acessar os projetos Cloud e Firebase.", color = Color(0xFF587083), fontSize = 12.sp, lineHeight = 17.sp)
                     }
-                    Text(if (googleReady) "Ferramentas prontas" else "Configurar", color = if (googleConnected) Color(0xFF236342) else Color(0xFF9A641B), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text(if (googleReady) "Ferramentas prontas" else "Configurar", color = if (googleReady) Color(0xFF236342) else Color(0xFF9A641B), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
                 Button(onClick = onGoogle, modifier = Modifier.fillMaxWidth()) {
                     Text(if (googleReady) "Conectar / gerenciar conta Google" else "Preparar e conectar Google")

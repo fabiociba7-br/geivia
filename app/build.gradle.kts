@@ -23,7 +23,7 @@ android {
 
     defaultConfig {
         applicationId = "com.geivia.app"
-        minSdk = 26
+        minSdk = 28
         targetSdk = 35
         versionCode = 8
         versionName = "1.0.7"

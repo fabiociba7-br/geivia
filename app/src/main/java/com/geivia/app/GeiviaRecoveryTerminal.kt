@@ -169,6 +169,7 @@ internal fun GeiviaRecoveryTerminal(
                 onClick = { fullScreen = true },
                 enabled = session != null
             ) { Text("Tela cheia") }
+            OutlinedButton(onClick = { copyOutput() }, enabled = output.isNotBlank()) { Text("Copiar log") }
         }
         if (session != null) {
             Text("Sessão Linux ativa", color = Color(0xFF18794E), fontSize = 11.sp)

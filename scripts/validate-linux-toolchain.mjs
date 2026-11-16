@@ -15,10 +15,10 @@ assert.ok(profiles.get("java").apt.includes("default-jdk-headless"));
 assert.ok(profiles.get("base").apt.includes("git"));
 
 const firebase = profiles.get("firebase");
-assert.equal(firebase.bundle.provider, "npm-registry");
-assert.equal(firebase.bundle.package, "firebase-tools");
-assert.equal(firebase.bundle.version, "15.36.0");
-assert.equal(firebase.bundle.architecture, "arm64");
+assert.equal(firebase.install.provider, "npm-registry");
+assert.equal(firebase.install.package, "firebase-tools");
+assert.equal(firebase.install.version, "15.36.0");
+assert.equal(firebase.install.architecture, "arm64");
 assert.ok(firebase.requires.includes("node"));
 assert.ok(manifest.defaultProfiles.includes("firebase"));
 assert.ok(manifest.optionalProfiles.includes("gcloud"));
@@ -28,6 +28,6 @@ assert.equal(
 );
 assert.ok(
   manifest.notes.some((note) => note.includes("public npm registry")),
-  "Firebase CLI must be documented as installed from the public npm registry"
+  "Firebase CLI must be documented as installed on demand outside the Android APK"
 );
 console.log("Linux toolchain manifest: OK");

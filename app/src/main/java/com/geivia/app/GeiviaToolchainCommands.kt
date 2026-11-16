@@ -33,7 +33,6 @@ internal object GeiviaToolchainCommands {
         "set -eu; command -v git; command -v java; command -v node; command -v npm; command -v python3; command -v firebase; git --version; java -version; node --version; npm --version; python3 --version; firebase --version; printf 'GEIVIA_TOOLCHAIN_OK\\n'"
     )
 
-    /** Refreshes signed Debian indexes and reports installed/candidate versions plus npm Firebase CLI. */
     fun checkUpdates(): List<String> = listOf(
         "login", "debian", "--", "/bin/sh", "-lc",
         """
@@ -42,13 +41,13 @@ internal object GeiviaToolchainCommands {
         apt-get update
         echo 'GEIVIA_UPDATE_REPORT_BEGIN'
         for p in git default-jdk-headless nodejs npm python3 cmake build-essential; do
-          echo "PACKAGE:$p"
-          dpkg-query -W -f='INSTALLED:${Version}\n' "$p" 2>/dev/null || echo 'INSTALLED:not-installed'
-          apt-cache policy "$p" | sed -n 's/^  Candidate: /CANDIDATE:/p'
+          echo "PACKAGE:\${'$'}p"
+          dpkg-query -W -f='INSTALLED:\${'$'}{Version}\n' "\${'$'}p" 2>/dev/null || echo 'INSTALLED:not-installed'
+          apt-cache policy "\${'$'}p" | sed -n 's/^  Candidate: /CANDIDATE:/p'
         done
         echo "PACKAGE:firebase-tools"
         npm list --global firebase-tools --depth=0 2>/dev/null | tail -n 2 || true
-        echo "CANDIDATE:$(npm view firebase-tools version)"
+        echo "CANDIDATE:\${'$'}(npm view firebase-tools version)"
         echo 'GEIVIA_UPDATE_REPORT_END'
         """.trimIndent()
     )

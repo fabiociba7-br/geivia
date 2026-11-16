@@ -17,12 +17,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.UUID
 
 @Composable
 internal fun FirebaseAdminScreen(projectId: String, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val controller = remember { LinuxRuntimeController(context) }
+    val workflowStore = remember { WorkflowProgressStore(context.getSharedPreferences("geivia_onboarding", android.content.Context.MODE_PRIVATE)) }
     var log by remember { mutableStateOf("Selecione uma operação. O GEIVIA consultará o projeto usando a sessão Google autenticada no Debian.") }
     var busy by remember { mutableStateOf(false) }
     var pendingFile by remember { mutableStateOf<File?>(null) }
@@ -40,8 +42,21 @@ internal fun FirebaseAdminScreen(projectId: String, onBack: () -> Unit) {
 
     fun runOperation(label: String, shell: String, timeout: Long = 180_000L, export: File? = null) {
         if (busy) return
+        val operationId = UUID.randomUUID().toString()
+        val stepId = "firebase_admin_" + label.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_').take(70)
+        val historyError = workflowStore.healthError()
+        if (historyError != null) {
+            log = "Operação bloqueada: $historyError"
+            return
+        }
+        runCatching {
+            workflowStore.appendAuditEvent(projectId, stepId, "STARTED", operationId, label, "Comando preparado: " + sanitizeTerminalLog(shell).take(8000))
+        }.onFailure {
+            log = "Operação bloqueada: não foi possível registrar o histórico. ${it.message}"
+            return
+        }
         busy = true
-        log = "GEIVIA • $label\n"
+        log = "GEIVIA • $label\nProject ID: $projectId\nOperação: $operationId\n"
         scope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
@@ -51,11 +66,23 @@ internal fun FirebaseAdminScreen(projectId: String, onBack: () -> Unit) {
                 }
             }.onSuccess { code ->
                 log += "\n\nCódigo de saída: $code"
+                runCatching {
+                    workflowStore.appendAuditEvent(
+                        projectId, stepId, if (code == 0) "SUCCEEDED" else "FAILED", operationId,
+                        "$label • código de saída $code",
+                        "Project ID: $projectId; exitCode=$code; " + if (code == 0) "resultado do comando concluído" else "verifique o log antes de tentar novamente"
+                    )
+                }.onFailure { log += "\nFalha ao registrar resultado no histórico: ${it.message}" }
                 if (code == 0 && export?.isFile == true) {
                     pendingFile = export
                     saveFile.launch(export.name)
                 } else if (code == 0 && export != null) log += "\nO comando terminou, mas o arquivo JSON não foi criado."
-            }.onFailure { log += "\nFalha: ${it.message}" }
+            }.onFailure {
+                log += "\nFalha: ${it.message}"
+                runCatching {
+                    workflowStore.appendAuditEvent(projectId, stepId, "FAILED", operationId, "$label • ${it.message}", "Execução interrompida; verificar estado remoto antes de repetir.")
+                }.onFailure { log += "\nFalha ao registrar histórico: ${it.message}" }
+            }
             busy = false
         }
     }

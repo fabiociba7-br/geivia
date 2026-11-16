@@ -93,6 +93,9 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
     }
     var costMode by rememberSaveable { mutableStateOf(prefs.getString("cost_mode", "") ?: "") }
     var preflightGoogleAccount by rememberSaveable { mutableStateOf(prefs.getString("preflight_google_account", "") ?: "") }
+    var preflightGoogleEmail by rememberSaveable { mutableStateOf(prefs.getString("preflight_google_email", "") ?: "") }
+    var preflightCloudProjectId by rememberSaveable { mutableStateOf(prefs.getString("preflight_cloud_project_id", "") ?: "") }
+    var preflightFirebaseProjectId by rememberSaveable { mutableStateOf(prefs.getString("preflight_firebase_project_id", "") ?: "") }
     var preflightCloudProject by rememberSaveable { mutableStateOf(prefs.getString("preflight_cloud_project", "") ?: "") }
     var preflightFirebaseProject by rememberSaveable { mutableStateOf(prefs.getString("preflight_firebase_project", "") ?: "") }
     var preflightGithubRepo by rememberSaveable { mutableStateOf(prefs.getString("preflight_github_repo", "") ?: "") }
@@ -182,12 +185,18 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                 )
                 "preflight" -> InitialEnvironmentScreen(
                     googleAccount = preflightGoogleAccount,
+                    googleEmail = preflightGoogleEmail,
                     cloudProject = preflightCloudProject,
+                    cloudProjectId = preflightCloudProjectId,
+                    firebaseProjectId = preflightFirebaseProjectId,
                     firebaseProject = preflightFirebaseProject,
                     githubRepo = preflightGithubRepo,
                     projectId = preflightProjectId,
                     onGoogleAccountChange = { preflightGoogleAccount = it },
+                    onGoogleEmailChange = { preflightGoogleEmail = it },
                     onCloudProjectChange = { preflightCloudProject = it },
+                    onCloudProjectIdChange = { preflightCloudProjectId = it },
+                    onFirebaseProjectIdChange = { preflightFirebaseProjectId = it },
                     onFirebaseProjectChange = { preflightFirebaseProject = it },
                     onGithubRepoChange = { preflightGithubRepo = it },
                     onProjectIdChange = { preflightProjectId = it },
@@ -195,6 +204,9 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onContinue = {
                         prefs.edit()
                             .putString("preflight_google_account", preflightGoogleAccount)
+                            .putString("preflight_google_email", preflightGoogleEmail.trim())
+                            .putString("preflight_cloud_project_id", preflightCloudProjectId.trim())
+                            .putString("preflight_firebase_project_id", preflightFirebaseProjectId.trim())
                             .putString("preflight_cloud_project", preflightCloudProject)
                             .putString("preflight_firebase_project", preflightFirebaseProject)
                             .putString("preflight_github_repo", preflightGithubRepo)
@@ -203,7 +215,9 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                             .putLong("preflight_completed_at", System.currentTimeMillis())
                             .apply()
                         val hasExistingCloud = preflightCloudProject == "yes" || preflightFirebaseProject == "yes"
-                        page = if (hasExistingCloud) "google_access" else if (prefs.contains("workflow_checkpoint")) savedCheckpoint else "workspace_setup"
+                        val shouldLoginNow = hasExistingCloud && preflightGoogleAccount == "yes"
+                        prefs.edit().putBoolean("preflight_auto_cloud_login", shouldLoginNow).apply()
+                        page = if (shouldLoginNow) "google_access" else if (prefs.contains("workflow_checkpoint")) savedCheckpoint else "workspace_setup"
                     }
                 )
                 "workspace_setup" -> WorkspaceSetupScreen(
@@ -256,6 +270,10 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onConnectedChanged = { githubConnected = it }
                 )
                 "google_access" -> GoogleCloudAccessScreen(
+                    accountEmail = prefs.getString("preflight_google_email", "").orEmpty(),
+                    projectId = prefs.getString("preflight_cloud_project_id", "").orEmpty().ifBlank { prefs.getString("preflight_firebase_project_id", "").orEmpty() }.ifBlank { prefs.getString("preflight_project_id", "").orEmpty() },
+                    autoStartLogin = prefs.getBoolean("preflight_auto_cloud_login", false),
+                    onAutoStartConsumed = { prefs.edit().putBoolean("preflight_auto_cloud_login", false).apply() },
                     onBack = { page = "dashboard" }
                 )
                 "toolchain_updates" -> GeiviaToolchainUpdatesScreen(onBack = { page = "dashboard" })
@@ -304,12 +322,18 @@ private fun WelcomeScreen(hasCheckpoint: Boolean, onStart: () -> Unit) {
 @Composable
 private fun InitialEnvironmentScreen(
     googleAccount: String,
+    googleEmail: String,
     cloudProject: String,
+    cloudProjectId: String,
+    firebaseProjectId: String,
     firebaseProject: String,
     githubRepo: String,
     projectId: String,
     onGoogleAccountChange: (String) -> Unit,
+    onGoogleEmailChange: (String) -> Unit,
     onCloudProjectChange: (String) -> Unit,
+    onCloudProjectIdChange: (String) -> Unit,
+    onFirebaseProjectIdChange: (String) -> Unit,
     onFirebaseProjectChange: (String) -> Unit,
     onGithubRepoChange: (String) -> Unit,
     onProjectIdChange: (String) -> Unit,
@@ -317,7 +341,10 @@ private fun InitialEnvironmentScreen(
     onContinue: () -> Unit
 ) {
     val complete = googleAccount.isNotBlank() && cloudProject.isNotBlank() &&
-        firebaseProject.isNotBlank() && githubRepo.isNotBlank()
+        firebaseProject.isNotBlank() && githubRepo.isNotBlank() &&
+        (googleAccount != "yes" || googleEmail.trim().matches(Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"))) &&
+        (cloudProject != "yes" || cloudProjectId.trim().matches(Regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$"))) &&
+        (firebaseProject != "yes" || firebaseProjectId.trim().matches(Regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$")))
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp),
         verticalArrangement = Arrangement.spacedBy(13.dp)
@@ -331,10 +358,23 @@ private fun InitialEnvironmentScreen(
         )
         InitialStatusQuestion("Você já tem uma conta Google?", googleAccount, onGoogleAccountChange,
             "Ela é usada para acessar o Google Cloud e o Firebase.")
+        if (googleAccount == "yes") OutlinedTextField(
+            value = googleEmail, onValueChange = onGoogleEmailChange, modifier = Modifier.fillMaxWidth(),
+            label = { Text("E-mail da conta Google") }, placeholder = { Text("voce@gmail.com") }, singleLine = true,
+            supportingText = { Text("O GEIVIA usará este e-mail para iniciar o login oficial no terminal. A senha nunca será solicitada.") }
+        )
         InitialStatusQuestion("Você já tem um projeto no Google Cloud?", cloudProject, onCloudProjectChange,
             "Se já tiver, vamos tentar localizar e reutilizar esse projeto.")
+        if (cloudProject == "yes") OutlinedTextField(
+            value = cloudProjectId, onValueChange = onCloudProjectIdChange, modifier = Modifier.fillMaxWidth(),
+            label = { Text("Project ID do Google Cloud") }, placeholder = { Text("meu-projeto-123") }, singleLine = true
+        )
         InitialStatusQuestion("Você já tem um projeto no Firebase?", firebaseProject, onFirebaseProjectChange,
             "Um projeto Firebase também é um projeto Google Cloud associado ao Firebase.")
+        if (firebaseProject == "yes") OutlinedTextField(
+            value = firebaseProjectId, onValueChange = onFirebaseProjectIdChange, modifier = Modifier.fillMaxWidth(),
+            label = { Text("Project ID do Firebase") }, placeholder = { Text("meu-projeto-123") }, singleLine = true
+        )
         InitialStatusQuestion("Você já tem um repositório GitHub para esse projeto?", githubRepo, onGithubRepoChange,
             "Se já existir, o GEIVIA poderá trabalhar com ele após a autorização.")
         OutlinedTextField(

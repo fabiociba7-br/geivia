@@ -236,7 +236,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     answers = answers.toMap(),
                     costMode = costMode,
                     onBack = { page = "dashboard" },
-                    onContinue = { page = "dashboard" }
+                    onContinue = { page = if (answers.isEmpty()) "questions" else "dashboard" }
                 )
                 else -> DashboardScreen(answers.toMap(), costMode, onGoogleAccess = { page = "google_access" }, onGitHub = { page = "github" }) {
                     answers.clear()

@@ -47,6 +47,8 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
     var output by rememberSaveable { mutableStateOf("Importe um ZIP do seu projeto para começar. O GEIVIA extrairá os arquivos no Debian privado e executará os comandos no próprio aparelho.") }
     var busy by rememberSaveable { mutableStateOf(false) }
     var showDeployConfirm by remember { mutableStateOf(false) }
+    val prefs = remember { context.getSharedPreferences("geivia_onboarding", android.content.Context.MODE_PRIVATE) }
+    LaunchedEffect(projectId) { prefs.edit().putString("selected_project_id", projectId).apply() }
     val zipPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
             busy = true
@@ -58,6 +60,7 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                 }
             }.onSuccess {
                 projectDir = it.absolutePath
+                prefs.edit().putString("imported_project_dir", it.absolutePath).apply()
                 output = "Projeto importado em: " + it.absolutePath + "\nArquivos: " + it.walkTopDown().count { f -> f.isFile } +
                     "\nfirebase.json: " + if (File(it, "firebase.json").isFile) "encontrado" else "não encontrado"
             }.onFailure { output = "Falha na importação: " + (it.message ?: "erro desconhecido") }

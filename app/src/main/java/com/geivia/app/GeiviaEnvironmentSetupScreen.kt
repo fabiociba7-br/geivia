@@ -125,7 +125,7 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
                         stageStates = stageStates + (failed.id to "Falhou")
                     }
                 }
-                if (!status.contains("falhou")) {
+                if (!cancelRequested && !status.contains("falhou")) {
                     status = "Não foi possível concluir: ${error.message ?: "erro não identificado"}. O progresso confirmado foi preservado."
                 }
                 log("\n[GEIVIA] ERRO: ${error.message ?: "erro não identificado"}\n")

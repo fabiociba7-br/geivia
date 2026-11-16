@@ -115,8 +115,8 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                 val safeId = projectId.replace("'", "")
                 val command = """
                     set -euo pipefail
-                    PROJECT_DIR='§safeDir'
-                    PROJECT_ID='§safeId'
+                    PROJECT_DIR='${safeDir}'
+                    PROJECT_ID='${safeId}'
                     test -d "§PROJECT_DIR" || { echo "Pasta do projeto não encontrada."; exit 20; }
                     test -f "§PROJECT_DIR/firebase.json" || { echo "firebase.json não encontrado no ZIP."; exit 21; }
                     command -v firebase >/dev/null || { echo "Firebase CLI não está instalado no Debian do GEIVIA."; exit 22; }

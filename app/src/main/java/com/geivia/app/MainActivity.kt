@@ -73,7 +73,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
         }
     }
     var workspaceName by rememberSaveable { mutableStateOf(prefs.getString("workspace_name", "GEIVIA-" + workspaceId.removePrefix("GEIVIA-")) ?: ("GEIVIA-" + workspaceId.removePrefix("GEIVIA-"))) }
-    val validWorkflowPages = setOf("workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "google_access", "github", "terminal", "toolchain_updates", "diagnostics")
+    val validWorkflowPages = setOf("workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "accounts", "google_access", "github", "terminal", "toolchain_updates", "diagnostics")
     val savedCheckpoint = remember {
         prefs.getString("workflow_checkpoint", null)?.takeIf { it in validWorkflowPages }
             ?.let { when (it) { "cloud_setup" -> "questions"; "terminal" -> "dashboard"; else -> it } }
@@ -236,6 +236,13 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onContinue = { page = "summary" })
                 "summary" -> SummaryScreen(answers.toMap(), costMode,
                     onBack = { page = "cost" }, onEdit = { page = "questions"; index = 0 }, onFinish = { page = "dashboard" })
+                "accounts" -> AccountsConnectionsScreen(
+                    googleReady = prefs.getBoolean("google_cloud_cli_ready", false),
+                    githubConnected = githubConnected,
+                    onGoogle = { page = "google_access" },
+                    onGitHub = { page = "github" },
+                    onBack = { page = "dashboard" }
+                )
                 "github" -> GitHubScreen(
                     connected = githubConnected,
                     callbackMessage = githubCallbackMessage,
@@ -247,7 +254,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                 )
                 "toolchain_updates" -> GeiviaToolchainUpdatesScreen(onBack = { page = "dashboard" })
                 "diagnostics" -> GeiviaDiagnosticsScreen(onBack = { page = "dashboard" })
-                else -> DashboardScreen(answers.toMap(), costMode, onGoogleAccess = { page = "google_access" }, onGitHub = { page = "github" }, onToolchainUpdates = { page = "toolchain_updates" }, onDiagnostics = { page = "diagnostics" }) {
+                else -> DashboardScreen(answers.toMap(), costMode, onAccounts = { page = "accounts" }, onToolchainUpdates = { page = "toolchain_updates" }, onDiagnostics = { page = "diagnostics" }) {
                     answers.clear()
                     val editor = prefs.edit()
                     answerKeys.forEach { editor.remove(it) }
@@ -560,7 +567,7 @@ private fun SummaryScreen(answers: Map<String, String>, costMode: String, onBack
 }
 
 @Composable
-private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGoogleAccess: () -> Unit, onGitHub: () -> Unit, onToolchainUpdates: () -> Unit, onDiagnostics: () -> Unit, onRestart: () -> Unit) {
+private fun DashboardScreen(answers: Map<String, String>, costMode: String, onAccounts: () -> Unit, onToolchainUpdates: () -> Unit, onDiagnostics: () -> Unit, onRestart: () -> Unit) {
     val context = LocalContext.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp)) {
         BrandMark()
@@ -796,9 +803,7 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onGo
             )
         }
         Spacer(Modifier.height(16.dp))
-        OutlinedButton(onClick = onGoogleAccess, modifier = Modifier.fillMaxWidth()) { Text("Configurar Google Cloud (opcional)") }
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = onGitHub, modifier = Modifier.fillMaxWidth()) { Text("Conectar e acompanhar GitHub") }
+        Button(onClick = onAccounts, modifier = Modifier.fillMaxWidth()) { Text("Conectar minhas contas") }
         Spacer(Modifier.height(8.dp))
         OutlinedButton(onClick = onToolchainUpdates, modifier = Modifier.fillMaxWidth()) { Text("Gerenciar atualizações das ferramentas") }
         Spacer(Modifier.height(8.dp))
@@ -1992,6 +1997,7 @@ private fun GitHubScreen(
     var clientId by rememberSaveable { mutableStateOf(prefs.getString("github_client_id", "").orEmpty()) }
     var callbackUrl by rememberSaveable { mutableStateOf(prefs.getString("github_callback_url", "").orEmpty()) }
     var exchangeUrl by rememberSaveable { mutableStateOf(prefs.getString("github_exchange_url", "").orEmpty()) }
+    var showAdvancedConfiguration by rememberSaveable { mutableStateOf(clientId.isBlank() || callbackUrl.isBlank() || exchangeUrl.isBlank()) }
     var authenticatedLogin by remember { mutableStateOf("") }
     var repositories by remember { mutableStateOf<List<GitHubRepository>>(emptyList()) }
     var selectedRepository by remember { mutableStateOf<GitHubRepository?>(null) }
@@ -2156,6 +2162,10 @@ private fun GitHubScreen(
         }
         if (!localConnected) {
             Spacer(Modifier.height(18.dp))
+            TextButton(onClick = { showAdvancedConfiguration = !showAdvancedConfiguration }, modifier = Modifier.fillMaxWidth()) {
+                Text(if (showAdvancedConfiguration) "Ocultar configuração técnica" else "Configurar conexão (uma única vez)")
+            }
+            if (showAdvancedConfiguration) {
             Text("CONFIGURAÇÃO DA GITHUB APP", color = DeepBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(value = clientId, onValueChange = { clientId = it.trim() }, label = { Text("Client ID (não é segredo)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
@@ -2179,6 +2189,7 @@ private fun GitHubScreen(
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Salvar configuração") }
             Spacer(Modifier.height(8.dp))
+            }
             Button(
                 onClick = {
                     runCatching {
@@ -2422,6 +2433,7 @@ private fun TerminalPanel() {
                         )
                     }
                 }
+                CopyTerminalLogButton(output.joinToString("\n"), modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
@@ -2576,6 +2588,7 @@ private fun TerminalPanel() {
                     ) {
                         Text(linuxTranscript.takeLast(16000), color = Color(0xFFE2E8F0), fontSize = 10.sp, lineHeight = 14.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
                     }
+                    CopyTerminalLogButton(linuxTranscript.takeLast(16000), modifier = Modifier.fillMaxWidth())
                     if (linuxSession != null) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             OutlinedTextField(

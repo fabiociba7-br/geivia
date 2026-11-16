@@ -95,9 +95,19 @@ class GeiviaToolchainCommandsTest {
         val updateCommand = GeiviaToolchainCommands.updateFirebaseCli().last()
         val fullUpdateCommand = GeiviaToolchainCommands.updateAll().last()
 
-        assertTrue(updateCommand.contains("npm_run install --prefix"))
-        assertTrue(fullUpdateCommand.contains("npm_run install --prefix"))
+        assertTrue(updateCommand.contains("firebase-tools@latest"))
+        assertTrue(fullUpdateCommand.contains("firebase-tools@latest"))
         assertTrue(installCommand.contains("npm_run install --prefix"))
     }
 
+    @Test
+    fun updateSearchReportsInstalledAndCandidateVersionsAndUsesVersionComparison() {
+        val command = GeiviaToolchainCommands.checkUpdates().last()
+
+        assertTrue(command.contains("GEIVIA_UPDATE|"))
+        assertTrue(command.contains("dpkg --compare-versions"))
+        assertTrue(command.contains("apt-cache policy"))
+        assertTrue(command.contains("npm view firebase-tools version"))
+        assertTrue(command.contains("sort -V"))
+    }
 }

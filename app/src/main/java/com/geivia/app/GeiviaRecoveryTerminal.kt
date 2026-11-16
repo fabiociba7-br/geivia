@@ -137,8 +137,8 @@ internal fun GeiviaRecoveryTerminal(
 
     fun copyOutput() {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText("GEIVIA terminal", output))
-        Toast.makeText(context, "Saída copiada.", Toast.LENGTH_SHORT).show()
+        clipboard.setPrimaryClip(ClipData.newPlainText("GEIVIA terminal", sanitizeTerminalLog(output)))
+        Toast.makeText(context, "Log copiado com credenciais e códigos ocultados.", Toast.LENGTH_SHORT).show()
     }
 
     fun pasteInput() {
@@ -169,6 +169,7 @@ internal fun GeiviaRecoveryTerminal(
                 onClick = { fullScreen = true },
                 enabled = session != null
             ) { Text("Tela cheia") }
+            OutlinedButton(onClick = { copyOutput() }, enabled = output.isNotBlank()) { Text("Copiar log") }
         }
         if (session != null) {
             Text("Sessão Linux ativa", color = Color(0xFF18794E), fontSize = 11.sp)

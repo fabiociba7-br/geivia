@@ -93,7 +93,7 @@ internal fun FirebaseAdminScreen(projectId: String, onBack: () -> Unit) {
         Text("Projeto: $projectId", style = MaterialTheme.typography.labelMedium)
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Voltar") }
         if (projectId.isNotBlank()) {
-        listOf("Criar banco Firestore", "Ativar Firebase Authentication", "Ativar APIs necessárias").forEach { actionTitle ->
+        listOf("Criar banco Firestore", "Ativar Firebase Authentication", "Ativar APIs básicas Firebase").forEach { actionTitle ->
             val stepId = "firebase_admin_" + actionTitle.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_').take(70)
             val record = remember(projectId, stepId, workflowRefresh) { workflowStore.get(projectId, stepId) }
             if (record.state == WorkflowStepState.WAITING_CONFIRMATION) {
@@ -117,6 +117,58 @@ internal fun FirebaseAdminScreen(projectId: String, onBack: () -> Unit) {
             }
         }
         }
+        Text("DIAGNÓSTICO DE OPERAÇÕES PENDENTES", style = MaterialTheme.typography.labelLarge)
+        Text("Consulta somente leitura ao mesmo Project ID. Só marca uma etapa como concluída quando a resposta do Google confirma o recurso ou todas as APIs esperadas.", fontSize = 11.sp)
+        OutlinedButton(enabled = !busy && projectId.isNotBlank(), onClick = {
+            if (busy || projectId.isBlank()) return@OutlinedButton
+            busy = true
+            log = "Executando diagnóstico somente leitura para $projectId…"
+            scope.launch {
+                val result = withContext(Dispatchers.IO) {
+                    runCatching {
+                        controller.prepareEngine()
+                        val databaseOutput = StringBuilder()
+                        val databaseCode = controller.execute(
+                            listOf("login", "debian", "--", "/bin/bash", "-lc", "gcloud firestore databases describe --database='(default)' --project='$projectId' --format=json"),
+                            90000L
+                        ) { databaseOutput.append(it) }
+                        val apisOutput = StringBuilder()
+                        val apisCode = controller.execute(
+                            listOf("login", "debian", "--", "/bin/bash", "-lc", "gcloud services list --enabled --project='$projectId' --format='value(config.name)'"),
+                            90000L
+                        ) { apisOutput.append(it) }
+                        val databaseJson = runCatching { org.json.JSONObject(databaseOutput.toString()) }.getOrNull()
+                        val databaseName = databaseJson?.optString("name").orEmpty()
+                        val databaseExists = databaseCode == 0 && databaseName == "projects/$projectId/databases/(default)"
+                        val enabled = apisOutput.toString().lineSequence().map { it.trim() }.filter { it.isNotBlank() }.toSet()
+                        val requiredApis = setOf("firebase.googleapis.com", "firebaserules.googleapis.com", "firestore.googleapis.com", "firebasehosting.googleapis.com")
+                        val apiSetComplete = apisCode == 0 && requiredApis.all { it in enabled }
+                        val authEnabled = apisCode == 0 && "identitytoolkit.googleapis.com" in enabled
+                        Triple(databaseExists, apiSetComplete, authEnabled) to "Project ID: $projectId\nBanco default: ${if (databaseExists) "CONFIRMADO" else "NÃO CONFIRMADO"}\nAPIs básicas: ${if (apiSetComplete) "TODAS ATIVADAS" else "INCOMPLETAS OU NÃO VERIFICADAS"}\nIdentity Toolkit: ${if (authEnabled) "ATIVADA" else "NÃO ATIVADA OU NÃO VERIFICADA"}\nAPIs consultadas: ${if (apisCode == 0) enabled.sorted().joinToString(", ") else "consulta falhou (código $apisCode)"}\nData: ${java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.US).format(java.util.Date())}"
+                    }
+                }
+                result.onSuccess { (states, evidence) ->
+                    val (databaseExists, apiSetComplete, authEnabled) = states
+                    runCatching {
+                        val checks = listOf(
+                            Triple("firebase_admin_criar_banco_firestore", databaseExists, "Banco Firestore default"),
+                            Triple("firebase_admin_ativar_firebase_authentication", authEnabled, "Firebase Authentication / Identity Toolkit"),
+                            Triple("firebase_admin_ativar_apis_b_sicas_firebase", apiSetComplete, "APIs básicas Firebase")
+                        )
+                        checks.forEach { (stepId, confirmed, label) ->
+                            val record = workflowStore.get(projectId, stepId)
+                            if (confirmed && (record.state == WorkflowStepState.IN_PROGRESS || record.state == WorkflowStepState.UNKNOWN)) {
+                                workflowStore.reconcileCompleted(projectId, stepId, "Diagnóstico Google somente leitura; Project ID validado: $projectId; $label confirmado. $evidence")
+                                workflowStore.appendAuditEvent(projectId, stepId, "COMPLETED", record.operationId, "$label confirmado por diagnóstico", evidence)
+                            }
+                        }
+                        workflowRefresh++
+                        log = evidence + "\n\nEtapas pendentes sem evidência suficiente permaneceram pendentes. Nenhuma alteração foi feita na nuvem."
+                    }.onFailure { log = "Diagnóstico concluído, mas não foi possível atualizar o histórico: ${it.message}\n$evidence" }
+                }.onFailure { log = "Falha no diagnóstico: ${it.message}. Nenhuma alteração foi feita na nuvem." }
+                busy = false
+            }
+        }, modifier = Modifier.fillMaxWidth()) { Text("Verificar operações pendentes") }
         Text("CONSULTAR E BAIXAR", style = MaterialTheme.typography.labelLarge)
         Button(enabled = !busy, onClick = {
             val f = File(controller.homeDir, "geivia-exports/firestore-databases.json")

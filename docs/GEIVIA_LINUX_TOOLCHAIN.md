@@ -70,3 +70,12 @@ A instalação da CLI não significa que o deploy esteja autenticado nem que o p
 Foi adicionada a classe `LinuxRuntimePreflight` e sua suíte unitária. Ela valida três pré-requisitos antes de uma futura instalação: Android API 28 ou superior (limitação do motor PRoot candidato), ABI `arm64-v8a` e pelo menos 2 GiB livres como limite inicial conservador. A verificação é pura e testável, retorna todos os motivos de incompatibilidade de uma vez e não inicia downloads nem processos.
 
 O limite de 2 GiB é provisório para a primeira avaliação e deverá ser refinado com medições da rootfs e dos perfis de pacotes. O app atual mantém seu terminal local restrito em aparelhos que não passem nessa verificação; não se altera o `minSdk 26` global apenas por causa do runtime opcional.
+## Estado da integração PRoot (16/11/2026)
+
+O projeto agora contém o módulo Android `:proot-engine`, fixado no submódulo `oonid/pr` no commit `7029b1fe8fa84d64339cabe38f9c5be2ea2ae7ac`. O `GeiviaProotHost` prepara diretórios privados em `files/linux/` e cria os links locais para `libpr-cli.so` e `libproot.so`. O controlador usa o PTY nativo do motor para executar `pr-cli list`, `pr-cli install debian` e abrir a sessão `pr-cli login debian`.
+
+O painel oferece verificação, instalação, abertura e encerramento da sessão. A operação de instalação/verificação agora pode ser cancelada pelo usuário; ao sair do painel, a sessão ativa é encerrada para evitar deixar processos órfãos. O cancelamento fecha o descritor PTY e solicita o encerramento do processo filho; a operação pode levar alguns segundos para devolver o código final.
+
+**Validação ainda pendente em aparelho físico:** o CI confirma compilação e testes JVM, mas não executa o Debian ARM64 no Android. Antes de considerar o terminal Linux pronto, validar em pelo menos um aparelho ARM64 Android 9+ (idealmente Android 16/HyperOS): inicialização do PRoot, download e extração da rootfs, `apt update`, instalação de pacotes, rede/DNS, entrada/saída interativa, cancelamento durante download, fechamento da tela e retomada após reabrir o app.
+
+O ambiente usa armazenamento privado do aplicativo. Desinstalar o GEIVIA pode apagar a distribuição e os projetos que estiverem somente nesse diretório; o usuário deve exportar/backupar os projetos antes de desinstalar ou limpar os dados.

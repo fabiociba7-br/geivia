@@ -186,7 +186,7 @@ fun GeiviaDiagnosticsScreen(onBack: () -> Unit) {
             ) { Text("Salvar relatório para compartilhar com o Termux") }
         }
 
-        Button(onClick = { runDiagnostics() }, enabled = !running, modifier = Modifier.fillMaxWidth()) {
+        GeiviaRecoveryTerminal(controller)\n\n        Button(onClick = { runDiagnostics() }, enabled = !running, modifier = Modifier.fillMaxWidth()) {
             Text(if (running) "Verificando…" else "Executar diagnóstico novamente")
         }
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Voltar ao painel") }

@@ -138,7 +138,7 @@ internal class TerminalWorkspaceImporter(private val context: Context, filesDir:
         const val MAX_DEPTH = 8
 
         fun sanitizeDisplayName(displayName: String): String {
-            val leaf = displayName.replace('\\', '/').substringAfterLast('/')
+            val leaf = displayName.replace('\\', '/').substringAfterLast('/').trim()
             val cleaned = leaf
                 .replace(Regex("[^\\p{L}\\p{N}._()-]"), "_")
                 .trim()

@@ -73,7 +73,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
         }
     }
     var workspaceName by rememberSaveable { mutableStateOf(prefs.getString("workspace_name", "GEIVIA-" + workspaceId.removePrefix("GEIVIA-")) ?: ("GEIVIA-" + workspaceId.removePrefix("GEIVIA-"))) }
-    val validWorkflowPages = setOf("device_access", "workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "accounts", "google_access", "github", "terminal", "toolchain_updates", "diagnostics")
+    val validWorkflowPages = setOf("device_access", "workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "accounts", "google_access", "github", "terminal", "toolchain_updates", "diagnostics", "project_operations")
     val savedCheckpoint = remember {
         prefs.getString("workflow_checkpoint", null)?.takeIf { it in validWorkflowPages }
             ?.let { when (it) { "cloud_setup" -> "questions"; "terminal" -> "dashboard"; else -> it } }
@@ -260,7 +260,8 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                 )
                 "toolchain_updates" -> GeiviaToolchainUpdatesScreen(onBack = { page = "dashboard" })
                 "diagnostics" -> GeiviaDiagnosticsScreen(onBack = { page = "dashboard" })
-                else -> DashboardScreen(answers.toMap(), costMode, onAccounts = { page = "accounts" }, onToolchainUpdates = { page = "toolchain_updates" }, onDiagnostics = { page = "diagnostics" }) {
+                "project_operations" -> ProjectOperationsScreen(onBack = { page = "dashboard" })
+                else -> DashboardScreen(answers.toMap(), costMode, onOperations = { page = "project_operations" }, onAccounts = { page = "accounts" }, onToolchainUpdates = { page = "toolchain_updates" }, onDiagnostics = { page = "diagnostics" }) {
                     answers.clear()
                     val editor = prefs.edit()
                     answerKeys.forEach { editor.remove(it) }
@@ -573,7 +574,7 @@ private fun SummaryScreen(answers: Map<String, String>, costMode: String, onBack
 }
 
 @Composable
-private fun DashboardScreen(answers: Map<String, String>, costMode: String, onAccounts: () -> Unit, onToolchainUpdates: () -> Unit, onDiagnostics: () -> Unit, onRestart: () -> Unit) {
+private fun DashboardScreen(answers: Map<String, String>, costMode: String, onOperations: () -> Unit, onAccounts: () -> Unit, onToolchainUpdates: () -> Unit, onDiagnostics: () -> Unit, onRestart: () -> Unit) {
     val context = LocalContext.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp)) {
         BrandMark()
@@ -809,6 +810,8 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onAc
             )
         }
         Spacer(Modifier.height(16.dp))
+        Button(onClick = onOperations, modifier = Modifier.fillMaxWidth()) { Text("Importar projeto ZIP e fazer deploy") }
+        Spacer(Modifier.height(8.dp))
         Button(onClick = onAccounts, modifier = Modifier.fillMaxWidth()) { Text("Conectar minhas contas") }
         Spacer(Modifier.height(8.dp))
         OutlinedButton(onClick = onToolchainUpdates, modifier = Modifier.fillMaxWidth()) { Text("Gerenciar atualizações das ferramentas") }

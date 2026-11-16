@@ -75,6 +75,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
     val validWorkflowPages = setOf("workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "google_access", "github")
     val savedCheckpoint = remember {
         prefs.getString("workflow_checkpoint", null)?.takeIf { it in validWorkflowPages }
+            ?.let { if (it == "cloud_setup") "questions" else it }
             ?: if (prefs.getBoolean("cloud_setup_completed", false)) "questions" else "workspace_setup"
     }
     var page by rememberSaveable { mutableStateOf(if (githubCallbackUri != null) "github" else "welcome") }
@@ -157,7 +158,8 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onContinue = { name ->
                         workspaceName = name.trim()
                         prefs.edit().putString("workspace_name", workspaceName).apply()
-                        page = "cloud_setup"
+                        // Cloud access is optional; let users plan offline first.
+                        page = "questions"
                     }
                 )
                 "cloud_setup" -> CloudShellSetupScreen(
@@ -230,7 +232,7 @@ private fun WelcomeScreen(hasCheckpoint: Boolean, onStart: () -> Unit) {
         Spacer(Modifier.height(34.dp))
         Text("Seus projetos começam aqui.", color = Ink, fontSize = 24.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         Spacer(Modifier.height(10.dp))
-        Text("Conte o que deseja criar. A GEIVIA vai organizar as etapas e explicar quais recursos você precisa, inclusive as opções sem custo.", color = Muted, fontSize = 15.sp, lineHeight = 23.sp, textAlign = TextAlign.Center)
+        Text("Conte o que deseja criar. Planeje seu projeto sem conectar uma conta Google. O acesso ao Cloud é opcional e só será necessário quando você decidir configurar recursos na nuvem.", color = Muted, fontSize = 15.sp, lineHeight = 23.sp, textAlign = TextAlign.Center)
         Spacer(Modifier.height(28.dp))
         Button(onClick = onStart, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Text(if (hasCheckpoint) "Continuar de onde parei" else "Começar", Modifier.padding(vertical = 7.dp), fontSize = 16.sp, fontWeight = FontWeight.Bold) }
         Spacer(Modifier.height(12.dp))

@@ -3,6 +3,10 @@ name: GEIVIA Android Build
 # Builds are intentionally manual to conserve the GitHub Actions allowance.
 # Run only after a coherent development milestone is complete.
 on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:

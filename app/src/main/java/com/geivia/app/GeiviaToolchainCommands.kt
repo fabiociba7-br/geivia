@@ -41,13 +41,183 @@ internal object GeiviaToolchainCommands {
         apt-get update
         echo 'GEIVIA_UPDATE_REPORT_BEGIN'
         for p in git default-jdk-headless nodejs npm python3 cmake build-essential; do
-          echo "PACKAGE:\${'$'}p"
-          dpkg-query -W -f='INSTALLED:\${'$'}{Version}\n' "\${'$'}p" 2>/dev/null || echo 'INSTALLED:not-installed'
-          apt-cache policy "\${'$'}p" | sed -n 's/^  Candidate: /CANDIDATE:/p'
+          echo "PACKAGE:${'p"
+          dpkg-query -W -f='INSTALLED:__KOTLIN_DOLLAR__{Version}\n' "__KOTLIN_DOLLAR__p" 2>/dev/null || echo 'INSTALLED:not-installed'
+          apt-cache policy "__KOTLIN_DOLLAR__p" | sed -n 's/^  Candidate: /CANDIDATE:/p'
         done
         echo "PACKAGE:firebase-tools"
         npm list --global firebase-tools --depth=0 2>/dev/null | tail -n 2 || true
-        echo "CANDIDATE:\${'$'}(npm view firebase-tools version)"
+        echo "CANDIDATE:__KOTLIN_DOLLAR__(npm view firebase-tools version)"
+        echo 'GEIVIA_UPDATE_REPORT_END'
+        """.trimIndent()
+    )
+
+    fun updateDebianPackage(packageName: String): List<String> {
+        require(packageName in setOf("git", "default-jdk-headless", "nodejs", "npm", "python3", "cmake", "build-essential"))
+        return listOf(
+            "login", "debian", "--", "/bin/sh", "-lc",
+            "set -eu; export DEBIAN_FRONTEND=noninteractive; apt-get update; apt-get install -y --only-upgrade $packageName"
+        )
+    }
+
+    fun updateFirebaseCli(): List<String> = listOf(
+        "login", "debian", "--", "/bin/sh", "-lc",
+        "set -eu; npm install --global firebase-tools@latest; firebase --version"
+    )
+
+    fun updateAll(): List<String> = listOf(
+        "login", "debian", "--", "/bin/sh", "-lc",
+        """
+        set -eu
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update
+        apt-get upgrade -y
+        npm install --global firebase-tools@latest
+        echo 'GEIVIA_UPDATE_ALL_OK'
+        """.trimIndent()
+    )
+}
+}p"
+          dpkg-query -W -f='INSTALLED:${'{Version}\n' "__KOTLIN_DOLLAR__p" 2>/dev/null || echo 'INSTALLED:not-installed'
+          apt-cache policy "__KOTLIN_DOLLAR__p" | sed -n 's/^  Candidate: /CANDIDATE:/p'
+        done
+        echo "PACKAGE:firebase-tools"
+        npm list --global firebase-tools --depth=0 2>/dev/null | tail -n 2 || true
+        echo "CANDIDATE:__KOTLIN_DOLLAR__(npm view firebase-tools version)"
+        echo 'GEIVIA_UPDATE_REPORT_END'
+        """.trimIndent()
+    )
+
+    fun updateDebianPackage(packageName: String): List<String> {
+        require(packageName in setOf("git", "default-jdk-headless", "nodejs", "npm", "python3", "cmake", "build-essential"))
+        return listOf(
+            "login", "debian", "--", "/bin/sh", "-lc",
+            "set -eu; export DEBIAN_FRONTEND=noninteractive; apt-get update; apt-get install -y --only-upgrade $packageName"
+        )
+    }
+
+    fun updateFirebaseCli(): List<String> = listOf(
+        "login", "debian", "--", "/bin/sh", "-lc",
+        "set -eu; npm install --global firebase-tools@latest; firebase --version"
+    )
+
+    fun updateAll(): List<String> = listOf(
+        "login", "debian", "--", "/bin/sh", "-lc",
+        """
+        set -eu
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update
+        apt-get upgrade -y
+        npm install --global firebase-tools@latest
+        echo 'GEIVIA_UPDATE_ALL_OK'
+        """.trimIndent()
+    )
+}
+}{Version}\n' "${'p" 2>/dev/null || echo 'INSTALLED:not-installed'
+          apt-cache policy "__KOTLIN_DOLLAR__p" | sed -n 's/^  Candidate: /CANDIDATE:/p'
+        done
+        echo "PACKAGE:firebase-tools"
+        npm list --global firebase-tools --depth=0 2>/dev/null | tail -n 2 || true
+        echo "CANDIDATE:__KOTLIN_DOLLAR__(npm view firebase-tools version)"
+        echo 'GEIVIA_UPDATE_REPORT_END'
+        """.trimIndent()
+    )
+
+    fun updateDebianPackage(packageName: String): List<String> {
+        require(packageName in setOf("git", "default-jdk-headless", "nodejs", "npm", "python3", "cmake", "build-essential"))
+        return listOf(
+            "login", "debian", "--", "/bin/sh", "-lc",
+            "set -eu; export DEBIAN_FRONTEND=noninteractive; apt-get update; apt-get install -y --only-upgrade $packageName"
+        )
+    }
+
+    fun updateFirebaseCli(): List<String> = listOf(
+        "login", "debian", "--", "/bin/sh", "-lc",
+        "set -eu; npm install --global firebase-tools@latest; firebase --version"
+    )
+
+    fun updateAll(): List<String> = listOf(
+        "login", "debian", "--", "/bin/sh", "-lc",
+        """
+        set -eu
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update
+        apt-get upgrade -y
+        npm install --global firebase-tools@latest
+        echo 'GEIVIA_UPDATE_ALL_OK'
+        """.trimIndent()
+    )
+}
+}p" 2>/dev/null || echo 'INSTALLED:not-installed'
+          apt-cache policy "${'p" | sed -n 's/^  Candidate: /CANDIDATE:/p'
+        done
+        echo "PACKAGE:firebase-tools"
+        npm list --global firebase-tools --depth=0 2>/dev/null | tail -n 2 || true
+        echo "CANDIDATE:__KOTLIN_DOLLAR__(npm view firebase-tools version)"
+        echo 'GEIVIA_UPDATE_REPORT_END'
+        """.trimIndent()
+    )
+
+    fun updateDebianPackage(packageName: String): List<String> {
+        require(packageName in setOf("git", "default-jdk-headless", "nodejs", "npm", "python3", "cmake", "build-essential"))
+        return listOf(
+            "login", "debian", "--", "/bin/sh", "-lc",
+            "set -eu; export DEBIAN_FRONTEND=noninteractive; apt-get update; apt-get install -y --only-upgrade $packageName"
+        )
+    }
+
+    fun updateFirebaseCli(): List<String> = listOf(
+        "login", "debian", "--", "/bin/sh", "-lc",
+        "set -eu; npm install --global firebase-tools@latest; firebase --version"
+    )
+
+    fun updateAll(): List<String> = listOf(
+        "login", "debian", "--", "/bin/sh", "-lc",
+        """
+        set -eu
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update
+        apt-get upgrade -y
+        npm install --global firebase-tools@latest
+        echo 'GEIVIA_UPDATE_ALL_OK'
+        """.trimIndent()
+    )
+}
+}p" | sed -n 's/^  Candidate: /CANDIDATE:/p'
+        done
+        echo "PACKAGE:firebase-tools"
+        npm list --global firebase-tools --depth=0 2>/dev/null | tail -n 2 || true
+        echo "CANDIDATE:${'(npm view firebase-tools version)"
+        echo 'GEIVIA_UPDATE_REPORT_END'
+        """.trimIndent()
+    )
+
+    fun updateDebianPackage(packageName: String): List<String> {
+        require(packageName in setOf("git", "default-jdk-headless", "nodejs", "npm", "python3", "cmake", "build-essential"))
+        return listOf(
+            "login", "debian", "--", "/bin/sh", "-lc",
+            "set -eu; export DEBIAN_FRONTEND=noninteractive; apt-get update; apt-get install -y --only-upgrade $packageName"
+        )
+    }
+
+    fun updateFirebaseCli(): List<String> = listOf(
+        "login", "debian", "--", "/bin/sh", "-lc",
+        "set -eu; npm install --global firebase-tools@latest; firebase --version"
+    )
+
+    fun updateAll(): List<String> = listOf(
+        "login", "debian", "--", "/bin/sh", "-lc",
+        """
+        set -eu
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update
+        apt-get upgrade -y
+        npm install --global firebase-tools@latest
+        echo 'GEIVIA_UPDATE_ALL_OK'
+        """.trimIndent()
+    )
+}
+}(npm view firebase-tools version)"
         echo 'GEIVIA_UPDATE_REPORT_END'
         """.trimIndent()
     )

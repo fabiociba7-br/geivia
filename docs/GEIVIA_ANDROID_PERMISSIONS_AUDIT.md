@@ -196,3 +196,19 @@ Orientações para HyperOS:
 - Acesso ao sistema: não existe mecanismo legítimo para forçar silenciosamente permissões especiais, autostart, bateria sem restrições ou root. O usuário precisa confirmar nas Configurações; root e áreas protegidas continuam indisponíveis em app comum.
 
 Os nomes/caminhos dos menus variam por versão, região e modelo. O texto do app usa caminhos indicativos e não depende de intents Xiaomi privadas, que não são API pública estável. Testes unitários cobrem detecção Xiaomi/Redmi/POCO e fabricantes não Xiaomi.
+
+## 14. Onboarding inicial de acessos e integração opcional com Shizuku
+
+A tela inicial de preparação explica os acessos e mantém a decisão com o usuário:
+
+- android.permission.POST_NOTIFICATIONS: solicitada em Android 13/API 33 ou superior, para avisos de tarefas. Negar não bloqueia o aplicativo.
+- android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS: permite abrir a solicitação oficial de exceção de otimização. É opcional; só deve ser aceita se o usuário quiser evitar interrupções em tarefas longas. O fluxo principal continua em primeiro plano e não depende dessa exceção.
+- Arquivos: continuam usando o armazenamento privado e Storage Access Framework. Não declarar permissões de armazenamento amplo.
+- Início automático e configurações restritas: não há API pública universal para concedê-los. O GEIVIA abre Informações do app e orienta a configuração manual; não declara RECEIVE_BOOT_COMPLETED nem tenta ativar autostart.
+- Acesso ao uso do sistema: não é solicitado, pois não existe função atual que precise monitorar o uso de outros apps.
+
+### Shizuku sem root
+
+O GEIVIA inclui a API e o provider oficial Shizuku para detectar o serviço e solicitar autorização explícita do usuário. O modo sem root usa identidade ADB/shell (UID 2000), não UID 0. As permissões disponíveis são limitadas pelo Android e variam por versão. O serviço precisa ser iniciado novamente após reinicialização quando configurado via depuração sem fio.
+
+O comando de diagnóstico para terminal compatível é rish -c 'id'; quando o Shizuku foi iniciado por ADB, o resultado esperado inclui uid=2000(shell). O GEIVIA não promete que Shizuku consiga alterar toda configuração do fabricante e não executa comandos privilegiados automaticamente.

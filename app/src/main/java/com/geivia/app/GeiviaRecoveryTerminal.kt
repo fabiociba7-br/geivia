@@ -37,7 +37,10 @@ import kotlinx.coroutines.withContext
 import id.or.oo.pr.engine.ProotLauncher
 
 @Composable
-internal fun GeiviaRecoveryTerminal(controller: LinuxRuntimeController) {
+internal fun GeiviaRecoveryTerminal(
+    controller: LinuxRuntimeController,
+    onSessionActive: (Boolean) -> Unit = {}
+) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var session by remember { mutableStateOf<ProotLauncher.Session?>(null) }
@@ -62,6 +65,7 @@ internal fun GeiviaRecoveryTerminal(controller: LinuxRuntimeController) {
                     controller.startDebianShell()
                 }
                 session = opened
+                onSessionActive(true)
                 append("\n[GEIVIA] Sessão Debian iniciada. Digite um comando e toque em Executar.\n")
                 scope.launch {
                     try {
@@ -73,9 +77,11 @@ internal fun GeiviaRecoveryTerminal(controller: LinuxRuntimeController) {
                         append("\n[ERRO] A sessão foi encerrada: ${error.message ?: "falha de leitura do terminal"}.\n")
                     } finally {
                         session = null
+                        onSessionActive(false)
                     }
                 }
             } catch (error: Throwable) {
+                onSessionActive(false)
                 append("\n[ERRO] ${error.message ?: "Não foi possível iniciar o Debian."}\n")
             } finally {
                 starting = false
@@ -118,6 +124,7 @@ internal fun GeiviaRecoveryTerminal(controller: LinuxRuntimeController) {
             OutlinedButton(onClick = {
                 controller.cancel()
                 session = null
+                onSessionActive(false)
                 append("\n[GEIVIA] Solicitação de encerramento enviada.\n")
             }, enabled = session != null) { Text("Encerrar") }
         }

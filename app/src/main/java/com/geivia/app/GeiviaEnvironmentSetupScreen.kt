@@ -30,6 +30,7 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
     val stages = remember { GeiviaToolchainCommands.installStages() }
     var busy by remember { mutableStateOf(false) }
     var debianReady by remember { mutableStateOf(prefs.getBoolean("linux_debian_verified", false)) }
+    var debianStageStatus by remember { mutableStateOf(if (prefs.getBoolean("linux_debian_verified", false)) "Concluída" else "Aguardando") }
     var complete by remember { mutableStateOf(prefs.getBoolean("linux_toolchain_verified", false)) }
     var showDetails by remember { mutableStateOf(false) }
     var currentStage by remember { mutableStateOf("") }
@@ -62,12 +63,15 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
                 if (!debianReady) {
                     currentStage = "Debian ARM64"
                     status = "Verificando se o Debian já está instalado…"
-                    val existingCheck = controller.execute(LinuxRuntimeCommands.testDebianBase(), 60_000L) { chunk -> log(chunk) }
+                    debianStageStatus = "Em andamento"
+                    val existingCheck = controller.execute(LinuxRuntimeCommands.testDebianBase(), 60_000L) { chunk -> scope.launch { log(chunk) } }
                     if (existingCheck == 0) {
                         log("\n[GEIVIA] Debian existente validado; instalação ignorada.\n")
+                        debianStageStatus = "Concluída"
                     } else {
                         status = "Preparando o Debian ARM64…"
-                        controller.installAndVerifyDebian { chunk -> log(chunk) }
+                        controller.installAndVerifyDebian { chunk -> scope.launch { log(chunk) } }
+                        debianStageStatus = "Concluída"
                     }
                     check(prefs.edit().putBoolean("linux_debian_verified", true).commit()) {
                         "Debian foi verificado, mas não foi possível salvar o progresso."
@@ -84,7 +88,7 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
                     stageStates = stageStates + (stage.id to "Em andamento")
                     status = "Em andamento: ${stage.title}"
                     log("\n[GEIVIA] ETAPA: ${stage.title}\n")
-                    val exitCode = controller.execute(stage.command, stage.timeoutMs) { chunk -> log(chunk) }
+                    val exitCode = controller.execute(stage.command, stage.timeoutMs) { chunk -> scope.launch { log(chunk) } }
                     if (exitCode != 0) {
                         stageStates = stageStates + (stage.id to "Falhou")
                         status = "A etapa '${stage.title}' falhou (código $exitCode). As etapas concluídas foram preservadas."
@@ -104,6 +108,9 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
                 currentStage = ""
                 status = "Configuração concluída. Debian e ferramentas principais foram instalados e verificados."
             } catch (error: Exception) {
+                if (currentStage == "Debian ARM64" && !debianReady) {
+                    debianStageStatus = "Falhou"
+                }
                 if (status.startsWith("Em andamento:")) {
                     val failed = stages.firstOrNull { it.title == currentStage }
                     if (failed != null && stageStates[failed.id] == "Em andamento") {
@@ -121,6 +128,7 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
     }
 
     val failedStage = stages.firstOrNull { stageStates[it.id] == "Falhou" }
+    val debianFailed = debianStageStatus == "Falhou"
     val nextStage = stages.firstOrNull { stageStates[it.id] != "Concluída" }
 
     Column(
@@ -156,6 +164,24 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
         }
 
         Text("ETAPAS DA INSTALAÇÃO", color = Color(0xFF07528D), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        run {
+            val stageStatus = debianStageStatus
+            val statusColor = when (stageStatus) {
+                "Concluída" -> Color(0xFF18794E)
+                "Em andamento" -> Color(0xFF07528D)
+                "Falhou" -> Color(0xFFB3261E)
+                else -> Color(0xFF587083)
+            }
+            Card(colors = CardDefaults.cardColors(containerColor = if (stageStatus == "Falhou") Color(0xFFFFF0EF) else Color(0xFFF5F8FA))) {
+                Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column(Modifier.weight(1f)) {
+                        Text("1. Preparação e verificação do Debian ARM64", color = Color(0xFF102B43), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        if (currentStage == "Debian ARM64" && busy) Text("Executando agora…", color = Color(0xFF07528D), fontSize = 10.sp)
+                    }
+                    Text(stageStatus, color = statusColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
         stages.forEachIndexed { index, stage ->
             val stageStatus = stageStates[stage.id] ?: "Aguardando"
             val statusColor = when (stageStatus) {
@@ -167,7 +193,7 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
             Card(colors = CardDefaults.cardColors(containerColor = if (stageStatus == "Falhou") Color(0xFFFFF0EF) else Color(0xFFF5F8FA))) {
                 Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     Column(Modifier.weight(1f)) {
-                        Text("${index + 1}. ${stage.title}", color = Color(0xFF102B43), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text("${index + 2}. ${stage.title}", color = Color(0xFF102B43), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         if (stage.id == stages.firstOrNull { it.title == currentStage }?.id && busy) {
                             Text("Executando agora…", color = Color(0xFF07528D), fontSize = 10.sp)
                         }
@@ -188,6 +214,7 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
             Button(onClick = { runSetup() }, modifier = Modifier.fillMaxWidth()) {
                 Text(
                     when {
+                        debianFailed -> "Tentar novamente: Debian ARM64"
                         failedStage != null -> "Tentar novamente: ${failedStage.title}"
                         debianReady -> "Continuar configuração"
                         else -> "Configurar GEIVIA automaticamente"
@@ -195,7 +222,7 @@ internal fun GeiviaEnvironmentSetupScreen(onCompleted: () -> Unit) {
                     modifier = Modifier.padding(vertical = 5.dp)
                 )
             }
-            if (failedStage != null || nextStage != null) {
+            if (debianFailed || failedStage != null || nextStage != null) {
                 Text(
                     "Ao tentar novamente, o GEIVIA pula as etapas já concluídas e retoma pela primeira etapa pendente. Uma etapa parcialmente executada é repetida com segurança.",
                     color = Color(0xFF587083), fontSize = 11.sp, lineHeight = 16.sp

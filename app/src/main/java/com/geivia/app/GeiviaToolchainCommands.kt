@@ -35,21 +35,68 @@ internal object GeiviaToolchainCommands {
 
 
     /**
-     * Installs the prebuilt Linux ARM64 Firebase CLI bundle.
-     * The archive is built on a native ARM64 runner to avoid slow npm installs on phones.
+     * Installs Firebase CLI from the public npm registry.
+     * npm 11.6.2 is pinned because npm 9 repeatedly failed while renaming cache entries
+     * in the GEIVIA Debian/PRoot environment. The cache is isolated and retryable.
      */
     private fun firebaseCliInstallCommand(): String = """
         set -eu
         FIREBASE_ROOT=/opt/geivia/firebase
-        FIREBASE_ENTRY="${'
+        FIREBASE_ENTRY="${'$'}FIREBASE_ROOT/node_modules/firebase-tools/lib/bin/firebase.js"
+        FIREBASE_VERSION=15.36.0
+        NPM_VERSION=11.6.2
+        FIREBASE_CACHE=/opt/geivia/npm-cache
+        NPM_CLI=/usr/local/lib/node_modules/npm/bin/npm-cli.js
+
+        mkdir -p "${'$'}FIREBASE_ROOT" "${'$'}FIREBASE_CACHE" /usr/local/bin
+        export npm_config_cache="${'$'}FIREBASE_CACHE"
+        export npm_config_registry=https://registry.npmjs.org/
+        npm config set fund false
+        npm config set audit false
+
+        # Bootstrap the tested npm version, retrying once with a clean isolated cache.
+        if [ "$(npm --version 2>/dev/null || true)" != "${'$'}NPM_VERSION" ]; then
+          npm install --global "npm@${'$'}NPM_VERSION" --no-audit --no-fund --prefer-online --maxsockets=1 --cache "${'$'}FIREBASE_CACHE" || {
+            echo GEIVIA_NPM_CACHE_RECOVERY
+            rm -rf "${'$'}FIREBASE_CACHE"
+            mkdir -p "${'$'}FIREBASE_CACHE"
+            npm install --global "npm@${'$'}NPM_VERSION" --no-audit --no-fund --prefer-online --maxsockets=1 --cache "${'$'}FIREBASE_CACHE"
+          }
+        fi
+
+        # Prefer the npm 11 CLI directly so an older /usr/bin/npm cannot shadow it.
+        if [ -f "${'$'}NPM_CLI" ] && [ "$(node "${'$'}NPM_CLI" --version)" = "${'$'}NPM_VERSION" ]; then
+          npm_run() { node "${'$'}NPM_CLI" "${'$'}@"; }
+        else
+          npm_run() { npm "${'$'}@"; }
+        fi
+        ACTUAL_NPM_VERSION="$(npm_run --version)"
+        if [ "${'$'}ACTUAL_NPM_VERSION" != "${'$'}NPM_VERSION" ]; then
+          echo "GEIVIA_NPM_VERSION_MISMATCH expected=${'$'}NPM_VERSION actual=${'$'}ACTUAL_NPM_VERSION"
+          exit 1
+        fi
+
+        # Keep a correct existing install; otherwise install and retry once after cache recovery.
+        if [ ! -f "${'$'}FIREBASE_ENTRY" ] || [ "$(node "${'$'}FIREBASE_ENTRY" --version 2>/dev/null || true)" != "${'$'}FIREBASE_VERSION" ]; then
+          npm_run install --prefix "${'$'}FIREBASE_ROOT" --omit=dev --no-audit --no-fund --prefer-online --maxsockets=1 --cache "${'$'}FIREBASE_CACHE" firebase-tools@"${'$'}FIREBASE_VERSION" || {
+            echo GEIVIA_FIREBASE_CACHE_RECOVERY
+            rm -rf "${'$'}FIREBASE_CACHE" "${'$'}FIREBASE_ROOT/node_modules"
+            mkdir -p "${'$'}FIREBASE_CACHE" "${'$'}FIREBASE_ROOT"
+            npm_run install --prefix "${'$'}FIREBASE_ROOT" --omit=dev --no-audit --no-fund --prefer-online --maxsockets=1 --cache "${'$'}FIREBASE_CACHE" firebase-tools@"${'$'}FIREBASE_VERSION"
+          }
+        fi
+
         test -f "${'$'}FIREBASE_ENTRY"
-        mkdir -p /usr/local/bin
         cat > /usr/local/bin/firebase <<'GEIVIA_FIREBASE_WRAPPER'
         #!/bin/sh
         exec node /opt/geivia/firebase/node_modules/firebase-tools/lib/bin/firebase.js "${'$'}@"
         GEIVIA_FIREBASE_WRAPPER
         chmod 755 /usr/local/bin/firebase
-        firebase --version
+        ACTUAL_FIREBASE_VERSION="$(firebase --version)"
+        if [ "${'$'}ACTUAL_FIREBASE_VERSION" != "${'$'}FIREBASE_VERSION" ]; then
+          echo "GEIVIA_FIREBASE_VERSION_MISMATCH expected=${'$'}FIREBASE_VERSION actual=${'$'}ACTUAL_FIREBASE_VERSION"
+          exit 1
+        fi
         echo GEIVIA_FIREBASE_CLI_OK
     """.trimIndent()
 

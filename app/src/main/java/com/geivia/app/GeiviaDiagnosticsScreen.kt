@@ -24,6 +24,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberLauncherForActivityResult
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,6 +41,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.nio.charset.StandardCharsets
 
 private val DiagnosticInk = Color(0xFF102B43)
 private val DiagnosticMuted = Color(0xFF587083)
@@ -54,6 +57,29 @@ fun GeiviaDiagnosticsScreen(onBack: () -> Unit) {
     val controller = remember(context) { LinuxRuntimeController(context.applicationContext) }
     var report by remember { mutableStateOf<GeiviaDiagnosticReport?>(null) }
     var running by remember { mutableStateOf(false) }
+    var pendingExportText by remember { mutableStateOf<String?>(null) }
+    val exportReportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/plain")
+    ) { uri ->
+        val textToSave = pendingExportText
+        if (uri != null && textToSave != null) {
+            scope.launch {
+                val saved = withContext(Dispatchers.IO) {
+                    runCatching {
+                        val output = context.contentResolver.openOutputStream(uri)
+                            ?: error("Não foi possível abrir o arquivo escolhido.")
+                        output.use { it.write(textToSave.toByteArray(StandardCharsets.UTF_8)) }
+                    }.isSuccess
+                }
+                Toast.makeText(
+                    context,
+                    if (saved) "Relatório salvo. Agora você pode acessá-lo pelo Termux." else "Não foi possível salvar o relatório.",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+        pendingExportText = null
+    }
 
     fun runDiagnostics() {
         if (running) return
@@ -151,6 +177,13 @@ fun GeiviaDiagnosticsScreen(onBack: () -> Unit) {
                 },
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Copiar relatório técnico seguro") }
+            OutlinedButton(
+                onClick = {
+                    pendingExportText = current.toSafeText()
+                    exportReportLauncher.launch("GEIVIA-diagnostico.txt")
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Salvar relatório para compartilhar com o Termux") }
         }
 
         Button(onClick = { runDiagnostics() }, enabled = !running, modifier = Modifier.fillMaxWidth()) {
@@ -158,7 +191,7 @@ fun GeiviaDiagnosticsScreen(onBack: () -> Unit) {
         }
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Voltar ao painel") }
         Text(
-            "O relatório não inclui senhas, tokens, chaves privadas, caminhos internos ou saída bruta do terminal. Os testes não executam comandos de instalação ou alteração.",
+            "O arquivo exportado contém somente o relatório sanitizado: não inclui senhas, tokens, chaves privadas, caminhos internos ou saída bruta do terminal. Os testes não instalam, removem nem atualizam pacotes.",
             color = DiagnosticMuted, fontSize = 10.sp, lineHeight = 15.sp
         )
     }

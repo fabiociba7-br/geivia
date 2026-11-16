@@ -48,7 +48,7 @@ A tela **Configurar GEIVIA**, exibida antes das perguntas sobre contas e projeto
 
 A interface apresenta os estados Aguardando, Em andamento, Concluída e Falhou. O resultado de cada etapa concluída é salvo localmente; ao retomar, as etapas confirmadas são puladas e a primeira etapa pendente/falha é repetida. O cancelamento interrompe a operação ativa e mantém os checkpoints já confirmados. O terminal de recuperação, na tela de diagnóstico e nos detalhes técnicos da configuração inicial com falha, permite investigar e corrigir o ambiente Debian.
 
-O APK não carrega a rootfs inteira nem todos os pacotes. A distribuição e os pacotes são instalados sob demanda no armazenamento privado do app.
+O fluxo de conexão Google Cloud reutiliza a mesma verificação: antes de chamar `install debian`, executa um teste direto do shell Debian. Se `/bin/sh`, `/etc` e `/tmp` estiverem funcionais, a instalação é pulada. Se a tentativa de instalação retornar erro, o GEIVIA faz uma nova verificação antes de declarar falha; uma distribuição já existente e funcional é aceita. Nenhuma rotina remove ou reinstala automaticamente os dados do Debian. O APK não carrega a rootfs inteira nem todos os pacotes. A distribuição e os pacotes são instalados sob demanda no armazenamento privado do app.
 
 
 ### Recuperação do cache npm (erro ENOENT ao renomear arquivos)

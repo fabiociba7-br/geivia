@@ -723,9 +723,13 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onOp
             "authentication" to "Firebase Authentication",
             "hosting" to "Firebase Hosting",
             "hosting_deploy" to "Publicação do site",
+            "firebase_deploy" to "Deploy dos alvos do projeto",
             "storage" to "Cloud Storage"
         )
         val workflowRecords = if (workflowStorageError == null) workflowStore.allForProject(chosenProjectId).associateBy { it.stepId } else emptyMap()
+        val workflowDisplayCatalog = workflowCatalog + workflowRecords.keys
+            .filterNot { stepId -> workflowCatalog.any { it.first == stepId } }
+            .map { stepId -> stepId to stepId.replace('_', ' ').replaceFirstChar { it.uppercase() } }
         val workflowHistory = if (workflowStorageError == null) workflowStore.historyForProject(chosenProjectId).take(30) else emptyList()
         Spacer(Modifier.height(16.dp))
         Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(15.dp)) {
@@ -763,13 +767,13 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onOp
                 Spacer(Modifier.height(5.dp))
                 Text(if (chosenProjectId.isBlank()) "Selecione um projeto para iniciar o acompanhamento." else "Projeto: $chosenProjectId", color = Muted, fontSize = 11.sp)
                 Spacer(Modifier.height(8.dp))
-                workflowCatalog.forEach { (stepId, label) ->
+                workflowDisplayCatalog.forEach { (stepId, label) ->
                     val record = workflowRecords[stepId]
                     val state = record?.state ?: WorkflowStepState.NOT_STARTED
                     val stateLabel = if (stepId == "storage" && costMode == "zero") "Bloqueada no modo custo zero" else when (state) {
                         WorkflowStepState.NOT_STARTED -> "Não iniciada"
                         WorkflowStepState.IN_PROGRESS -> "Aguardando diagnóstico"
-                        WorkflowStepState.WAITING_CONFIRMATION -> "Aguardando confirmação"
+                        WorkflowStepState.WAITING_CONFIRMATION -> if (stepId == "firebase_deploy") "Comando preparado — aguardando execução manual" else "Aguardando confirmação"
                         WorkflowStepState.UNKNOWN -> "Resultado desconhecido — reconciliar"
                         WorkflowStepState.COMPLETED -> "Concluída por diagnóstico"
                         WorkflowStepState.USER_CONFIRMED -> "Declarada concluída pelo usuário"

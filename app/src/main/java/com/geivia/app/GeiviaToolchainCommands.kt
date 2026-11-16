@@ -151,36 +151,37 @@ internal object GeiviaToolchainCommands {
         set -eu
         export DEBIAN_FRONTEND=noninteractive
         apt-get update
-        echo 'GEIVIA_UPDATE_REPORT_BEGIN'
-        echo 'PACKAGE:git'
-        dpkg-query -W git 2>/dev/null || echo 'INSTALLED:not-installed'
-        apt-cache policy git | sed -n 's/^  Candidate: /CANDIDATE:/p'
-        echo 'PACKAGE:default-jdk-headless'
-        dpkg-query -W default-jdk-headless 2>/dev/null || echo 'INSTALLED:not-installed'
-        apt-cache policy default-jdk-headless | sed -n 's/^  Candidate: /CANDIDATE:/p'
-        echo 'PACKAGE:nodejs'
-        dpkg-query -W nodejs 2>/dev/null || echo 'INSTALLED:not-installed'
-        apt-cache policy nodejs | sed -n 's/^  Candidate: /CANDIDATE:/p'
-        echo 'PACKAGE:npm'
-        dpkg-query -W npm 2>/dev/null || echo 'INSTALLED:not-installed'
-        apt-cache policy npm | sed -n 's/^  Candidate: /CANDIDATE:/p'
-        echo 'PACKAGE:python3'
-        dpkg-query -W python3 2>/dev/null || echo 'INSTALLED:not-installed'
-        apt-cache policy python3 | sed -n 's/^  Candidate: /CANDIDATE:/p'
-        echo 'PACKAGE:cmake'
-        dpkg-query -W cmake 2>/dev/null || echo 'INSTALLED:not-installed'
-        apt-cache policy cmake | sed -n 's/^  Candidate: /CANDIDATE:/p'
-        echo 'PACKAGE:build-essential'
-        dpkg-query -W build-essential 2>/dev/null || echo 'INSTALLED:not-installed'
-        apt-cache policy build-essential | sed -n 's/^  Candidate: /CANDIDATE:/p'
-        echo 'PACKAGE:firebase-tools'
-        npm list --global firebase-tools --depth=0 2>/dev/null || true
-        echo 'FIREBASE_CLI_LATEST_VERSION'
-        npm view firebase-tools version
-        echo 'GEIVIA_UPDATE_REPORT_END'
+        check_apt() {
+          package="$1"
+          installed="$(dpkg-query -W -f='\${'$'}{Version}' "$package" 2>/dev/null || true)"
+          candidate="$(apt-cache policy "$package" | awk '/Candidate:/{print \${'$'}2; exit}')"
+          [ -n "$installed" ] || installed="não instalado"
+          [ -n "$candidate" ] || candidate="(none)"
+          available=0
+          if [ "$installed" != "não instalado" ] && [ "$candidate" != "(none)" ] && dpkg --compare-versions "$candidate" gt "$installed"; then
+            available=1
+          fi
+          printf 'GEIVIA_UPDATE|%s|%s|%s|%s\\n' "$package" "$installed" "$candidate" "$available"
+        }
+        check_apt git
+        check_apt default-jdk-headless
+        check_apt nodejs
+        check_apt npm
+        check_apt python3
+        check_apt cmake
+        check_apt build-essential
+        installed_firebase="$(firebase --version 2>/dev/null | head -n 1 || true)"
+        latest_firebase="$(npm view firebase-tools version)"
+        [ -n "$installed_firebase" ] || installed_firebase="não instalado"
+        available_firebase=0
+        if [ "$installed_firebase" != "não instalado" ] && [ "$latest_firebase" != "$installed_firebase" ] &&
+           [ "$(printf '%s\\n' "$installed_firebase" "$latest_firebase" | sort -V | tail -n 1)" = "$latest_firebase" ]; then
+          available_firebase=1
+        fi
+        printf 'GEIVIA_UPDATE|firebase-tools|%s|%s|%s\\n' "$installed_firebase" "$latest_firebase" "$available_firebase"
+        echo GEIVIA_UPDATE_REPORT_END
         """.trimIndent()
     )
-
     fun updateDebianPackage(packageName: String): List<String> {
         require(packageName in setOf("git", "default-jdk-headless", "nodejs", "npm", "python3", "cmake", "build-essential"))
         return listOf(

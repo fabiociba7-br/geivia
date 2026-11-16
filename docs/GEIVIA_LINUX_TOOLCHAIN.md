@@ -2,13 +2,13 @@
 
 ## Objetivo
 
-O GEIVIA deverá oferecer um ambiente Linux ARM64 dentro do próprio aplicativo Android, sem exigir Termux, root ou outro aplicativo de terminal. O runtime e a distribuição ficam no armazenamento privado do GEIVIA; o usuário continua vendo uma única interface integrada ao painel.
+O GEIVIA oferece um ambiente Linux ARM64 dentro do próprio aplicativo Android, sem exigir Termux, root ou outro aplicativo de terminal. O runtime e a distribuição ficam no armazenamento privado do GEIVIA; o usuário continua vendo uma interface integrada ao painel.
 
 ## Decisão de arquitetura
 
 A opção técnica prioritária para prototipação é integrar um motor PRoot Android mantido como biblioteca, em vez de executar binários Linux diretamente pelo Android. A avaliação inicial identificou o projeto público [oonid/pr](https://github.com/oonid/pr), que separa o motor Android em `:proot-engine` e documenta suporte a imagens OCI, instalação de distribuições e execução sem Termux.
 
-**A integração ainda não está concluída nem aprovada para produção.** Antes de incorporar o motor, é obrigatório validar:
+**A integração inicial está no código, mas ainda não está aprovada para produção.** A validação em aparelho físico continua obrigatória para:
 - compatibilidade com o minSdk atual do GEIVIA (26), ou documentar e aprovar a elevação mínima;
 - compatibilidade entre compileSdk, Android Gradle Plugin, Gradle e NDK;
 - ABI ARM64 do aparelho e comportamento real em Android 16;
@@ -36,15 +36,18 @@ O perfil padrão será Base + Java + Node.js + Python + Build + Firebase. Google
 
 ## Instalação e atualização
 
-A experiência pretendida é uma primeira tela **Configurar GEIVIA**, exibida antes das perguntas sobre contas e projetos, com:
-1. verificação de arquitetura, espaço livre e conectividade;
-2. instalação da distribuição no armazenamento privado;
-3. configuração de repositórios assinados;
-4. instalação dos perfis selecionados;
-5. validação de versões reais (`git --version`, `java -version`, `node --version`, `npm --version`, `python3 --version`, `firebase --version`);
-6. resumo do que foi instalado e do que falhou, com opção de repetir apenas a etapa com falha.
+A tela **Configurar GEIVIA**, exibida antes das perguntas sobre contas e projetos, prepara o ambiente em etapas:
+1. verifica se o Debian ARM64 já está instalado e executa o teste básico do shell;
+2. recupera transações dpkg interrompidas;
+3. atualiza os índices do Debian;
+4. instala os pacotes básicos, Java, Node.js/npm, Python e ferramentas de compilação;
+5. configura o npm;
+6. instala a Firebase CLI;
+7. valida as versões reais de `git`, `java`, `node`, `npm`, `python3` e `firebase`.
 
-Downloads serão feitos sob demanda e verificados antes da extração. O APK não carregará centenas de megabytes de rootfs e pacotes. O app informará o espaço estimado e permitirá cancelar sem apagar projetos existentes.
+A interface apresenta os estados Aguardando, Em andamento, Concluída e Falhou. O resultado de cada etapa concluída é salvo localmente; ao retomar, as etapas confirmadas são puladas e a primeira etapa pendente/falha é repetida. O cancelamento interrompe a operação ativa e mantém os checkpoints já confirmados. O terminal de recuperação, na tela de diagnóstico, permite investigar e corrigir o ambiente Debian.
+
+O APK não carrega a rootfs inteira nem todos os pacotes. A distribuição e os pacotes são instalados sob demanda no armazenamento privado do app.
 
 ## Firebase Hosting
 
@@ -60,14 +63,14 @@ A instalação da CLI não significa que o deploy esteja autenticado nem que o p
 ## Limites da primeira entrega
 
 - O manifesto é a definição versionada dos pacotes; ele **não significa que os pacotes já estejam instalados**.
-- O runtime Linux ainda precisa ser integrado e testado em aparelho real.
+- O runtime PRoot já está integrado ao código, mas precisa ser validado em aparelho real.
 - Android SDK/NDK e builds completos de APK dentro do telefone ficam fora do perfil inicial: são grandes e exigem uma avaliação separada.
 - Google Cloud CLI fica opcional até confirmar suporte ARM64 no repositório oficial.
 - A instalação de ferramentas não ativa faturamento nem executa alterações remotas automaticamente.
 
 ## Verificação de compatibilidade do aparelho
 
-Foi adicionada a classe `LinuxRuntimePreflight` e sua suíte unitária. Ela valida três pré-requisitos antes de uma futura instalação: Android API 28 ou superior (limitação do motor PRoot candidato), ABI `arm64-v8a` e pelo menos 2 GiB livres como limite inicial conservador. A verificação é pura e testável, retorna todos os motivos de incompatibilidade de uma vez e não inicia downloads nem processos.
+A classe `LinuxRuntimePreflight` e sua suíte unitária validam três pré-requisitos antes da instalação: Android API 28 ou superior, ABI `arm64-v8a` e pelo menos 2 GiB livres como limite inicial conservador. A verificação é pura e testável, retorna todos os motivos de incompatibilidade de uma vez e não inicia downloads nem processos.
 
 O limite de 2 GiB é provisório para a primeira avaliação e deverá ser refinado com medições da rootfs e dos perfis de pacotes. O app atual mantém seu terminal local restrito em aparelhos que não passem nessa verificação; não se altera o `minSdk 26` global apenas por causa do runtime opcional.
 ## Estado da integração PRoot (16/11/2026)

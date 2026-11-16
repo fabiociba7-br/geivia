@@ -2320,7 +2320,7 @@ private fun TerminalPanel() {
     val linuxController = remember(linuxPreflight.supported) {
         if (linuxPreflight.supported) LinuxRuntimeController(context) else null
     }
-    var linuxTranscript by rememberSaveable { mutableStateOf("GEIVIA Linux • PRoot ARM64\\nO ambiente será instalado no armazenamento privado do aplicativo.\\n") }
+    var linuxTranscript by rememberSaveable { mutableStateOf("GEIVIA Linux • PRoot ARM64\nO ambiente será instalado no armazenamento privado do aplicativo.\n") }
     var linuxBusy by remember { mutableStateOf(false) }
     var linuxSession by remember { mutableStateOf<id.or.oo.pr.engine.ProotLauncher.Session?>(null) }
     var linuxCommand by rememberSaveable { mutableStateOf("") }
@@ -2452,7 +2452,7 @@ private fun TerminalPanel() {
                 Text("AMBIENTE LINUX REAL", color = Color(0xFF7EE787), fontSize = 12.sp, fontWeight = FontWeight.Black)
                 if (!linuxPreflight.supported) {
                     Text(
-                        linuxPreflight.reasons.joinToString("\\n"),
+                        linuxPreflight.reasons.joinToString("\n"),
                         color = Color(0xFFFFC078), fontSize = 11.sp, lineHeight = 16.sp
                     )
                 } else {
@@ -2473,9 +2473,9 @@ private fun TerminalPanel() {
                                                 scope.launch(Dispatchers.Main) { linuxTranscript += chunk }
                                             }
                                         }
-                                        linuxTranscript += "\\n[lista concluída: código $code]\\n"
+                                        linuxTranscript += "\n[lista concluída: código $code]\n"
                                     } catch (error: Exception) {
-                                        linuxTranscript += "\\n[erro: ${error.message ?: "falha desconhecida"}]\\n"
+                                        linuxTranscript += "\n[erro: ${error.message ?: "falha desconhecida"}]\n"
                                     } finally { linuxBusy = false }
                                 }
                             },
@@ -2486,7 +2486,7 @@ private fun TerminalPanel() {
                             onClick = {
                                 scope.launch {
                                     linuxBusy = true
-                                    linuxTranscript += "\\n[Instalando Debian ARM64… mantenha o GEIVIA aberto]\\n"
+                                    linuxTranscript += "\n[Instalando Debian ARM64… mantenha o GEIVIA aberto]\n"
                                     try {
                                         val code = withContext(Dispatchers.IO) {
                                             linuxController!!.prepareEngine()
@@ -2494,9 +2494,9 @@ private fun TerminalPanel() {
                                                 scope.launch(Dispatchers.Main) { linuxTranscript += chunk }
                                             }
                                         }
-                                        linuxTranscript += "\\n[instalação finalizada: código $code]\\n"
+                                        linuxTranscript += "\n[instalação finalizada: código $code]\n"
                                     } catch (error: Exception) {
-                                        linuxTranscript += "\\n[erro na instalação: ${error.message ?: "falha desconhecida"}]\\n"
+                                        linuxTranscript += "\n[erro na instalação: ${error.message ?: "falha desconhecida"}]\n"
                                     } finally { linuxBusy = false }
                                 }
                             },
@@ -2514,18 +2514,18 @@ private fun TerminalPanel() {
                                             linuxController.startDebianShell()
                                         }
                                         linuxSession = session
-                                        linuxTranscript += "\\n[Shell Debian iniciado]\\n"
+                                        linuxTranscript += "\n[Shell Debian iniciado]\n"
                                         scope.launch {
                                             val code = runCatching {
                                                 linuxController!!.readSession(session) { chunk ->
                                                     scope.launch(Dispatchers.Main) { linuxTranscript += chunk }
                                                 }
                                             }.getOrElse { -1 }
-                                            linuxTranscript += "\\n[Shell encerrado: código $code]\\n"
+                                            linuxTranscript += "\n[Shell encerrado: código $code]\n"
                                             linuxSession = null
                                         }
                                     } catch (error: Exception) {
-                                        linuxTranscript += "\\n[Não foi possível iniciar Debian: ${error.message ?: "verifique a instalação"}]\\n"
+                                        linuxTranscript += "\n[Não foi possível iniciar Debian: ${error.message ?: "verifique a instalação"}]\n"
                                     }
                                 }
                             },
@@ -2569,9 +2569,9 @@ private fun TerminalPanel() {
                                 val submitted = linuxCommand
                                 linuxCommand = ""
                                 scope.launch(Dispatchers.IO) {
-                                    runCatching { linuxController!!.send(linuxSession!!, submitted + "\\n") }
+                                    runCatching { linuxController!!.send(linuxSession!!, submitted + "\n") }
                                         .onFailure { error ->
-                                            withContext(Dispatchers.Main) { linuxTranscript += "\\n[erro de entrada: ${error.message}]\\n" }
+                                            withContext(Dispatchers.Main) { linuxTranscript += "\n[erro de entrada: ${error.message}]\n" }
                                         }
                                 }
                             }, enabled = linuxCommand.isNotBlank()) { Text("Enviar") }

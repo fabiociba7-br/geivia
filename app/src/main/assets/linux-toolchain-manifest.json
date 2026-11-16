@@ -60,15 +60,15 @@
     {
       "id": "firebase",
       "title": "Firebase Hosting",
-      "bundle": {
+      "requires": [
+        "node"
+      ],
+      "install": {
         "provider": "npm-registry",
         "package": "firebase-tools",
         "version": "15.36.0",
         "architecture": "arm64"
-      },
-      "requires": [
-        "node"
-      ]
+      }
     },
     {
       "id": "gcloud",
@@ -100,7 +100,7 @@
     "The runtime must verify repository signatures and package checksums.",
     "The Google Cloud CLI profile is opt-in and must pass an ARM64 repository availability check before installation.",
     "Android SDK and Android NDK are not part of this profile; on-device Android builds require a separate compatibility and storage assessment.",
-    "Firebase CLI is installed from the public npm registry with an isolated cache and one serialized retry; do not download it from the private GEIVIA GitHub release.",
-    "Firebase CLI uses npm 11.6.2 (Node 20.17+ compatible), an isolated /opt/geivia/npm-cache, one clean-cache retry, and a /usr/local/bin/firebase wrapper that is version-verified."
+    "Firebase CLI uses npm 11.6.2 (Node 20.17+ compatible), an isolated /opt/geivia/npm-cache, one clean-cache retry, and a /usr/local/bin/firebase wrapper that is version-verified.",
+    "Firebase CLI is installed on demand inside the app-private Debian environment from the public npm registry; it is not packaged in the Android APK."
   ]
 }

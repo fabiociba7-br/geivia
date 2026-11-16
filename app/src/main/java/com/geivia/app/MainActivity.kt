@@ -82,6 +82,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
     var page by rememberSaveable {
         mutableStateOf(
             if (githubCallbackUri != null) "github"
+            else if (!prefs.getBoolean("environment_setup_completed", false)) "environment_setup"
             else if (!prefs.getBoolean("preflight_completed", false)) "preflight"
             else "welcome"
         )
@@ -160,9 +161,19 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
         Surface(Modifier.fillMaxSize(), color = Color(0xFFF7FBFD)) {
             when (page) {
                 "welcome" -> WelcomeScreen(hasCheckpoint = prefs.contains("workflow_checkpoint")) {
-                    page = if (prefs.getBoolean("preflight_completed", false)) savedCheckpoint else "preflight"
+                    page = if (!prefs.getBoolean("environment_setup_completed", false)) "environment_setup"
+                        else if (prefs.getBoolean("preflight_completed", false)) savedCheckpoint else "preflight"
                     if (page == "questions") index = prefs.getInt("workflow_question_index", 0).coerceAtLeast(0)
                 }
+                "environment_setup" -> GeiviaEnvironmentSetupScreen(
+                    onCompleted = {
+                        prefs.edit()
+                            .putBoolean("environment_setup_completed", true)
+                            .putLong("environment_setup_completed_at", System.currentTimeMillis())
+                            .apply()
+                        page = "preflight"
+                    }
+                )
                 "preflight" -> InitialEnvironmentScreen(
                     googleAccount = preflightGoogleAccount,
                     cloudProject = preflightCloudProject,

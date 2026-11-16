@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: geivia-validation-${{ github.ref }}
+  group: geivia-android-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:

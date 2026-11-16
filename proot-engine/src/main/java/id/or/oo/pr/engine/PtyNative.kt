@@ -2,7 +2,10 @@ package id.or.oo.pr.engine
 
 object PtyNative {
     const val STILL_RUNNING = -2
-    init { System.loadLibrary("ptyjni") }
+    init {
+        System.loadLibrary("ptyjni")
+        System.loadLibrary("ptykill")
+    }
     fun forkPty(cmd: String, args: Array<String>?, envVars: Array<String>?, rows: Int, cols: Int): Int =
         forkPtyWithPid(cmd, args, envVars, rows, cols).first
     fun forkPtyWithPid(cmd: String, args: Array<String>?, envVars: Array<String>?, rows: Int, cols: Int): Pair<Int, Int> {

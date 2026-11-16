@@ -8,17 +8,20 @@ class GeiviaToolchainCommandsTest {
     fun interruptedDpkgRecoveryRunsBeforePackageInstallation() {
         val command = GeiviaToolchainCommands.installDefaultProfile().last()
 
-        val tolerantConfigure = command.indexOf("dpkg --configure -a || true")
+        val firstConfigure = command.indexOf("dpkg --configure -a")
         val dependencyRepair = command.indexOf("apt-get -f install -y")
-        val strictConfigure = command.indexOf("dpkg --configure -a", tolerantConfigure + 1)
+        val secondConfigure = command.indexOf("dpkg --configure -a", firstConfigure + 1)
+        val audit = command.indexOf("dpkg --audit")
         val recoveryComplete = command.indexOf("GEIVIA_PACKAGE_RECOVERY_OK")
         val aptUpdate = command.indexOf("apt-get update")
         val packageInstall = command.indexOf("apt-get install -y --no-install-recommends")
 
-        assertTrue(tolerantConfigure >= 0)
-        assertTrue(dependencyRepair > tolerantConfigure)
-        assertTrue(strictConfigure > dependencyRepair)
-        assertTrue(recoveryComplete > strictConfigure)
+        assertTrue(firstConfigure >= 0)
+        assertTrue(!command.contains("dpkg --configure -a || true"))
+        assertTrue(dependencyRepair > firstConfigure)
+        assertTrue(secondConfigure > dependencyRepair)
+        assertTrue(audit > secondConfigure)
+        assertTrue(recoveryComplete > audit)
         assertTrue(aptUpdate > recoveryComplete)
         assertTrue(packageInstall > aptUpdate)
     }
@@ -39,7 +42,7 @@ class GeiviaToolchainCommandsTest {
         val stages = GeiviaToolchainCommands.installStages()
 
         assertTrue(stages.map { it.id } == listOf(
-            "dpkg_recovery",
+            "dpkg_recovery_v2",
             "apt_update",
             "apt_packages",
             "firebase_cli",
@@ -55,9 +58,12 @@ class GeiviaToolchainCommandsTest {
         val recovery = stages.first { it.id == "dpkg_recovery" }.command.last()
         val packages = stages.first { it.id == "apt_packages" }.command.last()
 
-        assertTrue(recovery.indexOf("dpkg --configure -a || true") >= 0)
-        assertTrue(recovery.indexOf("apt-get -f install -y") > recovery.indexOf("dpkg --configure -a || true"))
-        assertTrue(packages.contains("apt-get install -y --no-install-recommends"))
+        assertTrue(recovery.contains("dpkg --configure -a"))
+        assertTrue(!recovery.contains("dpkg --configure -a || true"))
+        assertTrue(recovery.contains("dpkg --audit"))
+        assertTrue(packages.contains("GEIVIA_PACKAGE_RECOVERY_BEGIN"))
+        assertTrue(packages.indexOf("dpkg --configure -a") < packages.indexOf("apt-get install -y --no-install-recommends"))
+        assertTrue(packages.contains("apt-get -f install -y"))
     }
 
     @Test

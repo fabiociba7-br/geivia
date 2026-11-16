@@ -8,38 +8,67 @@
     {
       "id": "base",
       "title": "Base de desenvolvimento",
-      "apt": ["ca-certificates", "curl", "wget", "git", "openssh-client", "unzip", "zip", "xz-utils", "tar", "jq", "nano", "less"]
+      "apt": [
+        "ca-certificates",
+        "curl",
+        "wget",
+        "git",
+        "openssh-client",
+        "unzip",
+        "zip",
+        "xz-utils",
+        "tar",
+        "jq",
+        "nano",
+        "less"
+      ]
     },
     {
       "id": "java",
       "title": "Java",
-      "apt": ["default-jdk-headless"]
+      "apt": [
+        "default-jdk-headless"
+      ]
     },
     {
       "id": "node",
       "title": "Node.js",
-      "apt": ["nodejs", "npm"]
+      "apt": [
+        "nodejs",
+        "npm"
+      ]
     },
     {
       "id": "python",
       "title": "Python",
-      "apt": ["python3", "python3-pip", "python3-venv"]
+      "apt": [
+        "python3",
+        "python3-pip",
+        "python3-venv"
+      ]
     },
     {
       "id": "build",
       "title": "Ferramentas de compilação",
-      "apt": ["build-essential", "cmake", "pkg-config", "make"]
+      "apt": [
+        "build-essential",
+        "cmake",
+        "pkg-config",
+        "make"
+      ]
     },
     {
       "id": "firebase",
       "title": "Firebase Hosting",
       "bundle": {
-        "provider": "github-release",
-        "asset": "firebase-cli-arm64.tar.gz",
-        "releaseTag": "firebase-cli-arm64",
+        "provider": "npm-registry",
+        "package": "firebase-tools",
+        "version": "15.36.0",
         "architecture": "arm64"
       },
-      "requires": ["node"]
+      "requires": [
+        "node"
+      ]
     },
     {
       "id": "gcloud",
@@ -55,12 +84,22 @@
       ]
     }
   ],
-  "defaultProfiles": ["base", "java", "node", "python", "build", "firebase"],
-  "optionalProfiles": ["gcloud"],
+  "defaultProfiles": [
+    "base",
+    "java",
+    "node",
+    "python",
+    "build",
+    "firebase"
+  ],
+  "optionalProfiles": [
+    "gcloud"
+  ],
   "notes": [
     "Packages are installed inside the app-private Linux root filesystem, never into Android itself.",
     "The runtime must verify repository signatures and package checksums.",
     "The Google Cloud CLI profile is opt-in and must pass an ARM64 repository availability check before installation.",
-    "Android SDK and Android NDK are not part of this profile; on-device Android builds require a separate compatibility and storage assessment."
+    "Android SDK and Android NDK are not part of this profile; on-device Android builds require a separate compatibility and storage assessment.",
+    "Firebase CLI is installed from the public npm registry with an isolated cache and one serialized retry; do not download it from the private GEIVIA GitHub release."
   ]
 }

@@ -860,6 +860,9 @@ private fun CloudShellSetupScreen(
 ) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
+    val preflightProjectHint = prefs.getString("preflight_project_id", "").orEmpty().trim()
+    val preflightHasGoogleAccount = prefs.getString("preflight_google_account", "") == "yes"
+    val preflightHasFirebaseProject = prefs.getString("preflight_firebase_project", "") == "yes"
     fun readSavedProjects(): List<CloudProject> {
         return runCatching {
             val array = JSONArray(prefs.getString("cloud_projects_json", "[]") ?: "[]")
@@ -1512,7 +1515,21 @@ cloudshell download geivia-projects.json"""
         Text("Ambiente: $workspaceName", color = DeepBlue, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         Text("Código: $workspaceId", color = Muted, fontSize = 11.sp)
         Spacer(Modifier.height(14.dp))
-        Text("O GEIVIA não usa nenhuma conta do desenvolvedor. O Cloud Shell acessa os recursos com a sua conta Google, autenticada diretamente no navegador.", color = Muted, fontSize = 14.sp, lineHeight = 21.sp)
+        Text(
+            if (preflightHasGoogleAccount) "Você informou que já tem uma conta Google. Use essa mesma conta no Cloud Shell; o GEIVIA não precisa guardar sua senha."
+            else "O Cloud Shell acessa os recursos com sua conta Google, autenticada diretamente no navegador. Se ainda não tiver uma conta, crie ou escolha uma antes de continuar.",
+            color = Muted, fontSize = 14.sp, lineHeight = 21.sp
+        )
+        if (preflightProjectHint.isNotBlank() || preflightHasFirebaseProject) {
+            Spacer(Modifier.height(12.dp))
+            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF6EF)), shape = RoundedCornerShape(13.dp)) {
+                Column(Modifier.padding(14.dp)) {
+                    Text("VAMOS REUTILIZAR O QUE JÁ EXISTE", color = Color(0xFF236342), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    if (preflightHasFirebaseProject) Text("Você informou que já possui um projeto Firebase. Não criaremos outro automaticamente.", color = Ink, fontSize = 13.sp, lineHeight = 19.sp)
+                    if (preflightProjectHint.isNotBlank()) Text("Project ID informado: $preflightProjectHint. Ele será conferido no inventário da conta antes de ser usado.", color = Ink, fontSize = 13.sp, lineHeight = 19.sp)
+                }
+            }
+        }
 
         Spacer(Modifier.height(16.dp))
         Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF4FA)), shape = RoundedCornerShape(14.dp)) {

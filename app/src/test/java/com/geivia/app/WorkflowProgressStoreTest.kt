@@ -136,7 +136,8 @@ class WorkflowProgressStoreTest {
 
     @Test
     fun manualExecutionAcknowledgementStaysPendingUntilDiagnosticEvidence() {
-        val store = store()
+        val preferences = InMemorySharedPreferences()
+        val store = WorkflowProgressStore(preferences)
         val prepared = store.waitForConfirmation("project-manual-run", "firebase_deploy", "Command reviewed")
         assertTrue(prepared.preparedAt > 0L)
         val started = store.markManualExecutionStarted(
@@ -145,8 +146,9 @@ class WorkflowProgressStoreTest {
         assertEquals(WorkflowStepState.IN_PROGRESS, started.state)
         assertEquals(prepared.preparedAt, started.preparedAt)
         assertTrue(started.evidence.startsWith("DECLARAÇÃO DE EXECUÇÃO MANUAL:"))
-        val reopened = WorkflowProgressStore(InMemorySharedPreferences())
-        assertTrue(started.preparedAt <= started.updatedAt)
+        val reopened = WorkflowProgressStore(preferences).get("project-manual-run", "firebase_deploy")
+        assertEquals(started.preparedAt, reopened.preparedAt)
+        assertTrue(reopened.preparedAt <= reopened.updatedAt)
         assertTrue(started.message.contains("aguardando diagnóstico"))
         org.junit.Assert.assertThrows(IllegalStateException::class.java) {
             store.markManualExecutionStarted("project-manual-run", "firebase_deploy", "manual-run-2", "Duplicate")

@@ -102,7 +102,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
         }
     }
     var workspaceName by rememberSaveable { mutableStateOf(prefs.getString("workspace_name", "GEIVIA-" + workspaceId.removePrefix("GEIVIA-")) ?: ("GEIVIA-" + workspaceId.removePrefix("GEIVIA-"))) }
-    val validWorkflowPages = setOf("device_access", "workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "accounts", "google_access", "github", "terminal", "toolchain_updates", "diagnostics", "project_operations", "project_preview", "firebase_admin", "legacy_dashboard")
+    val validWorkflowPages = setOf("device_access", "workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "accounts", "google_access", "github", "terminal", "toolchain_updates", "diagnostics", "project_operations", "project_preview", "firebase_admin", "legacy_dashboard", "garcia")
     val savedCheckpoint = remember {
         prefs.getString("workflow_checkpoint", null)?.takeIf { it in validWorkflowPages }
             ?.let { when (it) { "cloud_setup" -> "questions"; "terminal" -> "dashboard"; else -> it } }
@@ -286,6 +286,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                 "summary" -> SummaryScreen(answers.toMap(), costMode,
                     onBack = { page = "cost" }, onEdit = { page = "questions"; index = 0 }, onFinish = { page = "dashboard" })
                 "visual_editor" -> VisualEditorScreen(context) { page = "dashboard" }
+                "garcia" -> GarciaIntegrationScreen(context) { page = "dashboard" }
                 "accounts" -> AccountsConnectionsScreen(
                     googleReady = prefs.getBoolean("google_cloud_cli_ready", false),
                     githubConnected = githubConnected,
@@ -355,6 +356,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     },
                     onProjects = { page = "project_operations" },
                     onEditor = { page = "visual_editor" },
+                    onGarcia = { page = "garcia" },
                     onPreview = { page = "project_preview" },
                     onFirebase = { page = "firebase_admin" },
                     onIntegrations = { page = "accounts" },

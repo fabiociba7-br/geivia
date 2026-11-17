@@ -48,8 +48,11 @@ internal fun VisualEditorScreen(
     context: Context,
     onBack: () -> Unit,
     onFirebase: () -> Unit = {},
+    onGoogle: () -> Unit = {},
     onAccounts: () -> Unit = {},
     onTools: () -> Unit = {},
+    onDiagnostics: () -> Unit = {},
+    onTerminal: () -> Unit = {},
     onProjects: () -> Unit = {}
 ) {
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE) }
@@ -220,7 +223,7 @@ internal fun VisualEditorScreen(
                     Text("PROJETO", color = EditorMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     val projectItems = listOf("Páginas", "Componentes", "Tema e estilo", "Firestore", "Autenticação", "APIs", "Ações e lógica", "Variáveis", "Assets", "Integrações", "Configurações")
                     projectItems.forEach { item ->
-                        val available = item in setOf("Páginas", "Componentes", "Ações e lógica", "Variáveis", "Firestore", "Integrações", "Configurações")
+                        val available = item in setOf("Páginas", "Componentes", "Firestore", "Autenticação", "APIs", "Ações e lógica", "Variáveis", "Integrações", "Configurações")
                         NavigationDrawerItem(
                             label = { Text(item, fontSize = 13.sp) },
                             selected = false,
@@ -228,9 +231,10 @@ internal fun VisualEditorScreen(
                             onClick = {
                                 editorScope.launch { editorDrawerState.close() }
                                 when (item) {
-                                    "Firestore" -> onFirebase()
+                                    "Firestore", "Autenticação" -> onFirebase()
+                                    "APIs" -> onGoogle()
                                     "Integrações" -> onAccounts()
-                                    "Configurações" -> onTools()
+                                    "Configurações" -> onDiagnostics()
                                     else -> message = "$item selecionado"
                                 }
                             },
@@ -241,7 +245,7 @@ internal fun VisualEditorScreen(
                     Text("FERRAMENTAS", color = EditorMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     val toolItems = listOf("Testar", "Deploy", "Terminal", "Versões", "Código gerado")
                     toolItems.forEach { item ->
-                        val available = item in setOf("Testar", "Deploy", "Versões")
+                        val available = item in setOf("Testar", "Deploy", "Terminal", "Versões")
                         NavigationDrawerItem(
                             label = { Text(item, fontSize = 13.sp) },
                             selected = false,
@@ -251,6 +255,7 @@ internal fun VisualEditorScreen(
                                 when (item) {
                                     "Testar" -> previewMode = true
                                     "Deploy" -> onProjects()
+                                    "Terminal" -> onTerminal()
                                     "Versões" -> onTools()
                                 }
                             },

@@ -233,7 +233,7 @@ internal fun VisualEditorScreen(
                 "navigate" -> if (screenRegistry.any { it.id == action.target }) {
                     if (previewNavigationGuard < 25) {
                         val targetDefaults = screenRegistry.firstOrNull { it.id == action.target }?.inputParameters.orEmpty().associate { it.key to it.defaultValue }
-                        runtimeValues = targetDefaults + runtimeValues
+                        runtimeValues = runtimeValues + targetDefaults
                         action.navigationParameters.forEach { parameter ->
                             val parameterValue = Regex("""\$\{([A-Za-z_][A-Za-z0-9_]*)\}""").replace(parameter.value) { match ->
                                 if (match.groupValues[1] == "value") inputValue else runtimeValues[match.groupValues[1]].orEmpty()

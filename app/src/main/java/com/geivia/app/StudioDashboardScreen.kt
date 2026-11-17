@@ -83,7 +83,7 @@ internal fun StudioDashboardScreen(
                 drawerContainerColor = Color.White,
                 drawerContentColor = StudioNavy
             ) {
-                Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 24.dp)) {
+                Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 24.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             Modifier.size(42.dp).background(StudioBlue, RoundedCornerShape(13.dp)),
@@ -98,8 +98,6 @@ internal fun StudioDashboardScreen(
                         }
                     }
                     Spacer(Modifier.height(28.dp))
-                    Text("WORKSPACE", color = StudioMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
-                    Spacer(Modifier.height(8.dp))
                     navItems.forEachIndexed { index, item ->
                         if (index == 0 || navItems[index - 1].section != item.section) {
                             Spacer(Modifier.height(if (index == 0) 4.dp else 14.dp))
@@ -129,7 +127,7 @@ internal fun StudioDashboardScreen(
                             )
                         )
                     }
-                    Spacer(Modifier.weight(1f))
+                    Spacer(Modifier.height(12.dp))
                     HorizontalDivider(color = Color(0xFFE8EDF3))
                     Spacer(Modifier.height(12.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {

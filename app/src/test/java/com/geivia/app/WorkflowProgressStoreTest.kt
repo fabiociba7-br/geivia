@@ -178,6 +178,20 @@ class WorkflowProgressStoreTest {
     }
 
     @Test
+    fun automaticExecutionKeepsOriginalPreparationTimestamp() {
+        val preferences = InMemorySharedPreferences()
+        val store = WorkflowProgressStore(preferences)
+        val prepared = store.waitForConfirmation("project-timestamp", "firestore", "Review command")
+        val started = store.confirmAndStart("project-timestamp", "firestore", "operation-timestamp", "User confirmed")
+        assertEquals(prepared.preparedAt, started.preparedAt)
+        assertTrue(started.preparedAt <= started.updatedAt)
+        assertEquals(
+            prepared.preparedAt,
+            WorkflowProgressStore(preferences).get("project-timestamp", "firestore").preparedAt
+        )
+    }
+
+    @Test
     fun manualConfirmationRemainsDistinctFromDiagnosticCompletion() {
         val store = store()
         store.waitForConfirmation("project-two", "hosting", "Review")

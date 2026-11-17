@@ -63,8 +63,8 @@ internal object StudioProjectGenerator {
                 appendLine()
                 appendLine("@Composable")
                 appendLine("private fun Screen_" + identifier(screen.id) + "(navigate: (String) -> Unit) {")
-                appendLine("    Column(Modifier.fillMaxSize().background(" + color(backgroundColor, "0xFFF3F6FA") + ").verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {")
-                appendLine("        Text(" + quote(screen.name) + ", fontSize = 22.sp, color = " + color(textColor, "0xFF17354D") + ")")
+                appendLine("    Column(Modifier.fillMaxSize().background(" + color(backgroundColor, "Color(0xFFF3F6FA)") + ").verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {")
+                appendLine("        Text(" + quote(screen.name) + ", fontSize = 22.sp, color = " + color(textColor, "Color(0xFF17354D)") + ")")
                 val screenComponents = components[screen.id].orEmpty()
                 screenComponents.filter { it.parentId == null && it.visible }.forEach {
                     append(render(it, screenComponents, 2, primaryColor, textColor))
@@ -148,8 +148,11 @@ dependencies {
         val size = element.fontSize.coerceIn(8f, 48f)
         val padding = element.padding.coerceIn(0f, 64f)
         val radius = element.cornerRadius.coerceIn(0f, 40f)
-        val foreground = color(element.textColor, color(defaultTextColor, "0xFF17354D"))
-        val background = color(element.backgroundColor, color(primaryColor, "0xFF1769AA"))
+        val foreground = if (element.type == "button" && element.textColor == "#17354D") color("#FFFFFF", "Color.White")
+            else if (element.textColor == "#17354D") color(defaultTextColor, "Color(0xFF17354D)")
+            else color(element.textColor, "Color(0xFF17354D)")
+        val background = if (element.type == "button" && element.backgroundColor == "#FFFFFF") color(primaryColor, "Color(0xFF1769AA)")
+            else color(element.backgroundColor, "Color(0xFFFFFFFF)")
         val children = all.filter { it.parentId == element.id && it.visible }
         return buildString {
             when (element.type) {

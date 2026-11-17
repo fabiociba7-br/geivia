@@ -48,6 +48,7 @@ internal fun StudioLogicPanel(context: Context, screens: List<StudioScreenDefini
     var navigationParameters by remember { mutableStateOf(emptyList<StudioNavigationParameter>()) }
     var navigationParameterKey by remember { mutableStateOf("") }
     var navigationParameterValue by remember { mutableStateOf("") }
+    var navigationParameterType by remember { mutableStateOf("text") }
     var feedback by remember { mutableStateOf("As ações são apenas configurações; nada é executado automaticamente.") }
 
     fun save(next: StudioLogicDocument) {
@@ -209,7 +210,11 @@ internal fun StudioLogicPanel(context: Context, screens: List<StudioScreenDefini
                 if (screens.isEmpty()) Text("Crie uma tela antes de configurar a navegação.", color = LogicMuted, fontSize = 10.sp)
                 Text("PARÂMETROS DE NAVEGAÇÃO", color = LogicMuted, fontWeight = FontWeight.Bold, fontSize = 10.sp)
                 OutlinedTextField(value = navigationParameterKey, onValueChange = { navigationParameterKey = it.filter { ch -> ch.isLetterOrDigit() || ch.toString() == "_" }.take(64) }, modifier = Modifier.fillMaxWidth(), label = { Text("Nome do parâmetro") }, singleLine = true)
-                OutlinedTextField(value = navigationParameterValue, onValueChange = { navigationParameterValue = it.take(StudioLogicDocument.MAX_VALUE_LENGTH) }, modifier = Modifier.fillMaxWidth(), label = { Text("Valor ou expressão") }, supportingText = { Text("Use ${'
+                OutlinedTextField(value = navigationParameterValue, onValueChange = { navigationParameterValue = it.take(StudioLogicDocument.MAX_VALUE_LENGTH) }, modifier = Modifier.fillMaxWidth(), label = { Text("Valor ou expressão") }, supportingText = { Text("Informe um valor literal ou expressão.") })
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { listOf("text" to "Texto", "number" to "Número", "boolean" to "Booleano", "json" to "JSON").forEach { (value, label) -> FilterChip(selected = navigationParameterType == value, onClick = { navigationParameterType = value }, label = { Text(label, fontSize = 10.sp) }) } }
+                OutlinedButton(onClick = { navigationParameters = navigationParameters + StudioNavigationParameter(navigationParameterKey.trim(), navigationParameterValue, navigationParameterType); navigationParameterKey = ""; navigationParameterValue = ""; navigationParameterType = "text" }, enabled = navigationParameterKey.isNotBlank() && navigationParameters.size < StudioLogicDocument.MAX_NAVIGATION_PARAMETERS, modifier = Modifier.fillMaxWidth()) { Text("Adicionar parâmetro") }
+                navigationParameters.forEach { parameter -> Row(verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(parameter.key + " = " + parameter.value + " (" + parameter.type + ")", color = LogicInk, fontSize = 12.sp) }; IconButton(onClick = { navigationParameters = navigationParameters.filterNot { it.key == parameter.key } }) { Icon(Icons.Default.DeleteOutline, contentDescription = "Remover parâmetro", tint = LogicMuted) } } }
+            } else if (actionKind == "set_variable") {
                 var expanded by remember { mutableStateOf(false) }
                 ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
                     OutlinedTextField(
@@ -251,7 +256,7 @@ internal fun StudioLogicPanel(context: Context, screens: List<StudioScreenDefini
                         save(next)
                         actionTarget = ""; actionExpression = ""
                         navigationParameters = emptyList()
-                        navigationParameterKey = ""; navigationParameterValue = ""
+                        navigationParameterKey = ""; navigationParameterValue = ""; navigationParameterType = "text"
                         feedback = "Ação salva. Ela ainda não é executada pelo editor."
                     } else feedback = errors.first()
                 },
@@ -307,7 +312,7 @@ internal fun StudioLogicPanel(context: Context, screens: List<StudioScreenDefini
     }
 }
 }{variavel} para enviar dados do aplicativo.") })
-                OutlinedButton(onClick = { navigationParameters = navigationParameters + StudioNavigationParameter(navigationParameterKey.trim(), navigationParameterValue); navigationParameterKey = ""; navigationParameterValue = "" }, enabled = navigationParameterKey.isNotBlank() && navigationParameters.size < StudioLogicDocument.MAX_NAVIGATION_PARAMETERS, modifier = Modifier.fillMaxWidth()) { Text("Adicionar parâmetro") }
+                OutlinedButton(onClick = { navigationParameters = navigationParameters + StudioNavigationParameter(navigationParameterKey.trim(), navigationParameterValue, navigationParameterType); navigationParameterKey = ""; navigationParameterValue = "" }, enabled = navigationParameterKey.isNotBlank() && navigationParameters.size < StudioLogicDocument.MAX_NAVIGATION_PARAMETERS, modifier = Modifier.fillMaxWidth()) { Text("Adicionar parâmetro") }
                 navigationParameters.forEach { parameter -> Row(verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text("${parameter.key} = ${parameter.value}", color = LogicInk, fontSize = 12.sp) }; IconButton(onClick = { navigationParameters = navigationParameters.filterNot { it.key == parameter.key } }) { Icon(Icons.Default.DeleteOutline, contentDescription = "Remover parâmetro", tint = LogicMuted) } } }
             } else if (actionKind == "set_variable") {
                 var expanded by remember { mutableStateOf(false) }

@@ -205,7 +205,7 @@ internal fun VisualEditorScreen(
         previewMode = true
         saveSchema()
     }
-    fun executePreviewActions(componentId: String, trigger: String) {
+    fun executePreviewActions(componentId: String, trigger: String, inputValue: String = "") {
         val logic = readLogicDocument()
         val actions = logic.actions.filter {
             it.enabled && it.trigger == trigger &&
@@ -213,7 +213,7 @@ internal fun VisualEditorScreen(
         }
         actions.forEach { action ->
             val resolved = Regex("""\$\{([A-Za-z_][A-Za-z0-9_]*)\}""").replace(action.expression) { match ->
-                runtimeValues[match.groupValues[1]].orEmpty()
+                if (match.groupValues[1] == "value") inputValue else runtimeValues[match.groupValues[1]].orEmpty()
             }
             when (action.kind) {
                 "navigate" -> if (screenRegistry.any { it.id == action.target }) {
@@ -589,7 +589,8 @@ internal fun VisualEditorScreen(
                                 selectedId = null,
                                 primaryColor = editorColor(themePrimary, EditorBlue),
                                 defaultTextColor = editorColor(themeText, EditorInk),
-                                onActivate = { id -> executePreviewActions(id, "on_click") },
+                                interactive = true,
+                                onActivate = { id, trigger, value -> executePreviewActions(id, trigger, value) },
                                 onSelect = {}
                             )
                         }
@@ -1262,7 +1263,8 @@ private fun EditorCanvasNode(
     selectedId: String?,
     primaryColor: Color = EditorBlue,
     defaultTextColor: Color = EditorInk,
-    onActivate: (String) -> Unit = {},
+    interactive: Boolean = false,
+    onActivate: (String, String, String) -> Unit = { _, _, _ -> },
     onSelect: (String) -> Unit
 ) {
     if (!element.visible) return
@@ -1274,7 +1276,7 @@ private fun EditorCanvasNode(
     val componentText = if (element.type == "button" && element.textColor == "#17354D") Color.White else editorColor(element.textColor, defaultText)
     val container = element.type in setOf("section", "column", "row") || (element.type == "card" && children.isNotEmpty())
     Surface(
-        modifier = Modifier.fillMaxWidth().clickable { onSelect(element.id); if (element.type == "button") onActivate(element.id) },
+        modifier = Modifier.fillMaxWidth().clickable { onSelect(element.id); if (element.type == "button") onActivate(element.id, "on_click", "") },
         color = if (selected) Color(0xFFEAF3FB) else componentBackground,
         shape = RoundedCornerShape(element.cornerRadius.dp),
         border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) EditorBlue else Color(0xFFE3EAF1))
@@ -1289,7 +1291,7 @@ private fun EditorCanvasNode(
                 } else if (element.type == "row") {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                         children.forEach { child ->
-                            Box(Modifier.weight(1f)) { EditorCanvasNode(child, allElements, selectedId, primaryColor, defaultTextColor, onActivate, onSelect) }
+                            Box(Modifier.weight(1f)) { EditorCanvasNode(child, allElements, selectedId, primaryColor, defaultTextColor, interactive, onActivate, onSelect) }
                         }
                     }
                 } else {
@@ -1314,7 +1316,21 @@ private fun EditorCanvasNode(
                     "card" -> Surface(color = componentBackground, shape = RoundedCornerShape(element.cornerRadius.dp), border = BorderStroke(1.dp, Color(0xFFDCE5EE))) {
                         Text(element.text, color = componentText, modifier = Modifier.fillMaxWidth().padding(12.dp), fontWeight = FontWeight.Medium, fontSize = element.fontSize.sp, textAlign = align)
                     }
-                    "input" -> OutlinedTextField(value = "", onValueChange = {}, readOnly = true, enabled = false, label = { Text(element.text) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                    "input" -> {
+                        var inputValue by remember(element.id, interactive) { mutableStateOf("") }
+                        OutlinedTextField(
+                            value = inputValue,
+                            onValueChange = { value ->
+                                inputValue = value
+                                if (interactive) onActivate(element.id, "on_value_change", value)
+                            },
+                            readOnly = !interactive,
+                            enabled = interactive,
+                            label = { Text(element.text) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
                     "image" -> Surface(color = Color(0xFFF0F4F8), shape = RoundedCornerShape(element.cornerRadius.dp), border = BorderStroke(1.dp, Color(0xFFDCE5EE))) {
                         Column(Modifier.fillMaxWidth().heightIn(min = 88.dp).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                             Icon(Icons.Default.Image, null, tint = EditorMuted, modifier = Modifier.size(28.dp))

@@ -60,9 +60,13 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
         mutableStateOf(
             runCatching {
                 StudioScreenDocument.fromJson(prefs.getString("geivia_studio_screens_v1", null).orEmpty()).startScreenId
-            }.getOrDefault(screenRegistry.first().id)
+            }.getOrDefault(screenRegistry.first().id).takeIf { candidate ->
+                screenRegistry.any { it.id == candidate }
+            } ?: screenRegistry.first().id
         )
     }
+    var renamingScreenId by remember { mutableStateOf<String?>(null) }
+    var renameValue by remember { mutableStateOf("") }
 
     fun decodeElements(saved: String?): List<StudioElement> {
         if (saved.isNullOrBlank()) return emptyList()
@@ -262,11 +266,48 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                                 } else null
                             )
                             Spacer(Modifier.weight(1f))
+                            TextButton(onClick = {
+                                renamingScreenId = screen.id
+                                renameValue = screen.name
+                            }) {
+                                Text("Renomear", fontSize = 10.sp)
+                            }
                             TextButton(onClick = { setStartScreen(screen.id) }) {
-                                Text("Definir início", fontSize = 10.sp)
+                                Text(if (startScreenId == screen.id) "Tela inicial" else "Definir início", fontSize = 10.sp)
                             }
                         }
                         Text("ID: ${screen.id}", color = EditorMuted, fontSize = 9.sp)
+                    }
+                    if (renamingScreenId != null) {
+                        AlertDialog(
+                            onDismissRequest = { renamingScreenId = null },
+                            title = { Text("Renomear tela") },
+                            text = {
+                                OutlinedTextField(
+                                    value = renameValue,
+                                    onValueChange = { renameValue = it.take(StudioScreenDocument.MAX_NAME_LENGTH) },
+                                    label = { Text("Nome da tela") },
+                                    singleLine = true
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    val index = screenRegistry.indexOfFirst { it.id == renamingScreenId }
+                                    if (index >= 0 && renameValue.isNotBlank()) {
+                                        screenRegistry[index] = screenRegistry[index].copy(name = renameValue.trim())
+                                        prefs.edit().putString(
+                                            "geivia_studio_screens_v1",
+                                            StudioScreenDocument(screenRegistry.toList(), startScreenId).toJson()
+                                        ).apply()
+                                        message = "Nome da tela atualizado"
+                                    }
+                                    renamingScreenId = null
+                                }, enabled = renameValue.isNotBlank()) { Text("Salvar") }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { renamingScreenId = null }) { Text("Cancelar") }
+                            }
+                        )
                     }
                 }
             }

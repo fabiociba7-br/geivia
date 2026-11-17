@@ -77,7 +77,7 @@ internal fun VisualEditorScreen(
     val savedScreenDocument = prefs.getString(screenRegistryPrefKey, null)
         ?: if (allowLegacyProjectData) prefs.getString("geivia_studio_screens_v1", null) else null
     val projectTitle = prefs.getString("selected_project_name", "Meu aplicativo").orEmpty().ifBlank { "Meu aplicativo" }
-    val screenRegistry = remember {
+    val screenRegistry = remember(projectKey) {
         mutableStateListOf<StudioScreenDefinition>().apply {
             if (!savedScreenDocument.isNullOrBlank()) runCatching {
                 addAll(StudioScreenDocument.fromJson(savedScreenDocument).screens)
@@ -85,8 +85,8 @@ internal fun VisualEditorScreen(
             if (isEmpty()) add(StudioScreenDefinition("home", "Início"))
         }
     }
-    var activeScreenId by remember { mutableStateOf(screenRegistry.first().id) }
-    var startScreenId by remember {
+    var activeScreenId by remember(projectKey) { mutableStateOf(screenRegistry.first().id) }
+    var startScreenId by remember(projectKey) {
         mutableStateOf(
             runCatching {
                 StudioScreenDocument.fromJson(savedScreenDocument.orEmpty()).startScreenId
@@ -123,7 +123,7 @@ internal fun VisualEditorScreen(
         }.getOrDefault(emptyList())
     }
 
-    val elements = remember {
+    val elements = remember(projectKey) {
         mutableStateListOf<StudioElement>().apply {
             val perScreen = prefs.getString("${schemaPrefix}_${activeScreenId}", null)
             val legacyPerScreen = if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_${activeScreenId}", null) else null
@@ -135,17 +135,17 @@ internal fun VisualEditorScreen(
         }
     }
     var selectedId by remember { mutableStateOf(elements.firstOrNull()?.id) }
-    val undoStack = remember { mutableStateListOf<List<StudioElement>>() }
-    val redoStack = remember { mutableStateListOf<List<StudioElement>>() }
-    var message by remember { mutableStateOf("Rascunho local") }
-    var previewMode by rememberSaveable { mutableStateOf(false) }
-    var workspacePanel by rememberSaveable { mutableStateOf("canvas") }
-    var themePrimary by remember { mutableStateOf(prefs.getString(themePrimaryPrefKey, if (allowLegacyProjectData) prefs.getString("studio_theme_primary", "#1769AA") else "#1769AA") ?: "#1769AA") }
-    var themeBackground by remember { mutableStateOf(prefs.getString(themeBackgroundPrefKey, if (allowLegacyProjectData) prefs.getString("studio_theme_background", "#F3F6FA") else "#F3F6FA") ?: "#F3F6FA") }
-    var themeText by remember { mutableStateOf(prefs.getString(themeTextPrefKey, if (allowLegacyProjectData) prefs.getString("studio_theme_text", "#17354D") else "#17354D") ?: "#17354D") }
-    var assetUrl by remember { mutableStateOf("") }
-    var generatedPackage by rememberSaveable { mutableStateOf(prefs.getString(generatedPackagePrefKey, if (allowLegacyProjectData) prefs.getString("studio_generated_package", "com.generated.geivia") else "com.generated.geivia") ?: "com.generated.geivia") }
-    val savedAssets = remember { mutableStateListOf<String>().apply { prefs.getString(assetsPrefKey, if (allowLegacyProjectData) prefs.getString("studio_assets_v1", null) else null)?.let { raw -> runCatching { val a = JSONArray(raw); for (i in 0 until a.length()) add(a.getString(i)) } } } }
+    val undoStack = remember(projectKey) { mutableStateListOf<List<StudioElement>>() }
+    val redoStack = remember(projectKey) { mutableStateListOf<List<StudioElement>>() }
+    var message by remember(projectKey) { mutableStateOf("Rascunho local") }
+    var previewMode by rememberSaveable(projectKey) { mutableStateOf(false) }
+    var workspacePanel by rememberSaveable(projectKey) { mutableStateOf("canvas") }
+    var themePrimary by remember(projectKey) { mutableStateOf(prefs.getString(themePrimaryPrefKey, if (allowLegacyProjectData) prefs.getString("studio_theme_primary", "#1769AA") else "#1769AA") ?: "#1769AA") }
+    var themeBackground by remember(projectKey) { mutableStateOf(prefs.getString(themeBackgroundPrefKey, if (allowLegacyProjectData) prefs.getString("studio_theme_background", "#F3F6FA") else "#F3F6FA") ?: "#F3F6FA") }
+    var themeText by remember(projectKey) { mutableStateOf(prefs.getString(themeTextPrefKey, if (allowLegacyProjectData) prefs.getString("studio_theme_text", "#17354D") else "#17354D") ?: "#17354D") }
+    var assetUrl by remember(projectKey) { mutableStateOf("") }
+    var generatedPackage by rememberSaveable(projectKey) { mutableStateOf(prefs.getString(generatedPackagePrefKey, if (allowLegacyProjectData) prefs.getString("studio_generated_package", "com.generated.geivia") else "com.generated.geivia") ?: "com.generated.geivia") }
+    val savedAssets = remember(projectKey) { mutableStateListOf<String>().apply { prefs.getString(assetsPrefKey, if (allowLegacyProjectData) prefs.getString("studio_assets_v1", null) else null)?.let { raw -> runCatching { val a = JSONArray(raw); for (i in 0 until a.length()) add(a.getString(i)) } } } }
     val assetPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             runCatching { context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }

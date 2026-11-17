@@ -32,7 +32,8 @@ internal fun StudioLogicPanel(
     context: Context,
     screens: List<StudioScreenDefinition> = emptyList(),
     components: List<StudioComponentDefinition> = emptyList(),
-    storageKeySuffix: String = ""
+    storageKeySuffix: String = "",
+    allowLegacyData: Boolean = true
 ) {
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE) }
     val logicStorageKey = if (storageKeySuffix.isBlank()) STUDIO_LOGIC_PREFS_KEY else "${STUDIO_LOGIC_PREFS_KEY}_$storageKeySuffix"
@@ -40,7 +41,7 @@ internal fun StudioLogicPanel(
         mutableStateOf(
             runCatching {
                 val saved = prefs.getString(logicStorageKey, null)
-                    ?: if (storageKeySuffix.isNotBlank()) prefs.getString(STUDIO_LOGIC_PREFS_KEY, null) else null
+                    ?: if (storageKeySuffix.isNotBlank() && allowLegacyData) prefs.getString(STUDIO_LOGIC_PREFS_KEY, null) else null
                 StudioLogicDocument.fromJson(saved.orEmpty())
             }.getOrDefault(StudioLogicDocument())
         )

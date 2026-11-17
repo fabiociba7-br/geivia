@@ -122,6 +122,8 @@ internal fun VisualEditorScreen(
         }
     }
     var selectedId by remember { mutableStateOf(elements.firstOrNull()?.id) }
+    val undoStack = remember { mutableStateListOf<List<StudioElement>>() }
+    val redoStack = remember { mutableStateListOf<List<StudioElement>>() }
     var message by remember { mutableStateOf("Rascunho local") }
     var previewMode by rememberSaveable { mutableStateOf(false) }
     var workspacePanel by rememberSaveable { mutableStateOf("canvas") }
@@ -148,6 +150,7 @@ internal fun VisualEditorScreen(
     val selected = elements.getOrNull(selectedIndex)
 
     fun addElement(type: String, text: String) {
+        checkpoint()
         val parent = selected?.takeIf { it.type in setOf("section", "column", "row", "card") }?.id
         val element = StudioElement(type = type, text = text, parentId = parent)
         elements.add(element)
@@ -246,12 +249,49 @@ internal fun VisualEditorScreen(
         ).apply()
         message = "Tela inicial definida"
     }
+    fun checkpoint() {
+        undoStack.add(elements.toList())
+        if (undoStack.size > 30) undoStack.removeAt(0)
+        redoStack.clear()
+    }
+    fun undo() {
+        if (undoStack.isEmpty()) return
+        redoStack.add(elements.toList())
+        val previous = undoStack.removeAt(undoStack.lastIndex)
+        elements.clear(); elements.addAll(previous)
+        selectedId = selectedId?.takeIf { id -> elements.any { it.id == id } } ?: elements.firstOrNull()?.id
+        message = "Ação desfeita"
+    }
+    fun redo() {
+        if (redoStack.isEmpty()) return
+        undoStack.add(elements.toList())
+        val next = redoStack.removeAt(redoStack.lastIndex)
+        elements.clear(); elements.addAll(next)
+        selectedId = selectedId?.takeIf { id -> elements.any { it.id == id } } ?: elements.firstOrNull()?.id
+        message = "Ação refeita"
+    }
+    fun deleteSelected() {
+        val index = elements.indexOfFirst { it.id == selectedId }
+        if (index < 0) return
+        checkpoint()
+        val removed = mutableSetOf(elements[index].id)
+        var changed: Boolean
+        do {
+            changed = false
+            elements.filter { it.parentId in removed }.forEach { if (removed.add(it.id)) changed = true }
+        } while (changed)
+        elements.removeAll { it.id in removed }
+        selectedId = elements.getOrNull((index - 1).coerceAtLeast(0))?.id
+        message = "Componente removido"
+    }
+
     fun updateSelected(transform: (StudioElement) -> StudioElement) {
         if (selectedIndex >= 0) elements[selectedIndex] = transform(elements[selectedIndex])
     }
 
     fun reorderDraggedElement(id: String, steps: Int) {
         if (steps == 0) return
+        checkpoint()
         repeat(kotlin.math.abs(steps)) {
             val current = elements.firstOrNull { it.id == id } ?: return
             val siblings = elements.filter { it.parentId == current.parentId }.map { it.id }
@@ -472,7 +512,10 @@ internal fun VisualEditorScreen(
                             IconButton(onClick = { workspacePanel = "components" }) { Icon(Icons.Default.Add, "Adicionar componente", tint = EditorBlue) }
                             IconButton(onClick = { workspacePanel = "advanced" }) { Icon(Icons.Default.Tune, "Propriedades", tint = EditorInk) }
                             IconButton(onClick = { saveSchema(); message = "Alterações salvas" }) { Icon(Icons.Default.Save, "Salvar", tint = EditorInk) }
-                            IconButton(onClick = { selectedId?.let { id -> elements.firstOrNull { it.id == id }?.let { item -> elements.add(item.copy(id = UUID.randomUUID().toString(), text = item.text + " (cópia)")); selectedId = elements.last().id } } }) { Icon(Icons.Default.ContentCopy, "Duplicar", tint = EditorInk) }
+                            IconButton(onClick = { selectedId?.let { id -> elements.firstOrNull { it.id == id }?.let { item -> checkpoint(); elements.add(item.copy(id = UUID.randomUUID().toString(), text = item.text + " (cópia)")); selectedId = elements.last().id } } }) { Icon(Icons.Default.ContentCopy, "Duplicar", tint = EditorInk) }
+                            IconButton(onClick = { undo() }, enabled = undoStack.isNotEmpty()) { Icon(Icons.Default.Undo, "Desfazer", tint = EditorInk) }
+                            IconButton(onClick = { redo() }, enabled = redoStack.isNotEmpty()) { Icon(Icons.Default.Redo, "Refazer", tint = EditorInk) }
+                            IconButton(onClick = { deleteSelected() }, enabled = selectedId != null) { Icon(Icons.Default.DeleteOutline, "Excluir", tint = Color(0xFFB33A3A)) }
                         }
                     }
                 }

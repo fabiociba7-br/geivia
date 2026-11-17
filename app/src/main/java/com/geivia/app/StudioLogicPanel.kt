@@ -58,7 +58,7 @@ internal fun StudioLogicPanel(
     var navigationParameterKey by remember(storageKeySuffix) { mutableStateOf("") }
     var navigationParameterValue by remember(storageKeySuffix) { mutableStateOf("") }
     var navigationParameterType by remember(storageKeySuffix) { mutableStateOf("text") }
-    var feedback by remember(storageKeySuffix) { mutableStateOf("As ações são executadas somente na prévia do editor.") }
+    var feedback by remember(storageKeySuffix) { mutableStateOf("As ações suportadas funcionam na prévia e no projeto Android gerado.") }
 
     fun save(next: StudioLogicDocument) {
         document = next
@@ -266,7 +266,7 @@ internal fun StudioLogicPanel(
                         actionTarget = ""; actionExpression = ""
                         navigationParameters = emptyList()
                         navigationParameterKey = ""; navigationParameterValue = ""; navigationParameterType = "text"
-                        feedback = "Ação salva. Será executada somente na prévia do editor."
+                        feedback = "Ação salva. Será executada na prévia e no projeto Android gerado."
                     } else feedback = errors.first()
                 },
                 enabled = document.actions.size < StudioLogicDocument.MAX_ACTIONS &&

@@ -6,7 +6,7 @@ on:
   push:
     branches: [main, "feat/full-project-import-and-deploy"]
   pull_request:
-    branches: [main, "feature/studio-dashboard-shell"]
+    branches: [main, "feature/studio-dashboard-shell", "feature/editor-drag-reorder"]
   workflow_dispatch:
 
 concurrency:

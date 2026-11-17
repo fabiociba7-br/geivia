@@ -244,7 +244,11 @@ internal fun VisualEditorScreen(
                     .put("backgroundColor", item.backgroundColor).put("textColor", item.textColor)
                     .put("cornerRadius", item.cornerRadius).put("visible", item.visible))
             }
-            screens.put(JSONObject().put("id", screen.id).put("name", screen.name).put("components", items))
+            val inputParameters = JSONArray()
+            screen.inputParameters.forEach { parameter ->
+                inputParameters.put(JSONObject().put("key", parameter.key).put("label", parameter.label).put("type", parameter.type).put("required", parameter.required).put("defaultValue", parameter.defaultValue))
+            }
+            screens.put(JSONObject().put("id", screen.id).put("name", screen.name).put("inputParameters", inputParameters).put("components", items))
         }
         project.put("name", projectTitle)
         project.put("screens", screens)

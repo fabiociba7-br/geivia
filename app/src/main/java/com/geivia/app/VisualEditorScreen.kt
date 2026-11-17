@@ -44,7 +44,14 @@ private const val EDITOR_SCHEMA_KEY = "geivia_studio_schema_v1"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
+internal fun VisualEditorScreen(
+    context: Context,
+    onBack: () -> Unit,
+    onFirebase: () -> Unit = {},
+    onAccounts: () -> Unit = {},
+    onTools: () -> Unit = {},
+    onProjects: () -> Unit = {}
+) {
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE) }
     val screenRegistry = remember {
         mutableStateListOf<StudioScreenDefinition>().apply {
@@ -100,6 +107,9 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
     }
     var selectedId by remember { mutableStateOf(elements.firstOrNull()?.id) }
     var message by remember { mutableStateOf("Rascunho local") }
+    var previewMode by rememberSaveable { mutableStateOf(false) }
+    val editorDrawerState = rememberDrawerState(DrawerValue.Closed)
+    val editorScope = rememberCoroutineScope()
     var parentMenuExpanded by remember { mutableStateOf(false) }
     var draggedElementId by remember { mutableStateOf<String?>(null) }
     var dragDistance by remember { mutableFloatStateOf(0f) }
@@ -194,6 +204,63 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
         message = "Ordem dos componentes atualizada"
     }
 
+    ModalNavigationDrawer(
+        drawerState = editorDrawerState,
+        drawerContent = {
+            ModalDrawerSheet(
+                drawerContainerColor = Color.White,
+                drawerContentColor = EditorInk
+            ) {
+                Column(
+                    Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp)
+                ) {
+                    Text("Minha loja", color = EditorInk, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("${screenRegistry.firstOrNull { it.id == activeScreenId }?.name ?: "Home"} · Android", color = EditorMuted, fontSize = 11.sp)
+                    Spacer(Modifier.height(18.dp))
+                    Text("PROJETO", color = EditorMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    val projectItems = listOf("Páginas", "Componentes", "Tema e estilo", "Firestore", "Autenticação", "APIs", "Ações e lógica", "Variáveis", "Assets", "Integrações", "Configurações")
+                    projectItems.forEach { item ->
+                        val available = item in setOf("Páginas", "Componentes", "Ações e lógica", "Variáveis", "Firestore", "Integrações", "Configurações")
+                        NavigationDrawerItem(
+                            label = { Text(item, fontSize = 13.sp) },
+                            selected = false,
+                            enabled = available,
+                            onClick = {
+                                editorScope.launch { editorDrawerState.close() }
+                                when (item) {
+                                    "Firestore" -> onFirebase()
+                                    "Integrações" -> onAccounts()
+                                    "Configurações" -> onTools()
+                                    else -> message = "$item selecionado"
+                                }
+                            },
+                            modifier = Modifier.padding(vertical = 1.dp)
+                        )
+                    }
+                    HorizontalDivider(Modifier.padding(vertical = 8.dp), color = Color(0xFFE4EAF0))
+                    Text("FERRAMENTAS", color = EditorMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    val toolItems = listOf("Testar", "Deploy", "Terminal", "Versões", "Código gerado")
+                    toolItems.forEach { item ->
+                        val available = item in setOf("Testar", "Deploy", "Versões")
+                        NavigationDrawerItem(
+                            label = { Text(item, fontSize = 13.sp) },
+                            selected = false,
+                            enabled = available,
+                            onClick = {
+                                editorScope.launch { editorDrawerState.close() }
+                                when (item) {
+                                    "Testar" -> previewMode = true
+                                    "Deploy" -> onProjects()
+                                    "Versões" -> onTools()
+                                }
+                            },
+                            modifier = Modifier.padding(vertical = 1.dp)
+                        )
+                    }
+                }
+            }
+        }
+    ) {
     Scaffold(
         containerColor = Color(0xFFF3F6FA),
         topBar = {
@@ -205,8 +272,15 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = EditorInk)
+                    IconButton(onClick = {
+                        if (previewMode) previewMode = false
+                        else editorScope.launch { editorDrawerState.open() }
+                    }) {
+                        Icon(
+                            if (previewMode) Icons.Default.ArrowBack else Icons.Default.Menu,
+                            contentDescription = if (previewMode) "Voltar ao editor" else "Abrir menu",
+                            tint = EditorInk
+                        )
                     }
                 },
                 actions = {
@@ -215,11 +289,51 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                         Spacer(Modifier.width(4.dp))
                         Text("Salvar")
                     }
+                    TextButton(onClick = { previewMode = !previewMode }) {
+                        Icon(Icons.Default.Visibility, null, modifier = Modifier.size(17.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(if (previewMode) "Editar" else "Prévia")
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         }
     ) { padding ->
+        if (previewMode) {
+            Column(
+                Modifier.fillMaxSize().padding(padding).padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Surface(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    color = Color.White,
+                    shape = RoundedCornerShape(18.dp),
+                    border = BorderStroke(1.dp, Color(0xFFDCE5EE))
+                ) {
+                    Column(
+                        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(screenRegistry.firstOrNull { it.id == activeScreenId }?.name ?: "Meu aplicativo", color = EditorInk, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Spacer(Modifier.weight(1f))
+                            Text("PRÉVIA", color = EditorBlue, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        }
+                        elements.filter { it.parentId == null }.forEach { element ->
+                            EditorCanvasNode(element, elements, null) {}
+                        }
+                    }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(onClick = { previewMode = false }, modifier = Modifier.weight(1f)) {
+                        Text("Voltar ao editor")
+                    }
+                    Button(onClick = onProjects, modifier = Modifier.weight(1f)) {
+                        Text("Deploy")
+                    }
+                }
+            }
+        } else {
         Column(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -568,6 +682,8 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
 
             Text(message, color = EditorMuted, fontSize = 11.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
         }
+        }
+    }
     }
 }
 

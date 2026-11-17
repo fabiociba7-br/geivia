@@ -190,6 +190,11 @@ internal fun VisualEditorScreen(
     var previewMessage by remember(projectKey) { mutableStateOf("") }
     var runtimeValues by remember(projectKey) { mutableStateOf<Map<String, String>>(emptyMap()) }
     var previewNavigationGuard by remember(projectKey) { mutableIntStateOf(0) }
+    fun checkpoint() {
+        undoStack.add(elements.toList())
+        if (undoStack.size > 30) undoStack.removeAt(0)
+        redoStack.clear()
+    }
 
     fun readLogicDocument(): StudioLogicDocument {
         val raw = prefs.getString("geivia_studio_logic_v1_$projectKey", null)
@@ -204,7 +209,6 @@ internal fun VisualEditorScreen(
         previewMessage = ""
         previewNavigationGuard = 0
         previewMode = true
-        saveSchema()
     }
     fun executePreviewActions(componentId: String, trigger: String, inputValue: String = "") {
         val logic = readLogicDocument()
@@ -352,11 +356,6 @@ internal fun VisualEditorScreen(
             StudioScreenDocument(screenRegistry.toList(), startScreenId).toJson()
         ).putBoolean("studio_project_migrated_$projectKey", true).apply()
         message = "Tela inicial definida"
-    }
-    fun checkpoint() {
-        undoStack.add(elements.toList())
-        if (undoStack.size > 30) undoStack.removeAt(0)
-        redoStack.clear()
     }
     fun undo() {
         if (undoStack.isEmpty()) return

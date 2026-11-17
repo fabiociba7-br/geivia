@@ -1049,6 +1049,7 @@ internal fun VisualEditorScreen(
             StudioLogicPanel(
                 context = context,
                 storageKeySuffix = projectKey,
+                allowLegacyData = allowLegacyProjectData,
                 screens = screenRegistry.toList(),
                 components = screenRegistry.flatMap { screen ->
                     val screenElements = if (screen.id == activeScreenId) {
@@ -1172,6 +1173,7 @@ internal fun VisualEditorScreen(
                     "logic" -> StudioLogicPanel(
                         context = context,
                         storageKeySuffix = projectKey,
+                        allowLegacyData = allowLegacyProjectData,
                         screens = screenRegistry.toList(),
                         components = screenRegistry.flatMap { screen ->
                             val screenElements = if (screen.id == activeScreenId) elements.toList() else decodeElements(prefs.getString("\${EDITOR_SCHEMA_KEY}_\${screen.id}", null))

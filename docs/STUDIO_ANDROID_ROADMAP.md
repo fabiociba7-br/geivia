@@ -38,7 +38,7 @@ O GEIVIA Studio é uma plataforma visual para criar aplicativos Android nativos.
 - Parâmetros são serializados junto à ação; documentos antigos sem esse campo continuam sendo carregados como listas vazias.
 - As definições são persistidas em JSON versionado e validadas; ainda não existe motor de execução dessas ações.
 - O Studio gera um projeto Android nativo inicial com Kotlin, Jetpack Compose, Manifest e arquivos Gradle, exportável em ZIP pelo seletor de arquivos do Android.
-- O pacote ZIP também contém o esquema versionado do GEIVIA e o manifesto de assets; arquivos externos não são copiados automaticamente para os recursos do app.
+- O pacote ZIP também contém o esquema versionado do GEIVIA, o manifesto de assets e os arquivos locais selecionados, copiados para app/src/main/assets. URLs externas são registradas, mas não baixadas automaticamente.
 - Os botões gerados ainda não executam as ações declarativas; a conexão do motor de ações e da navegação interativa segue pendente.
 - Por decisão do proprietário, os workflows GitHub Actions foram removidos de main e da branch de desenvolvimento. Não há builds nem validações automáticas; a verificação será manual quando solicitada.
 

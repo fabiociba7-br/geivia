@@ -4,6 +4,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /** Versioned screen registry used by the Android visual editor. */
+internal data class StudioComponentDefinition(val id: String, val label: String)
 internal data class StudioScreenDefinition(
     val id: String,
     val name: String

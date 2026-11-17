@@ -358,6 +358,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onIntegrations = { page = "accounts" },
                     onTools = { page = "toolchain_updates" },
                     onDiagnostics = { page = "diagnostics" },
+                    onAccounts = { page = "accounts" },
                     onLegacyDashboard = { page = "legacy_dashboard" }
                 )
             }

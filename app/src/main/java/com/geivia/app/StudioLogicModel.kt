@@ -72,7 +72,7 @@ internal data class StudioLogicDocument(
             if (action.trigger !in ACTION_TRIGGERS) errors += "Gatilho inválido na ação ${action.id}"
             if (action.kind !in ACTION_KINDS) errors += "Tipo de ação inválido: ${action.kind}"
             if (action.componentId.length > MAX_TARGET_LENGTH) errors += "Identificador de componente muito longo: ${action.id}"
-            if (action.componentId.isNotBlank() && availableComponentIds != null && action.componentId !in availableComponentIds) errors += "Componente não existe: ${action.componentId}"
+            if (action.enabled && action.componentId.isNotBlank() && availableComponentIds != null && action.componentId !in availableComponentIds) errors += "Componente não existe: ${action.componentId}"
             if (action.target.length > MAX_TARGET_LENGTH) errors += "Destino muito longo na ação ${action.id}"
             if (action.expression.length > MAX_VALUE_LENGTH) errors += "Expressão muito longa na ação ${action.id}"
             if (action.navigationParameters.size > MAX_NAVIGATION_PARAMETERS) errors += "Limite de parâmetros excedido na ação ${action.id}"

@@ -77,6 +77,7 @@ class StudioProjectGeneratorTest {
         assertTrue(source.contains("fun runActions"))
         assertTrue(source.contains("runAction(\"show_welcome\""))
         assertTrue(source.contains("runActions(\"continue\", \"on_click\""))
+        assertTrue(source.contains("if (trigger != \"on_screen_open\") navigationCount = 0"))
     }
 
     @Test

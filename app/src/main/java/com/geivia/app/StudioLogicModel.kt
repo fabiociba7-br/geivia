@@ -82,11 +82,21 @@ internal data class StudioLogicDocument(
                 if (!KEY_PATTERN.matches(parameter.key)) errors += "Nome de parâmetro inválido: ${parameter.key}"
                 if (parameter.value.length > MAX_VALUE_LENGTH) errors += "Valor de parâmetro muito longo: ${parameter.key}"
                 if (parameter.type !in VARIABLE_TYPES) errors += "Tipo inválido no parâmetro ${parameter.key}"
-                if (parameter.type == "number" && parameter.value.isNotBlank() && parameter.value.toDoubleOrNull() == null) errors += "Parâmetro numérico inválido: ${parameter.key}"
-                if (parameter.type == "boolean" && parameter.value !in setOf("true", "false")) errors += "Parâmetro booleano inválido: ${parameter.key}"
-                if (parameter.type == "json" && parameter.value.isNotBlank() && !isJsonValue(parameter.value)) errors += "Parâmetro JSON inválido: ${parameter.key}"
-                VARIABLE_REFERENCE.findAll(parameter.value).forEach { match ->
-                    if (match.groupValues[1] !in variableMap) errors += "Variável referenciada não existe: ${match.groupValues[1]}"
+                val parameterReference = VARIABLE_REFERENCE.matchEntire(parameter.value)
+                if (parameterReference != null) {
+                    val referencedVariable = variableMap[parameterReference.groupValues[1]]
+                    if (referencedVariable == null) {
+                        errors += "Variável referenciada não existe: ${parameterReference.groupValues[1]}"
+                    } else if (referencedVariable.type != parameter.type) {
+                        errors += "Tipo incompatível na referência do parâmetro ${parameter.key}"
+                    }
+                } else {
+                    VARIABLE_REFERENCE.findAll(parameter.value).forEach { match ->
+                        if (match.groupValues[1] !in variableMap) errors += "Variável referenciada não existe: ${match.groupValues[1]}"
+                    }
+                    if (parameter.type == "number" && parameter.value.isNotBlank() && parameter.value.toDoubleOrNull() == null) errors += "Parâmetro numérico inválido: ${parameter.key}"
+                    if (parameter.type == "boolean" && parameter.value !in setOf("true", "false")) errors += "Parâmetro booleano inválido: ${parameter.key}"
+                    if (parameter.type == "json" && parameter.value.isNotBlank() && !isJsonValue(parameter.value)) errors += "Parâmetro JSON inválido: ${parameter.key}"
                 }
             }
             if (action.kind != "navigate" && action.navigationParameters.isNotEmpty()) errors += "Parâmetros de navegação só podem ser usados em ações de navegação"

@@ -142,7 +142,7 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                         EditorPaletteButton("Cartão", Icons.Default.CropSquare) { addElement("card", "Novo cartão") }
                         EditorPaletteButton("Espaço", Icons.Default.SpaceBar) { addElement("spacer", "Espaço") }
                     }
-                    Text("Adicione elementos e organize a estrutura da tela.", color = EditorMuted, fontSize = 11.sp)
+                    Text("Adicione elementos. Segure e arraste um item na árvore para reordenar componentes do mesmo nível.", color = EditorMuted, fontSize = 11.sp)
                 }
             }
 
@@ -170,8 +170,31 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                             val active = element.id == selectedId
                             Row(
                                 Modifier.fillMaxWidth()
-                                    .background(if (active) Color(0xFFEAF3FB) else Color(0xFFF8FAFC), RoundedCornerShape(10.dp))
+                                    .background(if (draggedElementId == element.id) Color(0xFFD8EAF9) else if (active) Color(0xFFEAF3FB) else Color(0xFFF8FAFC), RoundedCornerShape(10.dp))
                                     .clickable { selectedId = element.id }
+                                    .pointerInput(element.id, elements.size) {
+                                        detectDragGesturesAfterLongPress(
+                                            onDragStart = {
+                                                draggedElementId = element.id
+                                                selectedId = element.id
+                                                dragDistance = 0f
+                                            },
+                                            onDrag = { change, amount ->
+                                                change.consume()
+                                                dragDistance += amount.y
+                                            },
+                                            onDragEnd = {
+                                                val steps = (dragDistance / dragStepPx).roundToInt()
+                                                reorderDraggedElement(element.id, steps)
+                                                draggedElementId = null
+                                                dragDistance = 0f
+                                            },
+                                            onDragCancel = {
+                                                draggedElementId = null
+                                                dragDistance = 0f
+                                            }
+                                        )
+                                    }
                                     .padding(start = (10 + depth * 16).dp, end = 10.dp, top = 9.dp, bottom = 9.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -193,6 +216,7 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                                     Text("${index + 1}. ${element.type}", color = EditorMuted, fontSize = 10.sp)
                                 }
                                 if (active) Text("SELECIONADO", color = EditorBlue, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                                Icon(Icons.Default.DragIndicator, contentDescription = "Arraste para reordenar", tint = EditorMuted, modifier = Modifier.size(18.dp))
                             }
                         }
                     }

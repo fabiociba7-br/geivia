@@ -280,7 +280,8 @@ internal fun StudioLogicPanel(context: Context, screens: List<StudioScreenDefini
                         Column(Modifier.weight(1f)) {
                             Text("${action.trigger} · ${components.firstOrNull { it.id == action.componentId }?.label ?: if (action.trigger == "on_screen_open") "Tela" else "Componente removido"} → ${action.kind}", color = LogicInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                             Text(
-                                listOf(action.target, action.expression).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "Sem parâmetros" } +
+                                (listOf(action.target, action.expression).filter { it.isNotBlank() } +
+                                    action.navigationParameters.map { it.key + "=" + it.value + " (" + it.type + ")" }).joinToString(" · ").ifBlank { "Sem parâmetros" } +
                                     if (action.enabled) "" else " · DESATIVADA",
                                 color = LogicMuted, fontSize = 10.sp
                             )

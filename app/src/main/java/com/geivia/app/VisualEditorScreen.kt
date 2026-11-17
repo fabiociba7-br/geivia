@@ -1249,6 +1249,7 @@ private fun EditorCanvasNode(
     selectedId: String?,
     primaryColor: Color = EditorBlue,
     defaultTextColor: Color = EditorInk,
+    onActivate: (String) -> Unit = {},
     onSelect: (String) -> Unit
 ) {
     if (!element.visible) return
@@ -1260,7 +1261,7 @@ private fun EditorCanvasNode(
     val componentText = if (element.type == "button" && element.textColor == "#17354D") Color.White else editorColor(element.textColor, defaultText)
     val container = element.type in setOf("section", "column", "row") || (element.type == "card" && children.isNotEmpty())
     Surface(
-        modifier = Modifier.fillMaxWidth().clickable { onSelect(element.id) },
+        modifier = Modifier.fillMaxWidth().clickable { onSelect(element.id); if (element.type == "button") onActivate(element.id) },
         color = if (selected) Color(0xFFEAF3FB) else componentBackground,
         shape = RoundedCornerShape(element.cornerRadius.dp),
         border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) EditorBlue else Color(0xFFE3EAF1))
@@ -1275,7 +1276,7 @@ private fun EditorCanvasNode(
                 } else if (element.type == "row") {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                         children.forEach { child ->
-                            Box(Modifier.weight(1f)) { EditorCanvasNode(child, allElements, selectedId, primaryColor, defaultTextColor, onSelect) }
+                            Box(Modifier.weight(1f)) { EditorCanvasNode(child, allElements, selectedId, primaryColor, defaultTextColor, onActivate, onSelect) }
                         }
                     }
                 } else {

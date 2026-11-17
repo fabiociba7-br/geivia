@@ -347,7 +347,7 @@ internal fun StudioLogicPanel(
                         actionTarget = ""; actionExpression = ""
                         navigationParameters = emptyList()
                         navigationParameterKey = ""; navigationParameterValue = ""; navigationParameterType = "text"
-                        feedback = "Ação salva. Ela ainda não é executada pelo editor."
+                        feedback = "Ação salva e disponível para execução na prévia e no app Android gerado."
                     } else feedback = errors.first()
                 },
                 enabled = document.actions.size < StudioLogicDocument.MAX_ACTIONS &&

@@ -1042,6 +1042,9 @@ internal fun VisualEditorScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
                         Button(onClick = {
+                            if (!generatedPackage.matches(Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+"))) {
+                                message = "Package inválido. Use o formato com.exemplo.aplicativo"
+                            } else {
                             saveSchema()
                             val generatedComponents = screenRegistry.associate { screen ->
                                 val sourceElements = if (screen.id == activeScreenId) elements.toList()
@@ -1066,6 +1069,7 @@ internal fun VisualEditorScreen(
                             pendingExportFiles = files
                             val fileName = "GEIVIA_" + projectTitle.replace(Regex("[^A-Za-z0-9_-]"), "_") + ".zip"
                             projectExportLauncher.launch(fileName)
+                            }
                         }, modifier = Modifier.fillMaxWidth()) {
                             Icon(Icons.Default.Archive, null); Spacer(Modifier.width(7.dp)); Text("Exportar projeto Android (.ZIP)")
                         }

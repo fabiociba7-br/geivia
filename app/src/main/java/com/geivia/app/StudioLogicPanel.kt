@@ -45,20 +45,20 @@ internal fun StudioLogicPanel(
             }.getOrDefault(StudioLogicDocument())
         )
     }
-    var variableKey by remember { mutableStateOf("") }
-    var variableLabel by remember { mutableStateOf("") }
-    var variableType by remember { mutableStateOf("text") }
-    var variableInitial by remember { mutableStateOf("") }
-    var actionTrigger by remember { mutableStateOf("on_click") }
-    var actionKind by remember { mutableStateOf("show_message") }
-    var actionComponentId by remember { mutableStateOf("") }
-    var actionTarget by remember { mutableStateOf("") }
-    var actionExpression by remember { mutableStateOf("") }
-    var navigationParameters by remember { mutableStateOf(emptyList<StudioNavigationParameter>()) }
-    var navigationParameterKey by remember { mutableStateOf("") }
-    var navigationParameterValue by remember { mutableStateOf("") }
-    var navigationParameterType by remember { mutableStateOf("text") }
-    var feedback by remember { mutableStateOf("As ações são executadas somente na prévia do editor.") }
+    var variableKey by remember(storageKeySuffix) { mutableStateOf("") }
+    var variableLabel by remember(storageKeySuffix) { mutableStateOf("") }
+    var variableType by remember(storageKeySuffix) { mutableStateOf("text") }
+    var variableInitial by remember(storageKeySuffix) { mutableStateOf("") }
+    var actionTrigger by remember(storageKeySuffix) { mutableStateOf("on_click") }
+    var actionKind by remember(storageKeySuffix) { mutableStateOf("show_message") }
+    var actionComponentId by remember(storageKeySuffix) { mutableStateOf("") }
+    var actionTarget by remember(storageKeySuffix) { mutableStateOf("") }
+    var actionExpression by remember(storageKeySuffix) { mutableStateOf("") }
+    var navigationParameters by remember(storageKeySuffix) { mutableStateOf(emptyList<StudioNavigationParameter>()) }
+    var navigationParameterKey by remember(storageKeySuffix) { mutableStateOf("") }
+    var navigationParameterValue by remember(storageKeySuffix) { mutableStateOf("") }
+    var navigationParameterType by remember(storageKeySuffix) { mutableStateOf("text") }
+    var feedback by remember(storageKeySuffix) { mutableStateOf("As ações são executadas somente na prévia do editor.") }
 
     fun save(next: StudioLogicDocument) {
         document = next

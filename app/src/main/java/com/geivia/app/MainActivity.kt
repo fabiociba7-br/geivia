@@ -119,6 +119,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
             else "dashboard"
         )
     }
+    var returnToEditorAfterTool by rememberSaveable { mutableStateOf(false) }
     var index by rememberSaveable {
         mutableIntStateOf(prefs.getInt("workflow_question_index", 0).coerceAtLeast(0))
     }
@@ -290,25 +291,25 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                 "visual_editor" -> VisualEditorScreen(
                     context = context,
                     onBack = { page = "dashboard" },
-                    onFirebase = { page = "firebase_admin" },
-                    onGoogle = { page = "google_access" },
-                    onAccounts = { page = "accounts" },
-                    onTools = { page = "toolchain_updates" },
-                    onDiagnostics = { page = "diagnostics" },
-                    onTerminal = { page = "terminal" },
-                    onProjects = { page = "project_operations" }
+                    onFirebase = { returnToEditorAfterTool = true; page = "firebase_admin" },
+                    onGoogle = { returnToEditorAfterTool = true; page = "google_access" },
+                    onAccounts = { returnToEditorAfterTool = true; page = "accounts" },
+                    onTools = { returnToEditorAfterTool = true; page = "toolchain_updates" },
+                    onDiagnostics = { returnToEditorAfterTool = true; page = "diagnostics" },
+                    onTerminal = { returnToEditorAfterTool = true; page = "terminal" },
+                    onProjects = { returnToEditorAfterTool = true; page = "project_operations" }
                 )
                 "accounts" -> AccountsConnectionsScreen(
                     googleReady = prefs.getBoolean("google_cloud_cli_ready", false),
                     githubConnected = githubConnected,
                     onGoogle = { page = "google_access" },
                     onGitHub = { page = "github" },
-                    onBack = { page = "dashboard" }
+                    onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false }
                 )
                 "github" -> GitHubScreen(
                     connected = githubConnected,
                     callbackMessage = githubCallbackMessage,
-                    onBack = { page = "dashboard" },
+                    onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false },
                     onConnectedChanged = { githubConnected = it }
                 )
                 "google_access" -> GoogleCloudAccessScreen(
@@ -317,7 +318,10 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     autoStartLogin = prefs.getBoolean("preflight_auto_cloud_login", false),
                     onAutoStartConsumed = { prefs.edit().putBoolean("preflight_auto_cloud_login", false).apply() },
                     onBack = {
-                        page = if (prefs.getBoolean("preflight_return_to_workspace", false)) {
+                        page = if (returnToEditorAfterTool) {
+                            returnToEditorAfterTool = false
+                            "visual_editor"
+                        } else if (prefs.getBoolean("preflight_return_to_workspace", false)) {
                             prefs.edit().putBoolean("preflight_return_to_workspace", false).apply()
                             "workspace_setup"
                         } else "dashboard"
@@ -338,9 +342,9 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     }
                     TerminalPanel()
                 }
-                "toolchain_updates" -> GeiviaToolchainUpdatesScreen(onBack = { page = "dashboard" })
-                "diagnostics" -> GeiviaDiagnosticsScreen(onBack = { page = "dashboard" })
-                "project_operations" -> ProjectOperationsScreen(onBack = { page = "dashboard" })
+                "toolchain_updates" -> GeiviaToolchainUpdatesScreen(onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false })
+                "diagnostics" -> GeiviaDiagnosticsScreen(onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false })
+                "project_operations" -> ProjectOperationsScreen(onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false })
                 "project_preview" -> ProjectPreviewScreen(prefs.getString("imported_project_dir", "").orEmpty()) { page = "project_operations" }
                 "firebase_admin" -> FirebaseAdminScreen(prefs.getString("selected_project_id", preflightProjectId).orEmpty()) { page = "project_operations" }
                 "legacy_dashboard" -> DashboardScreen(answers.toMap(), costMode,

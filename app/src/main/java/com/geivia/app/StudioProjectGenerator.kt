@@ -28,7 +28,7 @@ internal object StudioProjectGenerator {
         val pkg = packageName.split(".").joinToString(".") { part ->
             part.filter { it.isLetterOrDigit() || it.code == 95 }.ifBlank { "app" }
         }
-        val app = appName.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&apos;")
+        val app = appName.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&apos;").replace("\n", " ").replace("\r", " ")
         val projectSlug = appName.replace(Regex("[^A-Za-z0-9_-]"), "_").ifBlank { "GEIVIAApp" }
         val start = screens.firstOrNull { it.id == startScreenId } ?: screens.firstOrNull()
         val source = buildString {

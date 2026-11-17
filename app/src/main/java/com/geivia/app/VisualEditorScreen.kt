@@ -131,6 +131,7 @@ internal fun VisualEditorScreen(
     var themeBackground by remember { mutableStateOf(prefs.getString("studio_theme_background", "#F3F6FA") ?: "#F3F6FA") }
     var themeText by remember { mutableStateOf(prefs.getString("studio_theme_text", "#17354D") ?: "#17354D") }
     var assetUrl by remember { mutableStateOf("") }
+    var generatedPackage by rememberSaveable { mutableStateOf(prefs.getString("studio_generated_package", "com.generated.geivia") ?: "com.generated.geivia") }
     val savedAssets = remember { mutableStateListOf<String>().apply { prefs.getString("studio_assets_v1", null)?.let { raw -> runCatching { val a = JSONArray(raw); for (i in 0 until a.length()) add(a.getString(i)) } } } }
     val assetPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
@@ -1032,6 +1033,14 @@ internal fun VisualEditorScreen(
                     "code" -> {
                         val projectJson = buildProjectJson()
                         Text("Exporte um projeto Android nativo com Kotlin, Jetpack Compose, Manifest e arquivos Gradle. As ações declarativas e os assets externos ainda precisam ser conectados ao projeto gerado.", color = EditorMuted, fontSize = 12.sp)
+                        OutlinedTextField(
+                            value = generatedPackage,
+                            onValueChange = { generatedPackage = it.filter { ch -> ch.isLetterOrDigit() || ch == '_' || ch == '.' }.take(120) },
+                            label = { Text("Package name do app gerado") },
+                            supportingText = { Text("Ex.: com.minhaempresa.meuapp") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                         Button(onClick = {
                             saveSchema()
                             val generatedComponents = screenRegistry.associate { screen ->
@@ -1041,8 +1050,9 @@ internal fun VisualEditorScreen(
                                     StudioGeneratedElement(item.id, item.type, item.text, item.fontSize, item.padding, item.alignment, item.parentId, item.backgroundColor, item.textColor, item.cornerRadius, item.visible)
                                 }
                             }
+                            prefs.edit().putString("studio_generated_package", generatedPackage).apply()
                             val files = StudioProjectGenerator.files(
-                                packageName = "com.generated.geivia",
+                                packageName = generatedPackage,
                                 appName = projectTitle,
                                 screens = screenRegistry.toList(),
                                 components = generatedComponents,
@@ -1052,6 +1062,7 @@ internal fun VisualEditorScreen(
                                 textColor = themeText
                             ).toMutableMap()
                             files["geivia-project.json"] = buildProjectJson()
+                            files["assets.json"] = JSONArray(savedAssets).toString(2)
                             pendingExportFiles = files
                             val fileName = "GEIVIA_" + projectTitle.replace(Regex("[^A-Za-z0-9_-]"), "_") + ".zip"
                             projectExportLauncher.launch(fileName)

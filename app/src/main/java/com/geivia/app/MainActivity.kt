@@ -114,6 +114,9 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
             else if (!prefs.getBoolean("device_access_completed", false)) "device_access"
             else if (!prefs.getBoolean("environment_setup_completed", false)) "environment_setup"
             else if (!prefs.getBoolean("preflight_completed", false)) "preflight"
+            // A completed analysis is a checkpoint, not the app's home screen.
+            // Return an established workspace directly to GEIVIA Studio.
+            else if (savedCheckpoint in setOf("summary", "dashboard", "legacy_dashboard")) "dashboard"
             else "welcome"
         )
     }

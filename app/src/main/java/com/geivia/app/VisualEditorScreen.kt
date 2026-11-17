@@ -225,7 +225,7 @@ internal fun VisualEditorScreen(
         val screens = JSONArray()
         screenRegistry.forEach { screen ->
             val screenElements = if (screen.id == activeScreenId) elements.toList()
-                else decodeElements(prefs.getString("${schemaPrefix}_${screen.id}", null) ?: if (allowLegacyProjectData) prefs.getString("${schemaPrefix}_${screen.id}", null) ?: if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_${screen.id}", null) else null else null)
+                else decodeElements(prefs.getString("${schemaPrefix}_${screen.id}", null) ?: if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_${screen.id}", null) else null)
             val items = JSONArray()
             screenElements.forEach { item ->
                 items.put(JSONObject()
@@ -1031,7 +1031,7 @@ internal fun VisualEditorScreen(
                                 Icon(Icons.Default.Description, null, tint = EditorBlue)
                                 Spacer(Modifier.width(8.dp))
                                 Text(asset, color = EditorInk, fontSize = 10.sp, modifier = Modifier.weight(1f), maxLines = 2)
-                                IconButton(onClick = { savedAssets.remove(asset); prefs.edit().putString("studio_assets_v1", JSONArray(savedAssets).toString()).apply() }) { Icon(Icons.Default.DeleteOutline, "Remover asset", tint = Color(0xFFB33A3A)) }
+                                IconButton(onClick = { savedAssets.remove(asset); prefs.edit().putString(assetsPrefKey, JSONArray(savedAssets).toString()).apply() }) { Icon(Icons.Default.DeleteOutline, "Remover asset", tint = Color(0xFFB33A3A)) }
                             }
                         }
                     }

@@ -1304,7 +1304,7 @@ internal fun VisualEditorScreen(
                                                 OutlinedTextField(value = parameterKeyInput, onValueChange = { parameterKeyInput = it.take(64) }, label = { Text("Identificador (ex.: userId)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                                                 OutlinedTextField(value = parameterLabelInput, onValueChange = { parameterLabelInput = it.take(60) }, label = { Text("Nome exibido") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                                                 Text("Tipo do parâmetro", color = EditorMuted, fontSize = 11.sp)
-                                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                                     listOf("text", "number", "boolean", "json").forEach { type ->
                                                         FilterChip(selected = parameterTypeInput == type, onClick = { parameterTypeInput = type }, label = { Text(type) })
                                                     }

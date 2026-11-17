@@ -8,6 +8,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlin.math.roundToInt
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -69,6 +72,9 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
     var selectedId by remember { mutableStateOf(elements.firstOrNull()?.id) }
     var message by remember { mutableStateOf("Rascunho local") }
     var parentMenuExpanded by remember { mutableStateOf(false) }
+    var draggedElementId by remember { mutableStateOf<String?>(null) }
+    var dragDistance by remember { mutableFloatStateOf(0f) }
+    val dragStepPx = with(androidx.compose.ui.platform.LocalDensity.current) { 52.dp.toPx() }
     val selectedIndex = elements.indexOfFirst { it.id == selectedId }
     val selected = elements.getOrNull(selectedIndex)
 
@@ -96,6 +102,23 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
     }
     fun updateSelected(transform: (StudioElement) -> StudioElement) {
         if (selectedIndex >= 0) elements[selectedIndex] = transform(elements[selectedIndex])
+    }
+
+    fun reorderDraggedElement(id: String, steps: Int) {
+        if (steps == 0) return
+        repeat(kotlin.math.abs(steps)) {
+            val current = elements.firstOrNull { it.id == id } ?: return
+            val siblings = elements.filter { it.parentId == current.parentId }.map { it.id }
+            val position = siblings.indexOf(id)
+            val targetPosition = position + if (steps > 0) 1 else -1
+            if (position < 0 || targetPosition !in siblings.indices) return@repeat
+            val targetId = siblings[targetPosition]
+            val item = elements.removeAt(elements.indexOfFirst { it.id == id })
+            val targetIndex = elements.indexOfFirst { it.id == targetId }
+            elements.add(if (steps > 0) targetIndex + 1 else targetIndex, item)
+        }
+        selectedId = id
+        message = "Ordem dos componentes atualizada"
     }
 
     Scaffold(

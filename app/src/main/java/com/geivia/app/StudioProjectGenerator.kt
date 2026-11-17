@@ -95,9 +95,9 @@ internal object StudioProjectGenerator {
             appendLine("        Box(Modifier.weight(1f)) {")
             appendLine("            when (current) {")
             screens.forEach { screen ->
-                appendLine("                " + quote(screen.id) + " -> Screen_" + identifier(screen.id) + "(::runActions, ::resolve)")
+                appendLine("                " + quote(screen.id) + " -> Screen_" + identifier(screen.id) + "({ componentId, trigger, value -> runActions(componentId, trigger, value) }, { expression, value -> resolve(expression, value) })")
             }
-            appendLine("                else -> Screen_" + identifier(start?.id ?: "home") + "(::runActions, ::resolve)")
+            appendLine("                else -> Screen_" + identifier(start?.id ?: "home") + "({ componentId, trigger, value -> runActions(componentId, trigger, value) }, { expression, value -> resolve(expression, value) })")
             appendLine("            }")
             appendLine("        }")
             appendLine("        if (message.isNotBlank()) Text(message, Modifier.fillMaxWidth().padding(12.dp))")

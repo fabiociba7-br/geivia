@@ -89,6 +89,7 @@ internal object StudioProjectGenerator {
             appendLine("        }")
             appendLine("    }")
             appendLine("    fun runActions(componentId: String, trigger: String, value: String = \"\") {")
+            appendLine("        if (trigger != \"on_screen_open\") navigationCount = 0")
             appendLine("        when (componentId + \"|\" + trigger) {")
             logic.actions.filter { it.enabled }.groupBy { it.componentId + "|" + it.trigger }.forEach { (key, actions) ->
                 appendLine("            " + quote(key) + " -> {")

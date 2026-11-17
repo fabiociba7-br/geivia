@@ -241,7 +241,7 @@ internal fun VisualEditorScreen(
         project.put("screens", screens)
         project.put("theme", JSONObject().put("primary", themePrimary).put("background", themeBackground).put("text", themeText))
         project.put("assets", JSONArray(savedAssets))
-        val logicJson = prefs.getString("geivia_studio_logic_v1", null)
+        val logicJson = prefs.getString("geivia_studio_logic_v1_$projectKey", null) ?: if (allowLegacyProjectData) prefs.getString("geivia_studio_logic_v1", null) else null
         project.put("logic", if (logicJson.isNullOrBlank()) JSONObject() else runCatching { JSONObject(logicJson) }.getOrDefault(JSONObject()))
         return project.toString(2)
     }
@@ -251,7 +251,7 @@ internal fun VisualEditorScreen(
         saveSchema()
         activeScreenId = screenId
         elements.clear()
-        elements.addAll(decodeElements(prefs.getString("${EDITOR_SCHEMA_KEY}_${screenId}", null)))
+        elements.addAll(decodeElements(prefs.getString("${schemaPrefix}_${screenId}", null) ?: if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_${screenId}", null) else null))
         selectedId = elements.firstOrNull()?.id
         message = "Tela alterada"
     }
@@ -914,6 +914,7 @@ internal fun VisualEditorScreen(
             }
             StudioLogicPanel(
                 context = context,
+                storageKeySuffix = projectKey,
                 screens = screenRegistry.toList(),
                 components = screenRegistry.flatMap { screen ->
                     val screenElements = if (screen.id == activeScreenId) {
@@ -1020,7 +1021,7 @@ internal fun VisualEditorScreen(
                         OutlinedButton(onClick = {
                             if (assetUrl.startsWith("https://") || assetUrl.startsWith("http://")) {
                                 if (assetUrl !in savedAssets) savedAssets.add(assetUrl)
-                                prefs.edit().putString("studio_assets_v1", JSONArray(savedAssets).toString()).apply()
+                                prefs.edit().putString(assetsPrefKey, JSONArray(savedAssets).toString()).apply()
                                 assetUrl = ""; message = "URL adicionada aos assets"
                             } else message = "Informe uma URL http ou https válida"
                         }, modifier = Modifier.fillMaxWidth()) { Text("Adicionar URL") }
@@ -1036,6 +1037,7 @@ internal fun VisualEditorScreen(
                     }
                     "logic" -> StudioLogicPanel(
                         context = context,
+                        storageKeySuffix = projectKey,
                         screens = screenRegistry.toList(),
                         components = screenRegistry.flatMap { screen ->
                             val screenElements = if (screen.id == activeScreenId) elements.toList() else decodeElements(prefs.getString("\${EDITOR_SCHEMA_KEY}_\${screen.id}", null))

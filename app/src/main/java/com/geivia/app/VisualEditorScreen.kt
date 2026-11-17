@@ -1054,7 +1054,7 @@ internal fun VisualEditorScreen(
                     val screenElements = if (screen.id == activeScreenId) {
                         elements.toList()
                     } else {
-                        decodeElements(prefs.getString("${EDITOR_SCHEMA_KEY}_${screen.id}", null))
+                        decodeElements(prefs.getString("${schemaPrefix}_${screen.id}", null) ?: if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_${screen.id}", null) else null)
                     }
                     screenElements.map { element ->
                         StudioComponentDefinition(

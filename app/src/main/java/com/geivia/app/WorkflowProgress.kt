@@ -140,6 +140,12 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
         check(current.state != WorkflowStepState.UNKNOWN) {
             "A operação anterior tem resultado desconhecido. Reconcilie-a antes de continuar."
         }
+        check(current.state != WorkflowStepState.IN_PROGRESS) {
+            "Já existe uma operação em andamento. Faça o diagnóstico da operação atual antes de preparar outra."
+        }
+        check(current.state != WorkflowStepState.USER_CONFIRMED) {
+            "A conclusão foi declarada manualmente, mas ainda não foi verificada. Faça o diagnóstico antes de preparar outra operação."
+        }
         check(current.state != WorkflowStepState.COMPLETED) {
             "Esta etapa já foi confirmada como concluída."
         }

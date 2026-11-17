@@ -39,14 +39,13 @@ O GEIVIA Studio é uma plataforma visual para criar aplicativos Android nativos.
 - As definições são persistidas em JSON versionado e validadas. A prévia e o projeto Android gerado executam navegação, mensagens e alteração de variáveis nos gatilhos de toque, abertura de tela e alteração de valor, incluindo parâmetros de navegação. Essas ações locais não executam operações remotas de infraestrutura.
 - O Studio gera um projeto Android nativo inicial com Kotlin, Jetpack Compose, Manifest e arquivos Gradle, exportável em ZIP pelo seletor de arquivos do Android.
 - O pacote ZIP também contém o esquema versionado do GEIVIA, o manifesto de assets e os arquivos locais selecionados, copiados para app/src/main/assets. URLs externas são registradas, mas não baixadas automaticamente.
-- Os botões gerados ainda não executam as ações declarativas; a conexão do motor de ações e da navegação interativa segue pendente.
+- O projeto Android gerado inclui runtime para ações declarativas de toque, abertura de tela e alteração de valor: navegação, alteração de variáveis e mensagens. A navegação aplica os parâmetros padrão da tela de destino e os valores informados pela ação; um limite protege contra ciclos automáticos sem bloquear novas interações do usuário.
 - Por decisão do proprietário, os workflows GitHub Actions foram removidos de main e da branch de desenvolvimento. Não há builds nem validações automáticas; a verificação será manual quando solicitada.
 
 ## Próximas etapas de desenvolvimento
 
-1. Conectar componentes de imagem aos arquivos locais incluídos no projeto gerado e definir uma estratégia para URLs externas.
-2. Refinar a geração de projeto para incluir permissões, recursos e integrações escolhidas sem copiar credenciais ou segredos.
-3. Incorporar assets selecionados ao pacote Android gerado, preservando referências e permissões.
-4. Completar a geração de projeto para incluir integrações e serviços selecionados pelo usuário, sem copiar credenciais ou segredos.
-5. Refinar os painéis de propriedades e o preview para aproximar o fluxo de edição do FlutterFlow.
-6. Quando o proprietário considerar o app pronto, fazer uma revisão manual conjunta antes de qualquer compilação ou publicação.
+1. Ampliar o suporte a formatos de imagem e definir uma estratégia segura para baixar ou referenciar URLs externas, sempre com escolha explícita do usuário.
+2. Refinar a geração Android para incluir permissões, recursos e integrações escolhidas, sem copiar credenciais ou segredos.
+3. Evoluir os painéis de propriedades, componentes reutilizáveis e preview para aproximar o fluxo de edição do FlutterFlow.
+4. Adicionar configurações de dados locais/remotos e estados de carregamento/erro sem executar operações remotas silenciosamente.
+5. Quando o proprietário considerar o app pronto, fazer uma revisão manual conjunta antes de qualquer compilação ou publicação.

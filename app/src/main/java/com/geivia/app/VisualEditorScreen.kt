@@ -1263,7 +1263,7 @@ internal fun VisualEditorScreen(
                                 primaryColor = themePrimary,
                                 backgroundColor = themeBackground,
                                 textColor = themeText,
-                                logic = readLogicDocument()
+                                logic = logicDocument
                             ).toMutableMap()
                             files["geivia-project.json"] = buildProjectJson()
                             files["assets.json"] = JSONArray(savedAssets).toString(2)
@@ -1284,6 +1284,7 @@ internal fun VisualEditorScreen(
                             pendingExportAssets = includedAssets
                             val fileName = "GEIVIA_" + projectTitle.replace(Regex("[^A-Za-z0-9_-]"), "_") + ".zip"
                             projectExportLauncher.launch(fileName)
+                            }
                             }
                         }, modifier = Modifier.fillMaxWidth()) {
                             Icon(Icons.Default.Archive, null); Spacer(Modifier.width(7.dp)); Text("Exportar projeto Android (.ZIP)")

@@ -34,7 +34,8 @@ O GEIVIA Studio é uma plataforma visual para criar aplicativos Android nativos.
 - Gatilhos de abertura da tela permanecem no nível da tela, sem exigir componente.
 - O editor já possui cadastro, seleção, renomeação e definição da tela inicial, com componentes persistidos separadamente por tela. A exclusão de telas exige confirmação, preserva ao menos uma tela, atualiza a tela inicial quando necessário e desativa ações que apontavam para a tela ou seus componentes.
 - A navegação declarativa usa a lista de telas do projeto e valida referências a destinos inexistentes.
-- Ações de navegação aceitam até 30 parâmetros nomeados por destino, com tipos texto, número, booleano e JSON; valores podem referenciar variáveis do projeto e são validados antes de salvar.
+- Cada tela permite configurar parâmetros de entrada nomeados, com tipos texto, número, booleano e JSON, valor padrão e indicação de obrigatoriedade. A prévia e o app gerado impedem a navegação quando um parâmetro obrigatório continua vazio.
+- Ações de navegação aceitam até 30 parâmetros nomeados por destino; valores podem referenciar variáveis do projeto e são validados antes de salvar.
 - Parâmetros são serializados junto à ação; documentos antigos sem esse campo continuam sendo carregados como listas vazias.
 - As definições são persistidas em JSON versionado e validadas. A prévia e o projeto Android gerado executam navegação, mensagens e alteração de variáveis nos gatilhos de toque, abertura de tela e alteração de valor, incluindo parâmetros de navegação. Essas ações locais não executam operações remotas de infraestrutura.
 - O Studio gera um projeto Android nativo inicial com Kotlin, Jetpack Compose, Manifest e arquivos Gradle, exportável em ZIP pelo seletor de arquivos do Android.

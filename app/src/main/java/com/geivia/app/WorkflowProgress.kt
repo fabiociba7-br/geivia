@@ -323,7 +323,7 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
                 )
             }
         }
-        return result.sortedByDescending { it.updatedAt }
+        return result.asReversed().sortedByDescending { it.updatedAt }
     }
 
     @Synchronized

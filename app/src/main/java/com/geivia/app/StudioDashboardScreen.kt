@@ -42,6 +42,7 @@ internal fun StudioDashboardScreen(
     context: Context,
     onNewProject: () -> Unit,
     onProjects: () -> Unit,
+    onEditor: () -> Unit,
     onPreview: () -> Unit,
     onFirebase: () -> Unit,
     onIntegrations: () -> Unit,
@@ -63,7 +64,7 @@ internal fun StudioDashboardScreen(
     val navItems = listOf(
         StudioNavItem("WORKSPACE", "Visão geral", Icons.Default.Dashboard, {}),
         StudioNavItem("WORKSPACE", "Meus projetos", Icons.Default.FolderOpen, { navigate(onProjects) }),
-        StudioNavItem("CRIAR APLICATIVOS", "Editor visual", Icons.Default.Widgets, enabled = false),
+        StudioNavItem("CRIAR APLICATIVOS", "Editor visual", Icons.Default.Widgets, { navigate(onEditor) }),
         StudioNavItem("CRIAR APLICATIVOS", "Biblioteca de componentes", Icons.Default.Extension, enabled = false),
         StudioNavItem("CRIAR APLICATIVOS", "Ações e lógica", Icons.Default.AccountTree, enabled = false),
         StudioNavItem("DADOS E SERVIÇOS", "Firebase e dados", Icons.Default.CloudQueue, { navigate(onFirebase) }),
@@ -263,6 +264,8 @@ internal fun StudioDashboardScreen(
                 StudioActionCard(Icons.Default.Preview, "Pré-visualizar projeto", "Confira os arquivos e a estrutura importada", true, onPreview)
                 Spacer(Modifier.height(8.dp))
                 StudioActionCard(Icons.Default.CloudQueue, "Dados e Firebase", "Conecte serviços e acompanhe a configuração", true, onFirebase)
+                Spacer(Modifier.height(8.dp))
+                StudioActionCard(Icons.Default.Widgets, "Abrir editor visual", "Monte uma tela com componentes e edite suas propriedades", true, onEditor)
                 Spacer(Modifier.height(8.dp))
                 StudioActionCard(Icons.Default.Extension, "Integrações", "Contas Google, GitHub e conexões", true, onIntegrations)
                 Spacer(Modifier.height(8.dp))

@@ -332,7 +332,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { page = "visual_editor" }) {
+                        IconButton(onClick = { page = "visual_editor"; returnToEditorAfterTool = false }) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "Voltar ao editor")
                         }
                         Column {

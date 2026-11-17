@@ -548,7 +548,16 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                     }
                 }
             }
-            StudioLogicPanel(context, screenRegistry.toList())
+            StudioLogicPanel(
+                context = context,
+                screens = screenRegistry.toList(),
+                components = elements.map { element ->
+                    StudioComponentDefinition(
+                        id = element.id,
+                        label = "${element.type}: ${element.text.ifBlank { "Sem texto" }}"
+                    )
+                }
+            )
 
             Text(message, color = EditorMuted, fontSize = 11.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
         }

@@ -518,7 +518,7 @@ internal fun VisualEditorScreen(
                             onClick = {
                                 editorScope.launch { editorDrawerState.close() }
                                 when (item) {
-                                    "Testar" -> previewMode = true
+                                    "Testar" -> startPreview()
                                     "Deploy" -> onProjects()
                                     "Terminal" -> onTerminal()
                                     "Versões" -> onTools()

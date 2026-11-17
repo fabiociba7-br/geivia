@@ -14,7 +14,7 @@ class StudioLogicDocumentTest {
                 StudioVariableDefinition("counter", "Contador", "number", "0")
             ),
             actions = listOf(
-                StudioActionDefinition("action-1", "on_click", "set_variable", "counter", "\${counter}")
+                StudioActionDefinition("action-1", "on_click", "set_variable", "counter", "\${counter}", componentId = "saveButton")
             )
         )
 
@@ -43,7 +43,7 @@ class StudioLogicDocumentTest {
     fun detectsReferencesToMissingVariables() {
         val document = StudioLogicDocument(
             actions = listOf(
-                StudioActionDefinition("a1", "on_click", "show_message", expression = "Olá \${unknown}")
+                StudioActionDefinition("a1", "on_click", "show_message", expression = "Olá \${unknown}", componentId = "helloButton")
             )
         )
 

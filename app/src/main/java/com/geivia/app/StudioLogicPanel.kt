@@ -149,7 +149,7 @@ internal fun StudioLogicPanel(
                             save(document.copy(
                                 variables = document.variables.filterNot { it.key == variable.key },
                                 actions = document.actions.map { action ->
-                                    val reference = "${" + variable.key + "}"
+                                    val reference = "\${" + variable.key + "}"
                                     val dependsOnRemovedVariable =
                                         (action.kind == "set_variable" && action.target == variable.key) ||
                                             action.expression.contains(reference) ||

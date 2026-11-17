@@ -12,9 +12,9 @@ internal object FirebaseDeployPlanner {
         val result = linkedSetOf<String>()
         addScopedTargets(config.opt("hosting"), "hosting", result)
         addScopedTargets(config.opt("storage"), "storage", result)
+        addScopedTargets(config.opt("database"), "database", result)
 
         if (isConfigured(config, "firestore")) result += "firestore"
-        if (isConfigured(config, "database")) result += "database"
         if (isConfigured(config, "functions")) result += "functions"
         if (isConfigured(config, "auth")) result += "auth"
         if (isConfigured(config, "dataconnect")) result += "dataconnect"

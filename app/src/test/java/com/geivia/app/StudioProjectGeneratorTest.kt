@@ -81,6 +81,35 @@ class StudioProjectGeneratorTest {
     }
 
     @Test
+    fun enforcesRequiredScreenInputsBeforeGeneratedNavigation() {
+        val files = StudioProjectGenerator.files(
+            packageName = "com.example.required",
+            appName = "App com entradas",
+            screens = listOf(
+                StudioScreenDefinition("home", "Início"),
+                StudioScreenDefinition(
+                    "profile", "Perfil",
+                    listOf(StudioScreenInputParameter("email", "E-mail", "text", required = true))
+                )
+            ),
+            components = mapOf("home" to listOf(
+                StudioGeneratedElement("openProfile", "button", "Abrir perfil", 16f, 12f, "center", null, "#FFFFFF", "#17354D", 10f, true)
+            )),
+            startScreenId = "home",
+            primaryColor = "#1769AA",
+            backgroundColor = "#F3F6FA",
+            textColor = "#17354D",
+            logic = StudioLogicDocument(actions = listOf(
+                StudioActionDefinition("go", "on_click", "navigate", target = "profile", componentId = "openProfile")
+            ))
+        )
+        val source = files.values.first { it.contains("class MainActivity") }
+        assertTrue(source.contains("missingRequired"))
+        assertTrue(source.contains("Informe os campos obrigatórios"))
+        assertTrue(source.contains("listOf<String>(\\"email\\")"))
+    }
+
+    @Test
     fun escapesTextAndUsesSafePackagePath() {
         val files = StudioProjectGenerator.files(
             packageName = "com.example.app",

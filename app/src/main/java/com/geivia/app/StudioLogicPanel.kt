@@ -45,6 +45,9 @@ internal fun StudioLogicPanel(context: Context, screens: List<StudioScreenDefini
     var actionComponentId by remember { mutableStateOf("") }
     var actionTarget by remember { mutableStateOf("") }
     var actionExpression by remember { mutableStateOf("") }
+    var navigationParameters by remember { mutableStateOf(emptyList<StudioNavigationParameter>()) }
+    var navigationParameterKey by remember { mutableStateOf("") }
+    var navigationParameterValue by remember { mutableStateOf("") }
     var feedback by remember { mutableStateOf("As ações são apenas configurações; nada é executado automaticamente.") }
 
     fun save(next: StudioLogicDocument) {
@@ -204,6 +207,108 @@ internal fun StudioLogicPanel(context: Context, screens: List<StudioScreenDefini
                     }
                 }
                 if (screens.isEmpty()) Text("Crie uma tela antes de configurar a navegação.", color = LogicMuted, fontSize = 10.sp)
+                Text("PARÂMETROS DE NAVEGAÇÃO", color = LogicMuted, fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                OutlinedTextField(value = navigationParameterKey, onValueChange = { navigationParameterKey = it.filter { ch -> ch.isLetterOrDigit() || ch.toString() == "_" }.take(64) }, modifier = Modifier.fillMaxWidth(), label = { Text("Nome do parâmetro") }, singleLine = true)
+                OutlinedTextField(value = navigationParameterValue, onValueChange = { navigationParameterValue = it.take(StudioLogicDocument.MAX_VALUE_LENGTH) }, modifier = Modifier.fillMaxWidth(), label = { Text("Valor ou expressão") }, supportingText = { Text("Use ${'
+                var expanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+                    OutlinedTextField(
+                        value = actionTarget,
+                        onValueChange = {},
+                        readOnly = true,
+                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        label = { Text("Variável de destino") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
+                    )
+                    ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                        document.variables.forEach { variable ->
+                            DropdownMenuItem(text = { Text("${variable.label} (${variable.key})") }, onClick = { actionTarget = variable.key; expanded = false })
+                        }
+                    }
+                }
+            }
+            OutlinedTextField(
+                value = actionExpression,
+                onValueChange = { actionExpression = it.take(StudioLogicDocument.MAX_VALUE_LENGTH) },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(if (actionKind == "show_message") "Mensagem" else "Valor / expressão") },
+                supportingText = { Text("Referencie variáveis com ${'$'}{identificador}.") }
+            )
+            Button(
+                onClick = {
+                    val action = StudioActionDefinition(
+                        id = UUID.randomUUID().toString(),
+                        trigger = actionTrigger,
+                        kind = actionKind,
+                        componentId = if (actionTrigger == "on_screen_open") "" else actionComponentId,
+                        target = actionTarget.trim(),
+                        expression = actionExpression.trim(),
+                        navigationParameters = if (actionKind == "navigate") navigationParameters else emptyList()
+                    )
+                    val next = document.copy(actions = document.actions + action)
+                    val errors = next.validate(screens.map { it.id }.toSet(), components.map { it.id }.toSet())
+                    if (errors.isEmpty()) {
+                        save(next)
+                        actionTarget = ""; actionExpression = ""
+                        navigationParameters = emptyList()
+                        navigationParameterKey = ""; navigationParameterValue = ""
+                        feedback = "Ação salva. Ela ainda não é executada pelo editor."
+                    } else feedback = errors.first()
+                },
+                enabled = document.actions.size < StudioLogicDocument.MAX_ACTIONS &&
+                    (actionTrigger == "on_screen_open" || (actionComponentId.isNotBlank() && components.any { it.id == actionComponentId })) &&
+                    (actionKind == "show_message" && actionExpression.isNotBlank() ||
+                     actionKind == "navigate" && actionTarget.isNotBlank() ||
+                     actionKind == "set_variable" && actionTarget.isNotBlank() && actionExpression.isNotBlank()),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Add, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Adicionar ação")
+            }
+
+            if (document.actions.isEmpty()) {
+                Text("Nenhuma ação configurada.", color = LogicMuted, fontSize = 12.sp)
+            } else {
+                document.actions.forEach { action ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("${action.trigger} · ${components.firstOrNull { it.id == action.componentId }?.label ?: if (action.trigger == "on_screen_open") "Tela" else "Componente removido"} → ${action.kind}", color = LogicInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                listOf(action.target, action.expression).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "Sem parâmetros" } +
+                                    if (action.enabled) "" else " · DESATIVADA",
+                                color = LogicMuted, fontSize = 10.sp
+                            )
+                        }
+                        IconButton(onClick = { save(document.copy(actions = document.actions.filterNot { it.id == action.id })) }) {
+                            Icon(Icons.Default.DeleteOutline, contentDescription = "Remover ação", tint = LogicMuted)
+                        }
+                    }
+                    HorizontalDivider(color = Color(0xFFE8EDF3))
+                }
+            }
+
+            Text(feedback, color = LogicMuted, fontSize = 11.sp, lineHeight = 16.sp)
+            OutlinedButton(
+                onClick = {
+                    val errors = document.validate(screens.map { it.id }.toSet())
+                    if (errors.isEmpty()) {
+                        prefs.edit().putString(STUDIO_LOGIC_PREFS_KEY, document.toJson()).apply()
+                        feedback = "Configuração validada e salva neste dispositivo."
+                    } else feedback = errors.first()
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Save, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Validar e salvar dados e ações")
+            }
+        }
+    }
+}
+}{variavel} para enviar dados do aplicativo.") })
+                OutlinedButton(onClick = { navigationParameters = navigationParameters + StudioNavigationParameter(navigationParameterKey.trim(), navigationParameterValue); navigationParameterKey = ""; navigationParameterValue = "" }, enabled = navigationParameterKey.isNotBlank() && navigationParameters.size < StudioLogicDocument.MAX_NAVIGATION_PARAMETERS, modifier = Modifier.fillMaxWidth()) { Text("Adicionar parâmetro") }
+                navigationParameters.forEach { parameter -> Row(verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text("${parameter.key} = ${parameter.value}", color = LogicInk, fontSize = 12.sp) }; IconButton(onClick = { navigationParameters = navigationParameters.filterNot { it.key == parameter.key } }) { Icon(Icons.Default.DeleteOutline, contentDescription = "Remover parâmetro", tint = LogicMuted) } } }
             } else if (actionKind == "set_variable") {
                 var expanded by remember { mutableStateOf(false) }
                 ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {

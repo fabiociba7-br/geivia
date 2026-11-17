@@ -1,11 +1,14 @@
 package com.geivia.app
 
 import android.content.Context
+import android.graphics.BitmapFactory
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.UUID
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -22,8 +25,12 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -1352,10 +1359,28 @@ private fun EditorCanvasNode(
                             singleLine = true
                         )
                     }
-                    "image" -> Surface(color = Color(0xFFF0F4F8), shape = RoundedCornerShape(element.cornerRadius.dp), border = BorderStroke(1.dp, Color(0xFFDCE5EE))) {
-                        Column(Modifier.fillMaxWidth().heightIn(min = 88.dp).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                            Icon(Icons.Default.Image, null, tint = EditorMuted, modifier = Modifier.size(28.dp))
-                            Text(element.text, color = EditorMuted, fontSize = 10.sp)
+                    "image" -> {
+                        val localContext = LocalContext.current
+                        val bitmap by produceState<android.graphics.Bitmap?>(initialValue = null, key1 = element.text) {
+                            value = if (element.text.startsWith("content://") || element.text.startsWith("file://")) {
+                                withContext(Dispatchers.IO) {
+                                    runCatching {
+                                        localContext.contentResolver.openInputStream(android.net.Uri.parse(element.text))?.use { stream ->
+                                            BitmapFactory.decodeStream(stream)
+                                        }
+                                    }.getOrNull()
+                                }
+                            } else null
+                        }
+                        Surface(color = Color(0xFFF0F4F8), shape = RoundedCornerShape(element.cornerRadius.dp), border = BorderStroke(1.dp, Color(0xFFDCE5EE))) {
+                            if (bitmap != null) {
+                                Image(bitmap = bitmap!!.asImageBitmap(), contentDescription = element.text, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp).padding(6.dp))
+                            } else {
+                                Column(Modifier.fillMaxWidth().heightIn(min = 88.dp).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                                    Icon(Icons.Default.Image, null, tint = EditorMuted, modifier = Modifier.size(28.dp))
+                                    Text(element.text, color = EditorMuted, fontSize = 10.sp, maxLines = 2)
+                                }
+                            }
                         }
                     }
                     "divider" -> HorizontalDivider(color = Color(0xFFDCE5EE))

@@ -1192,8 +1192,8 @@ internal fun VisualEditorScreen(
                         allowLegacyData = allowLegacyProjectData,
                         screens = screenRegistry.toList(),
                         components = screenRegistry.flatMap { screen ->
-                            val screenElements = if (screen.id == activeScreenId) elements.toList() else decodeElements(prefs.getString("\${schemaPrefix}_\${screen.id}", null) ?: if (allowLegacyProjectData) prefs.getString("\${EDITOR_SCHEMA_KEY}_\${screen.id}", null) else null)
-                            screenElements.map { StudioComponentDefinition(it.id, "\${screen.name} · \${it.type}: \${it.text.ifBlank { "Sem texto" }}") }
+                            val screenElements = if (screen.id == activeScreenId) elements.toList() else decodeElements(prefs.getString("${schemaPrefix}_${screen.id}", null) ?: if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_${screen.id}", null) else null)
+                            screenElements.map { StudioComponentDefinition(it.id, "${screen.name} · ${it.type}: ${it.text.ifBlank { "Sem texto" }}") }
                         }
                     )
                     "code" -> {

@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 
 private data class GarciaChatLine(val role: String, val content: String)
 
@@ -194,6 +195,7 @@ internal fun GarciaIntegrationScreen(context: Context, onBack: () -> Unit) {
                                     conversation.add(GarciaChatLine("user", question))
                                     busy = true
                                     error = null
+                                    val transcript = conversation.toList()
                                     kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
                                         try {
                                             val answer = withContext(Dispatchers.IO) {
@@ -202,7 +204,7 @@ internal fun GarciaIntegrationScreen(context: Context, onBack: () -> Unit) {
                                                     "Você está integrada ao GEIVIA Studio. Responda em português. " +
                                                     "O contexto abaixo é somente para análise; não execute nem afirme que alterou arquivos. " +
                                                     "Para qualquer alteração, apresente uma proposta clara para aprovação. Contexto do projeto: $projectContext"))
-                                                conversation.takeLast(12).forEach { line ->
+                                                transcript.takeLast(12).forEach { line ->
                                                     messages.put(JSONObject().put("role", line.role).put("content", line.content))
                                                 }
                                                 api.chat(messages)

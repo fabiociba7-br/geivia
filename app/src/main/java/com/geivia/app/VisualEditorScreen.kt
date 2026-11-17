@@ -186,6 +186,44 @@ internal fun VisualEditorScreen(
     val dragStepPx = with(androidx.compose.ui.platform.LocalDensity.current) { 52.dp.toPx() }
     val selectedIndex = elements.indexOfFirst { it.id == selectedId }
     val selected = elements.getOrNull(selectedIndex)
+    var previewScreenId by rememberSaveable(projectKey) { mutableStateOf(startScreenId) }
+    var previewMessage by remember(projectKey) { mutableStateOf("") }
+    var runtimeValues by remember(projectKey) { mutableStateOf<Map<String, String>>(emptyMap()) }
+
+    fun readLogicDocument(): StudioLogicDocument {
+        val raw = prefs.getString("geivia_studio_logic_v1_$projectKey", null)
+            ?: if (allowLegacyProjectData) prefs.getString("geivia_studio_logic_v1", null) else null
+        return runCatching { StudioLogicDocument.fromJson(raw.orEmpty()) }.getOrDefault(StudioLogicDocument())
+    }
+    fun startPreview() {
+        val logic = readLogicDocument()
+        runtimeValues = logic.variables.associate { it.key to it.initialValue }
+        previewScreenId = startScreenId
+        previewMessage = ""
+        previewMode = true
+        saveSchema()
+    }
+    fun executePreviewActions(componentId: String, trigger: String) {
+        val logic = readLogicDocument()
+        val actions = logic.actions.filter {
+            it.enabled && it.trigger == trigger &&
+                (it.componentId.isBlank() || componentId.isBlank() || it.componentId == componentId)
+        }
+        actions.forEach { action ->
+            val resolved = Regex("""\$\{([A-Za-z_][A-Za-z0-9_]*)\}""").replace(action.expression) { match ->
+                runtimeValues[match.groupValues[1]].orEmpty()
+            }
+            when (action.kind) {
+                "navigate" -> if (screenRegistry.any { it.id == action.target }) {
+                    previewScreenId = action.target
+                }
+                "set_variable" -> if (action.target.isNotBlank()) {
+                    runtimeValues = runtimeValues + (action.target to resolved)
+                }
+                "show_message" -> previewMessage = resolved
+            }
+        }
+    }
 
     fun addElement(type: String, text: String) {
         checkpoint()

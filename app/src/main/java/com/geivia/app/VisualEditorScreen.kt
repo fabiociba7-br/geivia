@@ -4,6 +4,7 @@ import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -19,13 +20,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 private data class StudioElement(
     val id: String = UUID.randomUUID().toString(),
     val type: String,
-    val text: String
+    val text: String,
+    val fontSize: Float = 16f,
+    val padding: Float = 12f,
+    val alignment: String = "start"
 )
 
 private val EditorBlue = Color(0xFF1769AA)
@@ -40,17 +45,20 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
     val elements = remember {
         mutableStateListOf<StudioElement>().apply {
             val saved = prefs.getString(EDITOR_SCHEMA_KEY, null)
-            if (!saved.isNullOrBlank()) {
-                runCatching {
-                    val array = JSONArray(saved)
-                    for (i in 0 until array.length()) {
-                        val item = array.getJSONObject(i)
-                        add(StudioElement(
-                            id = item.optString("id", UUID.randomUUID().toString()),
-                            type = item.optString("type", "text"),
-                            text = item.optString("text", "")
-                        ))
-                    }
+            if (!saved.isNullOrBlank()) runCatching {
+                val array = JSONArray(saved)
+                for (i in 0 until array.length()) {
+                    val item = array.getJSONObject(i)
+                    add(StudioElement(
+                        id = item.optString("id", UUID.randomUUID().toString()),
+                        type = item.optString("type", "text"),
+                        text = item.optString("text", ""),
+                        fontSize = item.optDouble("fontSize", 16.0).toFloat().coerceIn(12f, 32f),
+                        padding = item.optDouble("padding", 12.0).toFloat().coerceIn(4f, 28f),
+                        alignment = item.optString("alignment", "start").let {
+                            if (it in listOf("start", "center", "end")) it else "start"
+                        }
+                    ))
                 }
             }
             if (isEmpty()) add(StudioElement(type = "text", text = "Meu primeiro aplicativo"))
@@ -70,10 +78,19 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
     fun saveSchema() {
         val array = JSONArray()
         elements.forEach { element ->
-            array.put(JSONObject().put("id", element.id).put("type", element.type).put("text", element.text))
+            array.put(JSONObject()
+                .put("id", element.id)
+                .put("type", element.type)
+                .put("text", element.text)
+                .put("fontSize", element.fontSize.toDouble())
+                .put("padding", element.padding.toDouble())
+                .put("alignment", element.alignment))
         }
         prefs.edit().putString(EDITOR_SCHEMA_KEY, array.toString()).apply()
         message = "Projeto salvo neste dispositivo"
+    }
+    fun updateSelected(transform: (StudioElement) -> StudioElement) {
+        if (selectedIndex >= 0) elements[selectedIndex] = transform(elements[selectedIndex])
     }
 
     Scaffold(
@@ -111,7 +128,7 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Widgets, null, tint = EditorBlue)
                         Spacer(Modifier.width(8.dp))
-                        Text("Adicionar componentes", fontWeight = FontWeight.Bold, color = EditorInk)
+                        Text("Biblioteca de componentes", fontWeight = FontWeight.Bold, color = EditorInk)
                     }
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         EditorPaletteButton("Texto", Icons.Default.TextFields) { addElement("text", "Novo texto") }
@@ -119,7 +136,52 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                         EditorPaletteButton("Cartão", Icons.Default.CropSquare) { addElement("card", "Novo cartão") }
                         EditorPaletteButton("Espaço", Icons.Default.SpaceBar) { addElement("spacer", "Espaço") }
                     }
-                    Text("Os componentes são adicionados ao canvas e podem ser selecionados e editados.", color = EditorMuted, fontSize = 11.sp)
+                    Text("Adicione elementos e organize a estrutura da tela.", color = EditorMuted, fontSize = 11.sp)
+                }
+            }
+
+            Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(18.dp)) {
+                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.AccountTree, null, tint = EditorBlue)
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text("Árvore de componentes", fontWeight = FontWeight.Bold, color = EditorInk)
+                            Text("${elements.size} elemento(s) nesta tela", color = EditorMuted, fontSize = 11.sp)
+                        }
+                    }
+                    if (elements.isEmpty()) {
+                        Text("A tela ainda não possui componentes.", color = EditorMuted, fontSize = 12.sp)
+                    } else {
+                        elements.forEachIndexed { index, element ->
+                            val active = element.id == selectedId
+                            Row(
+                                Modifier.fillMaxWidth()
+                                    .background(if (active) Color(0xFFEAF3FB) else Color(0xFFF8FAFC), RoundedCornerShape(10.dp))
+                                    .clickable { selectedId = element.id }
+                                    .padding(horizontal = 10.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    when (element.type) {
+                                        "button" -> Icons.Default.SmartButton
+                                        "card" -> Icons.Default.CropSquare
+                                        "spacer" -> Icons.Default.SpaceBar
+                                        else -> Icons.Default.TextFields
+                                    },
+                                    null,
+                                    tint = if (active) EditorBlue else EditorMuted,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(9.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(element.text.ifBlank { "Sem texto" }, color = EditorInk, fontSize = 13.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
+                                    Text("${index + 1}. ${element.type}", color = EditorMuted, fontSize = 10.sp)
+                                }
+                                if (active) Text("SELECIONADO", color = EditorBlue, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
                 }
             }
 
@@ -138,7 +200,7 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                         modifier = Modifier.fillMaxWidth(),
                         color = Color(0xFFF9FBFD),
                         shape = RoundedCornerShape(16.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFDCE5EE))
+                        border = BorderStroke(1.dp, Color(0xFFDCE5EE))
                     ) {
                         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -146,30 +208,35 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                                 Spacer(Modifier.weight(1f))
                                 Icon(Icons.Default.MoreHoriz, null, tint = EditorMuted)
                             }
-                            if (elements.isEmpty()) {
-                                Text("Adicione componentes para começar.", color = EditorMuted, modifier = Modifier.padding(vertical = 30.dp))
-                            }
                             elements.forEach { element ->
                                 val isSelected = element.id == selectedId
                                 Surface(
                                     modifier = Modifier.fillMaxWidth().clickable { selectedId = element.id },
                                     color = if (isSelected) Color(0xFFEAF3FB) else Color.White,
                                     shape = RoundedCornerShape(10.dp),
-                                    border = androidx.compose.foundation.BorderStroke(
-                                        if (isSelected) 2.dp else 1.dp,
-                                        if (isSelected) EditorBlue else Color(0xFFE3EAF1)
-                                    )
+                                    border = BorderStroke(if (isSelected) 2.dp else 1.dp, if (isSelected) EditorBlue else Color(0xFFE3EAF1))
                                 ) {
-                                    Box(Modifier.fillMaxWidth().padding(12.dp), contentAlignment = Alignment.CenterStart) {
+                                    Box(Modifier.fillMaxWidth().padding(element.padding.dp), contentAlignment = Alignment.CenterStart) {
+                                        val textAlign = when (element.alignment) {
+                                            "center" -> TextAlign.Center
+                                            "end" -> TextAlign.End
+                                            else -> TextAlign.Start
+                                        }
                                         when (element.type) {
-                                            "button" -> Surface(color = EditorBlue, shape = RoundedCornerShape(9.dp)) {
-                                                Text(element.text, color = Color.White, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp))
+                                            "button" -> Box(Modifier.fillMaxWidth(), contentAlignment = when (element.alignment) {
+                                                "center" -> Alignment.Center
+                                                "end" -> Alignment.CenterEnd
+                                                else -> Alignment.CenterStart
+                                            }) {
+                                                Surface(color = EditorBlue, shape = RoundedCornerShape(9.dp)) {
+                                                    Text(element.text, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = element.fontSize.sp, modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp))
+                                                }
                                             }
-                                            "card" -> Surface(color = Color.White, shape = RoundedCornerShape(10.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFDCE5EE))) {
-                                                Text(element.text, color = EditorInk, modifier = Modifier.fillMaxWidth().padding(16.dp), fontWeight = FontWeight.Medium)
+                                            "card" -> Surface(color = Color.White, shape = RoundedCornerShape(10.dp), border = BorderStroke(1.dp, Color(0xFFDCE5EE))) {
+                                                Text(element.text, color = EditorInk, modifier = Modifier.fillMaxWidth().padding(12.dp), fontWeight = FontWeight.Medium, fontSize = element.fontSize.sp, textAlign = textAlign)
                                             }
                                             "spacer" -> Text("Espaçamento", color = EditorMuted, fontSize = 11.sp, modifier = Modifier.padding(vertical = 8.dp))
-                                            else -> Text(element.text, color = EditorInk, fontSize = 15.sp)
+                                            else -> Text(element.text, color = EditorInk, fontSize = element.fontSize.sp, textAlign = textAlign, modifier = Modifier.fillMaxWidth())
                                         }
                                     }
                                 }
@@ -184,23 +251,46 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Tune, null, tint = EditorBlue)
                         Spacer(Modifier.width(8.dp))
-                        Text("Propriedades", fontWeight = FontWeight.Bold, color = EditorInk)
+                        Text("Propriedades do componente", fontWeight = FontWeight.Bold, color = EditorInk)
                     }
                     if (selected == null) {
-                        Text("Selecione um componente no canvas para editar.", color = EditorMuted, fontSize = 12.sp)
+                        Text("Selecione um componente na árvore ou no canvas.", color = EditorMuted, fontSize = 12.sp)
                     } else {
-                        Text("Tipo: ${selected.type.uppercase()}", color = EditorMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text("TIPO: ${selected.type.uppercase()}", color = EditorMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         OutlinedTextField(
                             value = selected.text,
-                            onValueChange = { value ->
-                                elements[selectedIndex] = selected.copy(text = value)
-                            },
+                            onValueChange = { value -> updateSelected { it.copy(text = value) } },
                             modifier = Modifier.fillMaxWidth(),
                             label = { Text("Texto do componente") },
                             singleLine = false,
                             minLines = 1,
                             maxLines = 3
                         )
+                        Text("Tamanho do texto: ${selected.fontSize.toInt()} sp", color = EditorInk, fontSize = 12.sp)
+                        Slider(
+                            value = selected.fontSize,
+                            onValueChange = { value -> updateSelected { it.copy(fontSize = value) } },
+                            valueRange = 12f..32f,
+                            steps = 9
+                        )
+                        Text("Espaçamento interno: ${selected.padding.toInt()} dp", color = EditorInk, fontSize = 12.sp)
+                        Slider(
+                            value = selected.padding,
+                            onValueChange = { value -> updateSelected { it.copy(padding = value) } },
+                            valueRange = 4f..28f,
+                            steps = 11
+                        )
+                        Text("Alinhamento", color = EditorInk, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf("start" to "Esquerda", "center" to "Centro", "end" to "Direita").forEach { (value, label) ->
+                                if (selected.alignment == value) {
+                                    Button(onClick = { updateSelected { it.copy(alignment = value) } }, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)) { Text(label, fontSize = 11.sp) }
+                                } else {
+                                    OutlinedButton(onClick = { updateSelected { it.copy(alignment = value) } }, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)) { Text(label, fontSize = 11.sp) }
+                                }
+                            }
+                        }
+                        HorizontalDivider(color = Color(0xFFE7EDF3))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(
                                 onClick = {

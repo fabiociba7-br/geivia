@@ -167,6 +167,32 @@ internal fun VisualEditorScreen(
         message = "Tela salva neste dispositivo"
     }
 
+    fun buildProjectJson(): String {
+        val project = JSONObject()
+            .put("format", "geivia-studio-project")
+            .put("schemaVersion", 2)
+            .put("startScreenId", startScreenId)
+        val screens = JSONArray()
+        screenRegistry.forEach { screen ->
+            val screenElements = if (screen.id == activeScreenId) elements.toList()
+                else decodeElements(prefs.getString("${EDITOR_SCHEMA_KEY}_${screen.id}", null))
+            val items = JSONArray()
+            screenElements.forEach { item ->
+                items.put(JSONObject()
+                    .put("id", item.id).put("type", item.type).put("text", item.text)
+                    .put("fontSize", item.fontSize).put("padding", item.padding)
+                    .put("alignment", item.alignment).put("parentId", item.parentId ?: JSONObject.NULL)
+                    .put("backgroundColor", item.backgroundColor).put("textColor", item.textColor)
+                    .put("cornerRadius", item.cornerRadius).put("visible", item.visible))
+            }
+            screens.put(JSONObject().put("id", screen.id).put("name", screen.name).put("components", items))
+        }
+        project.put("screens", screens)
+        project.put("theme", JSONObject().put("primary", themePrimary).put("background", themeBackground).put("text", themeText))
+        project.put("assets", JSONArray(savedAssets))
+        return project.toString(2)
+    }
+
     fun switchScreen(screenId: String) {
         if (screenId == activeScreenId || screenRegistry.none { it.id == screenId }) return
         saveSchema()
@@ -297,18 +323,28 @@ internal fun VisualEditorScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Editor visual", fontWeight = FontWeight.Bold, color = EditorInk, fontSize = 18.sp)
-                        Text("Construa a tela do seu aplicativo", color = EditorMuted, fontSize = 11.sp)
+                        Text(if (previewMode) "Prévia do aplicativo" else when (workspacePanel) {
+                            "canvas" -> "Editor visual"
+                            "components" -> "Biblioteca de componentes"
+                            "pages" -> "Páginas do aplicativo"
+                            "theme" -> "Tema e estilo"
+                            "assets" -> "Assets do projeto"
+                            "logic" -> "Ações e lógica"
+                            "code" -> "Estrutura e código"
+                            else -> "Editor avançado"
+                        }, fontWeight = FontWeight.Bold, color = EditorInk, fontSize = 18.sp)
+                        Text("GEIVIA Studio · Android", color = EditorMuted, fontSize = 11.sp)
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = {
                         if (previewMode) previewMode = false
+                        else if (workspacePanel != "canvas") workspacePanel = "canvas"
                         else editorScope.launch { editorDrawerState.open() }
                     }) {
                         Icon(
-                            if (previewMode) Icons.Default.ArrowBack else Icons.Default.Menu,
-                            contentDescription = if (previewMode) "Voltar ao editor" else "Abrir menu",
+                            if (previewMode || workspacePanel != "canvas") Icons.Default.ArrowBack else Icons.Default.Menu,
+                            contentDescription = if (previewMode || workspacePanel != "canvas") "Voltar ao editor" else "Abrir menu",
                             tint = EditorInk
                         )
                     }

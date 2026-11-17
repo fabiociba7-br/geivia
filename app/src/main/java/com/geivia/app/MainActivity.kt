@@ -27,6 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -55,11 +57,38 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+
+@Composable
+private fun BrandSplashScreen() {
+    Column(
+        modifier = Modifier.fillMaxSize().background(Color(0xFFF7FBFD)).padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Image(
+            painter = painterResource(R.drawable.geivia_splash_icon),
+            contentDescription = "Símbolo GEIVIA",
+            modifier = Modifier.size(196.dp)
+        )
+        Spacer(Modifier.height(12.dp))
+        Text("GEIVIA", fontSize = 42.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF101820), letterSpacing = 2.sp)
+        Spacer(Modifier.height(4.dp))
+        Text("FIREBASE DEPLOY &", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Blue, letterSpacing = 0.5.sp)
+        Text("HOSTING AUTOMATION", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Ink, letterSpacing = 0.5.sp)
+        Spacer(Modifier.height(28.dp))
+        Text("Configuração e ativação de APIs  •  Diagnóstico e regras", fontSize = 11.sp, color = Muted, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(6.dp))
+        Text("Authentication  •  Registro Android/Web", fontSize = 11.sp, color = Muted, textAlign = TextAlign.Center)
+    }
+}
+
 private data class Question(val id: String, val title: String, val help: String, val options: List<String>, val multi: Boolean = false)
 
 @Composable
 private fun GeiviaApp(githubCallbackUri: Uri? = null) {
     val context = LocalContext.current
+    var showBrandSplash by rememberSaveable { mutableStateOf(true) }
+    LaunchedEffect(Unit) { kotlinx.coroutines.delay(1200); showBrandSplash = false }
     val prefs = remember { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
     val answerKeys = setOf("platform", "purpose", "audience", "login", "data", "files", "hosting", "extras")
     val answers = remember {
@@ -163,7 +192,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
 
     MaterialTheme(colorScheme = lightColorScheme(primary = Blue, secondary = Orange, background = Color(0xFFF7FBFD), surface = Color.White, onSurface = Ink)) {
         Surface(Modifier.fillMaxSize(), color = Color(0xFFF7FBFD)) {
-            when (page) {
+            if (showBrandSplash) BrandSplashScreen() else when (page) {
                 "device_access" -> DeviceAccessSetupScreen(onCompleted = {
                     prefs.edit().putBoolean("device_access_completed", true).putLong("device_access_completed_at", System.currentTimeMillis()).apply()
                     page = "environment_setup"

@@ -198,7 +198,8 @@ internal fun VisualEditorScreen(
     }
     fun startPreview() {
         val logic = readLogicDocument()
-        runtimeValues = logic.variables.associate { it.key to it.initialValue }
+        val startParameters = screenRegistry.firstOrNull { it.id == startScreenId }?.inputParameters.orEmpty().associate { it.key to it.defaultValue }
+        runtimeValues = logic.variables.associate { it.key to it.initialValue } + startParameters
         previewScreenId = startScreenId
         previewMessage = ""
         previewNavigationGuard = 0
@@ -218,6 +219,8 @@ internal fun VisualEditorScreen(
             when (action.kind) {
                 "navigate" -> if (screenRegistry.any { it.id == action.target }) {
                     if (previewNavigationGuard < 25) {
+                        val targetDefaults = screenRegistry.firstOrNull { it.id == action.target }?.inputParameters.orEmpty().associate { it.key to it.defaultValue }
+                        runtimeValues = targetDefaults + runtimeValues
                         action.navigationParameters.forEach { parameter ->
                             val parameterValue = Regex("""\$\{([A-Za-z_][A-Za-z0-9_]*)\}""").replace(parameter.value) { match ->
                                 if (match.groupValues[1] == "value") inputValue else runtimeValues[match.groupValues[1]].orEmpty()

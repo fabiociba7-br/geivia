@@ -68,6 +68,7 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
     }
     var selectedId by remember { mutableStateOf(elements.firstOrNull()?.id) }
     var message by remember { mutableStateOf("Rascunho local") }
+    var parentMenuExpanded by remember { mutableStateOf(false) }
     val selectedIndex = elements.indexOfFirst { it.id == selectedId }
     val selected = elements.getOrNull(selectedIndex)
 
@@ -274,24 +275,66 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                             }
                         }
                         HorizontalDivider(color = Color(0xFFE7EDF3))
+                        Text("Posição na hierarquia", color = EditorInk, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        val descendantIds = remember(selectedId, elements.size) {
+                            val found = mutableSetOf<String>()
+                            var changed: Boolean
+                            do {
+                                changed = false
+                                elements.filter { it.parentId == selectedId || it.parentId in found }.forEach {
+                                    if (found.add(it.id)) changed = true
+                                }
+                            } while (changed)
+                            found
+                        }
+                        val availableParents = elements.filter {
+                            it.type == "section" && it.id != selectedId && it.id !in descendantIds
+                        }
+                        Box {
+                            OutlinedButton(onClick = { parentMenuExpanded = true }) {
+                                Text(elements.firstOrNull { it.id == selected.parentId }?.text ?: "Raiz da tela", maxLines = 1)
+                                Icon(Icons.Default.ArrowDropDown, null)
+                            }
+                            DropdownMenu(expanded = parentMenuExpanded, onDismissRequest = { parentMenuExpanded = false }) {
+                                DropdownMenuItem(text = { Text("Raiz da tela") }, onClick = {
+                                    updateSelected { it.copy(parentId = null) }
+                                    parentMenuExpanded = false
+                                    message = "Componente movido para a raiz"
+                                })
+                                availableParents.forEach { parent ->
+                                    DropdownMenuItem(text = { Text(parent.text.ifBlank { "Seção sem nome" }) }, onClick = {
+                                        updateSelected { it.copy(parentId = parent.id) }
+                                        parentMenuExpanded = false
+                                        message = "Componente movido para " + parent.text
+                                    })
+                                }
+                            }
+                        }
+                        val siblingIds = elements.filter { it.parentId == selected.parentId }.map { it.id }
+                        val siblingPosition = siblingIds.indexOf(selected.id)
+                        HorizontalDivider(color = Color(0xFFE7EDF3))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(
                                 onClick = {
-                                    if (selectedIndex > 0) {
-                                        val item = elements.removeAt(selectedIndex)
-                                        elements.add(selectedIndex - 1, item)
+                                    if (siblingPosition > 0) {
+                                        val previousId = siblingIds[siblingPosition - 1]
+                                        val item = elements.removeAt(elements.indexOfFirst { it.id == selected.id })
+                                        val targetIndex = elements.indexOfFirst { it.id == previousId }
+                                        elements.add(targetIndex, item)
                                     }
                                 },
-                                enabled = selectedIndex > 0
+                                enabled = siblingPosition > 0
                             ) { Icon(Icons.Default.ArrowUpward, null); Spacer(Modifier.width(4.dp)); Text("Subir") }
                             OutlinedButton(
                                 onClick = {
-                                    if (selectedIndex >= 0 && selectedIndex < elements.lastIndex) {
-                                        val item = elements.removeAt(selectedIndex)
-                                        elements.add(selectedIndex + 1, item)
+                                    if (siblingPosition >= 0 && siblingPosition < siblingIds.lastIndex) {
+                                        val nextId = siblingIds[siblingPosition + 1]
+                                        val item = elements.removeAt(elements.indexOfFirst { it.id == selected.id })
+                                        val targetIndex = elements.indexOfFirst { it.id == nextId }
+                                        elements.add(targetIndex + 1, item)
                                     }
                                 },
-                                enabled = selectedIndex >= 0 && selectedIndex < elements.lastIndex
+                                enabled = siblingPosition >= 0 && siblingPosition < siblingIds.lastIndex
                             ) { Icon(Icons.Default.ArrowDownward, null); Spacer(Modifier.width(4.dp)); Text("Descer") }
                             OutlinedButton(
                                 onClick = {

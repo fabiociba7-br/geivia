@@ -1253,6 +1253,14 @@ internal fun VisualEditorScreen(
                                     StudioGeneratedElement(item.id, item.type, generatedText, item.fontSize, item.padding, item.alignment, item.parentId, item.backgroundColor, item.textColor, item.cornerRadius, item.visible)
                                 }
                             }
+                            val logicDocument = readLogicDocument()
+                            val logicErrors = logicDocument.validate(
+                                screenRegistry.map { it.id }.toSet(),
+                                generatedComponents.values.flatten().map { it.id }.toSet()
+                            )
+                            if (logicErrors.isNotEmpty()) {
+                                message = "Corrija a lógica antes de exportar: ${logicErrors.first()}"
+                            } else {
                             prefs.edit().putString(generatedPackagePrefKey, generatedPackage).apply()
                             val files = StudioProjectGenerator.files(
                                 packageName = generatedPackage,

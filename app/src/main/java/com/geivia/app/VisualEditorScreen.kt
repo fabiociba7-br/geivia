@@ -1,6 +1,7 @@
 package com.geivia.app
 
 import android.content.Context
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import org.json.JSONArray
@@ -440,6 +441,14 @@ internal fun VisualEditorScreen(
         if (previewMode) executePreviewActions("", "on_screen_open")
     }
 
+    BackHandler {
+        when {
+            previewMode -> previewMode = false
+            workspacePanel != "canvas" -> workspacePanel = "canvas"
+            else -> { saveSchema(); onBack() }
+        }
+    }
+
     ModalNavigationDrawer(
         drawerState = editorDrawerState,
         drawerContent = {
@@ -471,6 +480,7 @@ internal fun VisualEditorScreen(
                             enabled = available,
                             onClick = {
                                 editorScope.launch { editorDrawerState.close() }
+                                saveSchema()
                                 when (item) {
                                     "Firestore", "Autenticação" -> onFirebase()
                                     "APIs" -> onGoogle()

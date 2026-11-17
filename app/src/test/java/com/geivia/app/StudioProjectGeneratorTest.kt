@@ -44,6 +44,42 @@ class StudioProjectGeneratorTest {
     }
 
     @Test
+    fun generatesDeclaredActionsAndRuntimeBindings() {
+        val logic = StudioLogicDocument(
+            variables = listOf(StudioVariableDefinition("userName", "Nome", "text", "Ana")),
+            actions = listOf(
+                StudioActionDefinition(
+                    id = "show_welcome",
+                    trigger = "on_click",
+                    kind = "show_message",
+                    componentId = "continue",
+                    expression = "Bem-vinda"
+                )
+            )
+        )
+        val files = StudioProjectGenerator.files(
+            packageName = "com.example.actions",
+            appName = "App com ações",
+            screens = listOf(StudioScreenDefinition("home", "Início")),
+            components = mapOf(
+                "home" to listOf(
+                    StudioGeneratedElement("continue", "button", "Continuar", 16f, 12f, "center", null, "#FFFFFF", "#17354D", 10f, true)
+                )
+            ),
+            startScreenId = "home",
+            primaryColor = "#1769AA",
+            backgroundColor = "#F3F6FA",
+            textColor = "#17354D",
+            logic = logic
+        )
+        val source = files.values.first { it.contains("class MainActivity") }
+        assertTrue(source.contains("fun runAction"))
+        assertTrue(source.contains("fun runActions"))
+        assertTrue(source.contains("runAction(\"show_welcome\""))
+        assertTrue(source.contains("runActions(\"continue\", \"on_click\""))
+    }
+
+    @Test
     fun escapesTextAndUsesSafePackagePath() {
         val files = StudioProjectGenerator.files(
             packageName = "com.example.app",

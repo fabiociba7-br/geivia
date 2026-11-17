@@ -96,8 +96,8 @@ internal fun VisualEditorScreen(
             } ?: screenRegistry.first().id
         )
     }
-    var renamingScreenId by remember { mutableStateOf<String?>(null) }
-    var renameValue by remember { mutableStateOf("") }
+    var renamingScreenId by remember(projectKey) { mutableStateOf<String?>(null) }
+    var renameValue by remember(projectKey) { mutableStateOf("") }
 
     fun decodeElements(saved: String?): List<StudioElement> {
         if (saved.isNullOrBlank()) return emptyList()
@@ -135,7 +135,7 @@ internal fun VisualEditorScreen(
             }
         }
     }
-    var selectedId by remember { mutableStateOf(elements.firstOrNull()?.id) }
+    var selectedId by remember(projectKey) { mutableStateOf(elements.firstOrNull()?.id) }
     val undoStack = remember(projectKey) { mutableStateListOf<List<StudioElement>>() }
     val redoStack = remember(projectKey) { mutableStateListOf<List<StudioElement>>() }
     var message by remember(projectKey) { mutableStateOf("Rascunho local") }

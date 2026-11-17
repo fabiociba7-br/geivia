@@ -89,6 +89,26 @@ class WorkflowProgressStoreTest {
     }
 
     @Test
+    fun unresolvedAndManuallyConfirmedOperationsCannotBePreparedAgain() {
+        val store = store()
+        store.waitForConfirmation("project-no-duplicate", "deploy", "Review")
+        store.confirmAndStart("project-no-duplicate", "deploy", "op-active", "Started")
+
+        val activeError = org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+            store.waitForConfirmation("project-no-duplicate", "deploy", "Duplicate preparation")
+        }
+        assertTrue(activeError.message.orEmpty().contains("operação em andamento"))
+        assertEquals(WorkflowStepState.IN_PROGRESS, store.get("project-no-duplicate", "deploy").state)
+
+        store.confirmManualCompletion("project-no-duplicate", "deploy", "User reports completion")
+        val manualError = org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+            store.waitForConfirmation("project-no-duplicate", "deploy", "Retry before diagnostic")
+        }
+        assertTrue(manualError.message.orEmpty().contains("declarada manualmente"))
+        assertEquals(WorkflowStepState.USER_CONFIRMED, store.get("project-no-duplicate", "deploy").state)
+    }
+
+    @Test
     fun reconciliationRequiresEvidenceAndExplicitAcknowledgement() {
         val store = store()
         store.waitForConfirmation("project-evidence", "create", "Review")

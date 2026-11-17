@@ -102,7 +102,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
         }
     }
     var workspaceName by rememberSaveable { mutableStateOf(prefs.getString("workspace_name", "GEIVIA-" + workspaceId.removePrefix("GEIVIA-")) ?: ("GEIVIA-" + workspaceId.removePrefix("GEIVIA-"))) }
-    val validWorkflowPages = setOf("device_access", "workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "accounts", "google_access", "github", "terminal", "toolchain_updates", "diagnostics", "project_operations", "project_preview", "firebase_admin")
+    val validWorkflowPages = setOf("device_access", "workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "accounts", "google_access", "github", "terminal", "toolchain_updates", "diagnostics", "project_operations", "project_preview", "firebase_admin", "legacy_dashboard")
     val savedCheckpoint = remember {
         prefs.getString("workflow_checkpoint", null)?.takeIf { it in validWorkflowPages }
             ?.let { when (it) { "cloud_setup" -> "questions"; "terminal" -> "dashboard"; else -> it } }
@@ -285,6 +285,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onContinue = { page = "summary" })
                 "summary" -> SummaryScreen(answers.toMap(), costMode,
                     onBack = { page = "cost" }, onEdit = { page = "questions"; index = 0 }, onFinish = { page = "dashboard" })
+                "visual_editor" -> VisualEditorScreen(context) { page = "dashboard" }
                 "accounts" -> AccountsConnectionsScreen(
                     googleReady = prefs.getBoolean("google_cloud_cli_ready", false),
                     githubConnected = githubConnected,
@@ -315,20 +316,53 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                 "project_operations" -> ProjectOperationsScreen(onBack = { page = "dashboard" })
                 "project_preview" -> ProjectPreviewScreen(prefs.getString("imported_project_dir", "").orEmpty()) { page = "project_operations" }
                 "firebase_admin" -> FirebaseAdminScreen(prefs.getString("selected_project_id", preflightProjectId).orEmpty()) { page = "project_operations" }
-                else -> DashboardScreen(answers.toMap(), costMode, onOperations = { page = "project_operations" }, onPreview = { page = "project_preview" }, onFirebaseAdmin = { page = "firebase_admin" }, onAccounts = { page = "accounts" }, onToolchainUpdates = { page = "toolchain_updates" }, onDiagnostics = { page = "diagnostics" }) {
-                    answers.clear()
-                    val editor = prefs.edit()
-                    answerKeys.forEach { editor.remove(it) }
-                    editor.remove("cost_mode")
-                        .remove("workflow_checkpoint")
-                        .remove("workflow_question_index")
-                        .remove("workflow_checkpoint_updated_at")
-                        .putBoolean("cloud_setup_completed", false)
-                        .apply()
-                    costMode = ""
-                    index = 0
-                    page = "workspace_setup"
-                }
+                "legacy_dashboard" -> DashboardScreen(answers.toMap(), costMode,
+                    onOperations = { page = "project_operations" },
+                    onPreview = { page = "project_preview" },
+                    onFirebaseAdmin = { page = "firebase_admin" },
+                    onAccounts = { page = "accounts" },
+                    onToolchainUpdates = { page = "toolchain_updates" },
+                    onDiagnostics = { page = "diagnostics" },
+                    onRestart = {
+                        answers.clear()
+                        val editor = prefs.edit()
+                        answerKeys.forEach { editor.remove(it) }
+                        editor.remove("cost_mode")
+                            .remove("workflow_checkpoint")
+                            .remove("workflow_question_index")
+                            .remove("workflow_checkpoint_updated_at")
+                            .putBoolean("cloud_setup_completed", false)
+                            .apply()
+                        costMode = ""
+                        index = 0
+                        page = "workspace_setup"
+                    })
+                else -> StudioDashboardScreen(
+                    context = context,
+                    onNewProject = {
+                        answers.clear()
+                        val editor = prefs.edit()
+                        answerKeys.forEach { editor.remove(it) }
+                        editor.remove("cost_mode")
+                            .remove("workflow_checkpoint")
+                            .remove("workflow_question_index")
+                            .remove("workflow_checkpoint_updated_at")
+                            .putBoolean("cloud_setup_completed", false)
+                            .apply()
+                        costMode = ""
+                        index = 0
+                        page = "workspace_setup"
+                    },
+                    onProjects = { page = "project_operations" },
+                    onEditor = { page = "visual_editor" },
+                    onPreview = { page = "project_preview" },
+                    onFirebase = { page = "firebase_admin" },
+                    onIntegrations = { page = "accounts" },
+                    onTools = { page = "toolchain_updates" },
+                    onDiagnostics = { page = "diagnostics" },
+                    onAccounts = { page = "accounts" },
+                    onLegacyDashboard = { page = "legacy_dashboard" }
+                )
             }
         }
     }

@@ -120,6 +120,12 @@ internal fun VisualEditorScreen(
     var selectedId by remember { mutableStateOf(elements.firstOrNull()?.id) }
     var message by remember { mutableStateOf("Rascunho local") }
     var previewMode by rememberSaveable { mutableStateOf(false) }
+    var workspacePanel by rememberSaveable { mutableStateOf("canvas") }
+    var themePrimary by remember { mutableStateOf(prefs.getString("studio_theme_primary", "#1769AA") ?: "#1769AA") }
+    var themeBackground by remember { mutableStateOf(prefs.getString("studio_theme_background", "#F3F6FA") ?: "#F3F6FA") }
+    var themeText by remember { mutableStateOf(prefs.getString("studio_theme_text", "#17354D") ?: "#17354D") }
+    var assetUrl by remember { mutableStateOf("") }
+    val savedAssets = remember { mutableStateListOf<String>().apply { prefs.getString("studio_assets_v1", null)?.let { raw -> runCatching { val a = JSONArray(raw); for (i in 0 until a.length()) add(a.getString(i)) } } } }
     val editorDrawerState = rememberDrawerState(DrawerValue.Closed)
     val editorScope = rememberCoroutineScope()
     var parentMenuExpanded by remember { mutableStateOf(false) }
@@ -236,7 +242,7 @@ internal fun VisualEditorScreen(
                     Text("PROJETO", color = EditorMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     val projectItems = listOf("Páginas", "Componentes", "Tema e estilo", "Firestore", "Autenticação", "APIs", "Ações e lógica", "Variáveis", "Assets", "Integrações", "Configurações")
                     projectItems.forEach { item ->
-                        val available = item in setOf("Páginas", "Componentes", "Firestore", "Autenticação", "APIs", "Ações e lógica", "Variáveis", "Integrações", "Configurações")
+                        val available = true
                         NavigationDrawerItem(
                             label = { Text(item, fontSize = 13.sp) },
                             selected = false,
@@ -248,6 +254,11 @@ internal fun VisualEditorScreen(
                                     "APIs" -> onGoogle()
                                     "Integrações" -> onAccounts()
                                     "Configurações" -> onDiagnostics()
+                                    "Páginas" -> workspacePanel = "pages"
+                                    "Componentes" -> workspacePanel = "components"
+                                    "Tema e estilo" -> workspacePanel = "theme"
+                                    "Ações e lógica", "Variáveis" -> workspacePanel = "logic"
+                                    "Assets" -> workspacePanel = "assets"
                                     else -> message = "$item selecionado"
                                 }
                             },
@@ -258,7 +269,7 @@ internal fun VisualEditorScreen(
                     Text("FERRAMENTAS", color = EditorMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     val toolItems = listOf("Testar", "Deploy", "Terminal", "Versões", "Código gerado")
                     toolItems.forEach { item ->
-                        val available = item in setOf("Testar", "Deploy", "Terminal", "Versões")
+                        val available = true
                         NavigationDrawerItem(
                             label = { Text(item, fontSize = 13.sp) },
                             selected = false,
@@ -270,6 +281,7 @@ internal fun VisualEditorScreen(
                                     "Deploy" -> onProjects()
                                     "Terminal" -> onTerminal()
                                     "Versões" -> onTools()
+                                    "Código gerado" -> workspacePanel = "code"
                                 }
                             },
                             modifier = Modifier.padding(vertical = 1.dp)
@@ -280,7 +292,7 @@ internal fun VisualEditorScreen(
         }
     ) {
     Scaffold(
-        containerColor = Color(0xFFF3F6FA),
+        containerColor = runCatching { Color(android.graphics.Color.parseColor(themeBackground)) }.getOrDefault(Color(0xFFF3F6FA)),
         topBar = {
             TopAppBar(
                 title = {

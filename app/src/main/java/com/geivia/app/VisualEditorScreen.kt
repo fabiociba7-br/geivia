@@ -342,7 +342,7 @@ internal fun VisualEditorScreen(
         message = "Ordem dos componentes atualizada"
     }
 
-    LaunchedEffect(activeScreenId, elements.toList(), screenRegistry.toList(), startScreenId) {
+    LaunchedEffect(projectKey, activeScreenId, elements.toList(), screenRegistry.toList(), startScreenId) {
         kotlinx.coroutines.delay(400)
         saveSchema()
     }

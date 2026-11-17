@@ -64,7 +64,6 @@ internal data class StudioLogicDocument(
             if (action.id.isBlank()) errors += "Toda ação precisa de um identificador"
             if (action.trigger !in ACTION_TRIGGERS) errors += "Gatilho inválido na ação ${action.id}"
             if (action.kind !in ACTION_KINDS) errors += "Tipo de ação inválido: ${action.kind}"
-            if (action.trigger != "on_screen_open" && action.componentId.isBlank()) errors += "Ação ${action.id} precisa estar vinculada a um componente"
             if (action.componentId.length > MAX_TARGET_LENGTH) errors += "Identificador de componente muito longo: ${action.id}"
             if (action.componentId.isNotBlank() && availableComponentIds != null && action.componentId !in availableComponentIds) errors += "Componente não existe: ${action.componentId}"
             if (action.target.length > MAX_TARGET_LENGTH) errors += "Destino muito longo na ação ${action.id}"

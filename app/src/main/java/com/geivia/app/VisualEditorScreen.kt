@@ -56,6 +56,13 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
         }
     }
     var activeScreenId by remember { mutableStateOf(screenRegistry.first().id) }
+    var startScreenId by remember {
+        mutableStateOf(
+            runCatching {
+                StudioScreenDocument.fromJson(prefs.getString("geivia_studio_screens_v1", null).orEmpty()).startScreenId
+            }.getOrDefault(screenRegistry.first().id)
+        )
+    }
 
     fun decodeElements(saved: String?): List<StudioElement> {
         if (saved.isNullOrBlank()) return emptyList()
@@ -115,7 +122,7 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                 .put("alignment", element.alignment)
                 .put("parentId", element.parentId ?: ""))
         }
-        val registry = StudioScreenDocument(screens = screenRegistry.toList(), startScreenId = screenRegistry.firstOrNull()?.id.orEmpty())
+        val registry = StudioScreenDocument(screens = screenRegistry.toList(), startScreenId = startScreenId)
         prefs.edit()
             .putString("${EDITOR_SCHEMA_KEY}_${activeScreenId}", array.toString())
             .putString(EDITOR_SCHEMA_KEY, if (activeScreenId == "home") array.toString() else prefs.getString(EDITOR_SCHEMA_KEY, array.toString()))
@@ -148,16 +155,17 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
         selectedId = null
         prefs.edit().putString(
             "geivia_studio_screens_v1",
-            StudioScreenDocument(screenRegistry.toList(), screenRegistry.first().id).toJson()
+            StudioScreenDocument(screenRegistry.toList(), startScreenId).toJson()
         ).apply()
         message = "Nova tela criada"
     }
 
     fun setStartScreen(screenId: String) {
         if (screenRegistry.none { it.id == screenId }) return
+        startScreenId = screenId
         prefs.edit().putString(
             "geivia_studio_screens_v1",
-            StudioScreenDocument(screenRegistry.toList(), screenId).toJson()
+            StudioScreenDocument(screenRegistry.toList(), startScreenId).toJson()
         ).apply()
         message = "Tela inicial definida"
     }

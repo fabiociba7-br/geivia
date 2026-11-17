@@ -54,7 +54,7 @@ class StudioLogicDocumentTest {
     fun rejectsNavigationToUnknownScreenWhenRegistryIsProvided() {
         val document = StudioLogicDocument(
             actions = listOf(
-                StudioActionDefinition("go", "on_click", "navigate", target = "missing")
+                StudioActionDefinition("go", "on_click", "navigate", target = "missing", componentId = "goButton")
             )
         )
         assertTrue(document.validate(setOf("home", "profile")).any {
@@ -80,7 +80,7 @@ class StudioLogicDocumentTest {
     fun disabledActionsAreNotRequiredToHaveTargets() {
         val document = StudioLogicDocument(
             actions = listOf(
-                StudioActionDefinition("a1", "on_click", "navigate", enabled = false)
+                StudioActionDefinition("a1", "on_click", "navigate", enabled = false, componentId = "disabledButton")
             )
         )
 

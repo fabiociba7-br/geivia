@@ -87,6 +87,29 @@ class StudioLogicDocumentTest {
         assertFalse(document.validate().any { it.contains("sem tela de destino") })
     }
 
+
+    @Test
+    fun rejectsActionsLinkedToMissingComponents() {
+        val document = StudioLogicDocument(
+            actions = listOf(
+                StudioActionDefinition("tap", "on_click", "show_message", expression = "Oi", componentId = "oldButton")
+            )
+        )
+        assertTrue(document.validate(availableComponentIds = setOf("currentButton")).any {
+            it.contains("Componente não existe: oldButton")
+        })
+    }
+
+    @Test
+    fun requiresComponentForComponentLevelTriggers() {
+        val document = StudioLogicDocument(
+            actions = listOf(
+                StudioActionDefinition("tap", "on_click", "show_message", expression = "Oi")
+            )
+        )
+        assertTrue(document.validate().any { it.contains("vinculada a um componente") })
+    }
+
     @Test
     fun rejectsOversizedDocuments() {
         val oversized = " ".repeat(StudioLogicDocument.MAX_VALUE_LENGTH * 130)

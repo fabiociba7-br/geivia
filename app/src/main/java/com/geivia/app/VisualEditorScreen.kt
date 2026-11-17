@@ -259,6 +259,7 @@ internal fun VisualEditorScreen(
         if (screenId == activeScreenId || screenRegistry.none { it.id == screenId }) return
         saveSchema()
         activeScreenId = screenId
+        undoStack.clear(); redoStack.clear()
         elements.clear()
         elements.addAll(decodeElements(prefs.getString("${schemaPrefix}_${screenId}", null) ?: if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_${screenId}", null) else null))
         selectedId = elements.firstOrNull()?.id
@@ -275,6 +276,7 @@ internal fun VisualEditorScreen(
         val id = "screen_${UUID.randomUUID().toString().replace("-", "").take(10)}"
         screenRegistry.add(StudioScreenDefinition(id, "Tela $number"))
         activeScreenId = id
+        undoStack.clear(); redoStack.clear()
         elements.clear()
         selectedId = null
         prefs.edit().putString(

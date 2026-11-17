@@ -171,6 +171,8 @@ internal data class StudioLogicDocument(
             }
             val actions = (0 until actionsJson.length()).map { index ->
                 val item = actionsJson.getJSONObject(index)
+                val parameterArray = item.optJSONArray("navigationParameters") ?: JSONArray()
+                require(parameterArray.length() <= MAX_NAVIGATION_PARAMETERS) { "Limite de parâmetros excedido" }
                 StudioActionDefinition(
                     id = item.optString("id"),
                     trigger = item.optString("trigger", "on_click"),
@@ -179,8 +181,8 @@ internal data class StudioLogicDocument(
                     target = item.optString("target"),
                     expression = item.optString("expression"),
                     enabled = item.optBoolean("enabled", true),
-                    navigationParameters = (0 until (item.optJSONArray("navigationParameters") ?: JSONArray()).length()).map { parameterIndex ->
-                        val parameter = item.getJSONArray("navigationParameters").getJSONObject(parameterIndex)
+                    navigationParameters = (0 until parameterArray.length()).map { parameterIndex ->
+                        val parameter = parameterArray.getJSONObject(parameterIndex)
                         StudioNavigationParameter(parameter.optString("key"), parameter.optString("value"), parameter.optString("type", "text"))
                     }
                 )

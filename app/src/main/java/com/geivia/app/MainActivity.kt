@@ -346,7 +346,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                 "diagnostics" -> GeiviaDiagnosticsScreen(onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false })
                 "project_operations" -> ProjectOperationsScreen(onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false })
                 "project_preview" -> ProjectPreviewScreen(prefs.getString("imported_project_dir", "").orEmpty()) { page = "project_operations" }
-                "firebase_admin" -> FirebaseAdminScreen(prefs.getString("selected_project_id", preflightProjectId).orEmpty()) { page = "project_operations" }
+                "firebase_admin" -> FirebaseAdminScreen(prefs.getString("selected_project_id", preflightProjectId).orEmpty()) { page = if (returnToEditorAfterTool) "visual_editor" else "project_operations"; returnToEditorAfterTool = false }
                 "legacy_dashboard" -> DashboardScreen(answers.toMap(), costMode,
                     onOperations = { page = "project_operations" },
                     onPreview = { page = "project_preview" },

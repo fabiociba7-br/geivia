@@ -28,7 +28,7 @@ private val LogicMuted = Color(0xFF718397)
 /** Visual editor for the declarative data/action layer. Actions are stored, never executed here. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun StudioLogicPanel(context: Context, screens: List<StudioScreenDefinition> = emptyList()) {
+internal fun StudioLogicPanel(context: Context, screens: List<StudioScreenDefinition> = emptyList(), components: List<StudioComponentDefinition> = emptyList()) {
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE) }
     var document by remember {
         mutableStateOf(
@@ -42,6 +42,7 @@ internal fun StudioLogicPanel(context: Context, screens: List<StudioScreenDefini
     var variableInitial by remember { mutableStateOf("") }
     var actionTrigger by remember { mutableStateOf("on_click") }
     var actionKind by remember { mutableStateOf("show_message") }
+    var actionComponentId by remember { mutableStateOf("") }
     var actionTarget by remember { mutableStateOf("") }
     var actionExpression by remember { mutableStateOf("") }
     var feedback by remember { mutableStateOf("As ações são apenas configurações; nada é executado automaticamente.") }
@@ -154,6 +155,28 @@ internal fun StudioLogicPanel(context: Context, screens: List<StudioScreenDefini
                     FilterChip(selected = actionTrigger == value, onClick = { actionTrigger = value }, label = { Text(label, fontSize = 10.sp) })
                 }
             }
+            if (actionTrigger != "on_screen_open") {
+                var componentMenuExpanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(expanded = componentMenuExpanded, onExpandedChange = { componentMenuExpanded = it }) {
+                    OutlinedTextField(
+                        value = components.firstOrNull { it.id == actionComponentId }?.label ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        label = { Text("Componente que dispara a ação") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = componentMenuExpanded) }
+                    )
+                    ExposedDropdownMenu(expanded = componentMenuExpanded, onDismissRequest = { componentMenuExpanded = false }) {
+                        components.forEach { component ->
+                            DropdownMenuItem(text = { Text(component.label) }, onClick = {
+                                actionComponentId = component.id
+                                componentMenuExpanded = false
+                            })
+                        }
+                    }
+                }
+                if (components.isEmpty()) Text("Adicione um componente à tela para configurar este gatilho.", color = LogicMuted, fontSize = 10.sp)
+            }
             Text("O que deve acontecer?", color = LogicInk, fontSize = 12.sp, fontWeight = FontWeight.Medium)
             Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 listOf("show_message" to "Mostrar mensagem", "navigate" to "Navegar para tela", "set_variable" to "Alterar variável").forEach { (value, label) ->
@@ -212,11 +235,12 @@ internal fun StudioLogicPanel(context: Context, screens: List<StudioScreenDefini
                         id = UUID.randomUUID().toString(),
                         trigger = actionTrigger,
                         kind = actionKind,
+                        componentId = if (actionTrigger == "on_screen_open") "" else actionComponentId,
                         target = actionTarget.trim(),
                         expression = actionExpression.trim()
                     )
                     val next = document.copy(actions = document.actions + action)
-                    val errors = next.validate()
+                    val errors = next.validate(screens.map { it.id }.toSet(), components.map { it.id }.toSet())
                     if (errors.isEmpty()) {
                         save(next)
                         actionTarget = ""; actionExpression = ""
@@ -224,6 +248,7 @@ internal fun StudioLogicPanel(context: Context, screens: List<StudioScreenDefini
                     } else feedback = errors.first()
                 },
                 enabled = document.actions.size < StudioLogicDocument.MAX_ACTIONS &&
+                    (actionTrigger == "on_screen_open" || (actionComponentId.isNotBlank() && components.any { it.id == actionComponentId })) &&
                     (actionKind == "show_message" && actionExpression.isNotBlank() ||
                      actionKind == "navigate" && actionTarget.isNotBlank() ||
                      actionKind == "set_variable" && actionTarget.isNotBlank() && actionExpression.isNotBlank()),
@@ -240,7 +265,7 @@ internal fun StudioLogicPanel(context: Context, screens: List<StudioScreenDefini
                 document.actions.forEach { action ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("${action.trigger} → ${action.kind}", color = LogicInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text("${action.trigger} · ${components.firstOrNull { it.id == action.componentId }?.label ?: if (action.trigger == "on_screen_open") "Tela" else "Componente removido"} → ${action.kind}", color = LogicInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                             Text(
                                 listOf(action.target, action.expression).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { "Sem parâmetros" } +
                                     if (action.enabled) "" else " · DESATIVADA",

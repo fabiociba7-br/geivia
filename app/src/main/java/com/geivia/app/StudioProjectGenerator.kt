@@ -261,7 +261,7 @@ dependencies {
         .ifBlank { "Screen" }
 
     private fun quote(value: String): String = "\"" + value.replace("\\", "\\\\")
-        .replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r") + "\""
+        .replace("\"", "\\\"").replace("$", "\\$").replace("\n", "\\n").replace("\r", "\\r") + "\""
 
     private fun color(value: String, fallback: String): String {
         val hex = value.removePrefix("#")

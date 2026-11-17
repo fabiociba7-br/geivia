@@ -14,6 +14,12 @@ internal data class StudioVariableDefinition(
     val initialValue: String = ""
 )
 
+internal data class StudioNavigationParameter(
+    val key: String,
+    val value: String,
+    val type: String = "text"
+)
+
 internal data class StudioActionDefinition(
     val id: String,
     val trigger: String,
@@ -21,7 +27,8 @@ internal data class StudioActionDefinition(
     val target: String = "",
     val expression: String = "",
     val enabled: Boolean = true,
-    val componentId: String = ""
+    val componentId: String = "",
+    val navigationParameters: List<StudioNavigationParameter> = emptyList()
 )
 
 internal data class StudioLogicDocument(
@@ -68,6 +75,21 @@ internal data class StudioLogicDocument(
             if (action.componentId.isNotBlank() && availableComponentIds != null && action.componentId !in availableComponentIds) errors += "Componente não existe: ${action.componentId}"
             if (action.target.length > MAX_TARGET_LENGTH) errors += "Destino muito longo na ação ${action.id}"
             if (action.expression.length > MAX_VALUE_LENGTH) errors += "Expressão muito longa na ação ${action.id}"
+            if (action.navigationParameters.size > MAX_NAVIGATION_PARAMETERS) errors += "Limite de parâmetros excedido na ação ${action.id}"
+            val parameterKeys = action.navigationParameters.map { it.key }
+            if (parameterKeys.distinct().size != parameterKeys.size) errors += "Parâmetros duplicados na ação ${action.id}"
+            action.navigationParameters.forEach { parameter ->
+                if (!KEY_PATTERN.matches(parameter.key)) errors += "Nome de parâmetro inválido: ${parameter.key}"
+                if (parameter.value.length > MAX_VALUE_LENGTH) errors += "Valor de parâmetro muito longo: ${parameter.key}"
+                if (parameter.type !in VARIABLE_TYPES) errors += "Tipo inválido no parâmetro ${parameter.key}"
+                if (parameter.type == "number" && parameter.value.isNotBlank() && parameter.value.toDoubleOrNull() == null) errors += "Parâmetro numérico inválido: ${parameter.key}"
+                if (parameter.type == "boolean" && parameter.value !in setOf("true", "false")) errors += "Parâmetro booleano inválido: ${parameter.key}"
+                if (parameter.type == "json" && parameter.value.isNotBlank() && !isJsonValue(parameter.value)) errors += "Parâmetro JSON inválido: ${parameter.key}"
+                VARIABLE_REFERENCE.findAll(parameter.value).forEach { match ->
+                    if (match.groupValues[1] !in variableMap) errors += "Variável referenciada não existe: ${match.groupValues[1]}"
+                }
+            }
+            if (action.kind != "navigate" && action.navigationParameters.isNotEmpty()) errors += "Parâmetros de navegação só podem ser usados em ações de navegação"
             if (action.enabled) {
                 when (action.kind) {
                     "navigate" -> {
@@ -106,7 +128,8 @@ internal data class StudioLogicDocument(
                 .put("componentId", action.componentId)
                 .put("target", action.target)
                 .put("expression", action.expression)
-                .put("enabled", action.enabled))
+                .put("enabled", action.enabled)
+                .put("navigationParameters", JSONArray().also { params -> action.navigationParameters.forEach { parameter -> params.put(JSONObject().put("key", parameter.key).put("value", parameter.value).put("type", parameter.type)) } }))
         }
         return JSONObject()
             .put("schemaVersion", schemaVersion)
@@ -119,6 +142,7 @@ internal data class StudioLogicDocument(
         const val CURRENT_SCHEMA_VERSION = 1
         const val MAX_VARIABLES = 200
         const val MAX_ACTIONS = 500
+        const val MAX_NAVIGATION_PARAMETERS = 30
         const val MAX_VALUE_LENGTH = 4096
         const val MAX_TARGET_LENGTH = 256
 
@@ -154,7 +178,11 @@ internal data class StudioLogicDocument(
                     componentId = item.optString("componentId"),
                     target = item.optString("target"),
                     expression = item.optString("expression"),
-                    enabled = item.optBoolean("enabled", true)
+                    enabled = item.optBoolean("enabled", true),
+                    navigationParameters = (0 until (item.optJSONArray("navigationParameters") ?: JSONArray()).length()).map { parameterIndex ->
+                        val parameter = item.getJSONArray("navigationParameters").getJSONObject(parameterIndex)
+                        StudioNavigationParameter(parameter.optString("key"), parameter.optString("value"), parameter.optString("type", "text"))
+                    }
                 )
             }
             return StudioLogicDocument(

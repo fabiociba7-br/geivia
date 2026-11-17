@@ -174,7 +174,6 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
         return save(current.copy(
             state = WorkflowStepState.IN_PROGRESS,
             updatedAt = now,
-            preparedAt = now,
             operationId = operationId,
             message = message,
             evidence = ""

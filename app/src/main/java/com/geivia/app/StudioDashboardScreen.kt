@@ -43,6 +43,7 @@ internal fun StudioDashboardScreen(
     onNewProject: () -> Unit,
     onProjects: () -> Unit,
     onEditor: () -> Unit,
+    onGarcia: () -> Unit,
     onPreview: () -> Unit,
     onFirebase: () -> Unit,
     onIntegrations: () -> Unit,
@@ -65,6 +66,7 @@ internal fun StudioDashboardScreen(
         StudioNavItem("WORKSPACE", "Visão geral", Icons.Default.Dashboard, {}),
         StudioNavItem("WORKSPACE", "Meus projetos", Icons.Default.FolderOpen, { navigate(onProjects) }),
         StudioNavItem("CRIAR APLICATIVOS", "Editor visual", Icons.Default.Widgets, { navigate(onEditor) }),
+        StudioNavItem("INTELIGÊNCIA", "Garcia AI", Icons.Default.AutoAwesome, { navigate(onGarcia) }),
         StudioNavItem("CRIAR APLICATIVOS", "Biblioteca de componentes", Icons.Default.Extension, enabled = false),
         StudioNavItem("CRIAR APLICATIVOS", "Ações e lógica", Icons.Default.AccountTree, enabled = false),
         StudioNavItem("DADOS E SERVIÇOS", "Firebase e dados", Icons.Default.CloudQueue, { navigate(onFirebase) }),
@@ -260,6 +262,8 @@ internal fun StudioDashboardScreen(
                 Text("FERRAMENTAS DO STUDIO", color = StudioMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
                 Spacer(Modifier.height(9.dp))
                 StudioActionCard(Icons.Default.Widgets, "Editor visual", "Monte telas com componentes e edite suas propriedades", true, onEditor)
+                Spacer(Modifier.height(8.dp))
+                StudioActionCard(Icons.Default.AutoAwesome, "Garcia AI", "Converse com a inteligência integrada ao contexto do projeto", true, onGarcia)
                 Spacer(Modifier.height(8.dp))
                 StudioActionCard(Icons.Default.Preview, "Pré-visualizar projeto", "Confira os arquivos e a estrutura importada", true, onPreview)
                 Spacer(Modifier.height(8.dp))

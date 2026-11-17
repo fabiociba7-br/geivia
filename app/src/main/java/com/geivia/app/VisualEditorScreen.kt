@@ -240,16 +240,23 @@ internal fun VisualEditorScreen(
             when (action.kind) {
                 "navigate" -> if (screenRegistry.any { it.id == action.target }) {
                     if (previewNavigationGuard < 25) {
-                        val targetDefaults = screenRegistry.firstOrNull { it.id == action.target }?.inputParameters.orEmpty().associate { it.key to it.defaultValue }
-                        runtimeValues = runtimeValues + targetDefaults
+                        val targetScreen = screenRegistry.firstOrNull { it.id == action.target }
+                        var nextValues = runtimeValues + targetScreen?.inputParameters.orEmpty().associate { it.key to it.defaultValue }
                         action.navigationParameters.forEach { parameter ->
                             val parameterValue = Regex("""\$\{([A-Za-z_][A-Za-z0-9_]*)\}""").replace(parameter.value) { match ->
-                                if (match.groupValues[1] == "value") inputValue else runtimeValues[match.groupValues[1]].orEmpty()
+                                if (match.groupValues[1] == "value") inputValue else nextValues[match.groupValues[1]].orEmpty()
                             }
-                            runtimeValues = runtimeValues + (parameter.key to parameterValue)
+                            nextValues = nextValues + (parameter.key to parameterValue)
                         }
-                        previewNavigationGuard += 1
-                        previewScreenId = action.target
+                        val missingRequired = targetScreen?.inputParameters.orEmpty()
+                            .filter { it.required && nextValues[it.key].orEmpty().isBlank() }
+                        if (missingRequired.isEmpty()) {
+                            runtimeValues = nextValues
+                            previewNavigationGuard += 1
+                            previewScreenId = action.target
+                        } else {
+                            previewMessage = "Informe os campos obrigatórios: " + missingRequired.joinToString(", ") { it.label }
+                        }
                     } else {
                         previewMessage = "Limite de navegação da prévia atingido. Verifique possíveis ciclos entre telas."
                     }

@@ -859,6 +859,7 @@ internal fun VisualEditorScreen(
                             OutlinedButton(
                                 onClick = {
                                     if (siblingPosition > 0) {
+                                        checkpoint()
                                         val previousId = siblingIds[siblingPosition - 1]
                                         val item = elements.removeAt(elements.indexOfFirst { it.id == selected.id })
                                         val targetIndex = elements.indexOfFirst { it.id == previousId }
@@ -870,6 +871,7 @@ internal fun VisualEditorScreen(
                             OutlinedButton(
                                 onClick = {
                                     if (siblingPosition >= 0 && siblingPosition < siblingIds.lastIndex) {
+                                        checkpoint()
                                         val nextId = siblingIds[siblingPosition + 1]
                                         val item = elements.removeAt(elements.indexOfFirst { it.id == selected.id })
                                         val targetIndex = elements.indexOfFirst { it.id == nextId }
@@ -879,20 +881,7 @@ internal fun VisualEditorScreen(
                                 enabled = siblingPosition >= 0 && siblingPosition < siblingIds.lastIndex
                             ) { Icon(Icons.Default.ArrowDownward, null); Spacer(Modifier.width(4.dp)); Text("Descer") }
                             OutlinedButton(
-                                onClick = {
-                                    if (selectedIndex >= 0) {
-                                        val removedIds = mutableSetOf(selected!!.id)
-                                        var changed: Boolean
-                                        do {
-                                            changed = false
-                                            elements.filter { it.parentId in removedIds }.forEach {
-                                                if (removedIds.add(it.id)) changed = true
-                                            }
-                                        } while (changed)
-                                        elements.removeAll { it.id in removedIds }
-                                        selectedId = elements.getOrNull((selectedIndex - 1).coerceAtLeast(0))?.id
-                                    }
-                                },
+                                onClick = { deleteSelected() },
                                 enabled = selectedIndex >= 0,
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFB33A3A))
                             ) { Icon(Icons.Default.DeleteOutline, null); Spacer(Modifier.width(4.dp)); Text("Excluir") }

@@ -1210,7 +1210,8 @@ internal fun VisualEditorScreen(
                                 startScreenId = startScreenId,
                                 primaryColor = themePrimary,
                                 backgroundColor = themeBackground,
-                                textColor = themeText
+                                textColor = themeText,
+                                logic = readLogicDocument()
                             ).toMutableMap()
                             files["geivia-project.json"] = buildProjectJson()
                             files["assets.json"] = JSONArray(savedAssets).toString(2)

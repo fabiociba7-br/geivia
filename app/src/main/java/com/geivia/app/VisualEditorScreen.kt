@@ -64,12 +64,23 @@ internal fun VisualEditorScreen(
     onProjects: () -> Unit = {}
 ) {
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE) }
+    val projectIdForStorage = prefs.getString("selected_project_id", null).orEmpty().ifBlank { "local" }
+    val projectKey = projectIdForStorage.replace(Regex("[^A-Za-z0-9_-]"), "_")
+    val allowLegacyProjectData = !prefs.getBoolean("studio_project_migrated_$projectKey", false)
+    val screenRegistryPrefKey = "geivia_studio_screens_v1_$projectKey"
+    val schemaPrefix = "${EDITOR_SCHEMA_KEY}_$projectKey"
+    val themePrimaryPrefKey = "studio_theme_primary_$projectKey"
+    val themeBackgroundPrefKey = "studio_theme_background_$projectKey"
+    val themeTextPrefKey = "studio_theme_text_$projectKey"
+    val assetsPrefKey = "studio_assets_v1_$projectKey"
+    val generatedPackagePrefKey = "studio_generated_package_$projectKey"
+    val savedScreenDocument = prefs.getString(screenRegistryPrefKey, null)
+        ?: if (allowLegacyProjectData) prefs.getString("geivia_studio_screens_v1", null) else null
     val projectTitle = prefs.getString("selected_project_name", "Meu aplicativo").orEmpty().ifBlank { "Meu aplicativo" }
     val screenRegistry = remember {
         mutableStateListOf<StudioScreenDefinition>().apply {
-            val saved = prefs.getString("geivia_studio_screens_v1", null)
-            if (!saved.isNullOrBlank()) runCatching {
-                addAll(StudioScreenDocument.fromJson(saved).screens)
+            if (!savedScreenDocument.isNullOrBlank()) runCatching {
+                addAll(StudioScreenDocument.fromJson(savedScreenDocument).screens)
             }
             if (isEmpty()) add(StudioScreenDefinition("home", "Início"))
         }
@@ -78,7 +89,7 @@ internal fun VisualEditorScreen(
     var startScreenId by remember {
         mutableStateOf(
             runCatching {
-                StudioScreenDocument.fromJson(prefs.getString("geivia_studio_screens_v1", null).orEmpty()).startScreenId
+                StudioScreenDocument.fromJson(savedScreenDocument.orEmpty()).startScreenId
             }.getOrDefault(screenRegistry.first().id).takeIf { candidate ->
                 screenRegistry.any { it.id == candidate }
             } ?: screenRegistry.first().id
@@ -114,9 +125,11 @@ internal fun VisualEditorScreen(
 
     val elements = remember {
         mutableStateListOf<StudioElement>().apply {
-            val perScreen = prefs.getString("${EDITOR_SCHEMA_KEY}_${activeScreenId}", null)
-            addAll(decodeElements(perScreen ?: prefs.getString(EDITOR_SCHEMA_KEY, null)))
-            if (isEmpty() && perScreen == null && prefs.getString(EDITOR_SCHEMA_KEY, null) == null) {
+            val perScreen = prefs.getString("${schemaPrefix}_${activeScreenId}", null)
+            val legacyPerScreen = if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_${activeScreenId}", null) else null
+            val legacyHome = if (allowLegacyProjectData) prefs.getString(EDITOR_SCHEMA_KEY, null) else null
+            addAll(decodeElements(perScreen ?: legacyPerScreen ?: legacyHome))
+            if (isEmpty() && perScreen == null && legacyPerScreen == null && legacyHome == null) {
                 add(StudioElement(type = "text", text = "Meu primeiro aplicativo"))
             }
         }
@@ -127,17 +140,17 @@ internal fun VisualEditorScreen(
     var message by remember { mutableStateOf("Rascunho local") }
     var previewMode by rememberSaveable { mutableStateOf(false) }
     var workspacePanel by rememberSaveable { mutableStateOf("canvas") }
-    var themePrimary by remember { mutableStateOf(prefs.getString("studio_theme_primary", "#1769AA") ?: "#1769AA") }
-    var themeBackground by remember { mutableStateOf(prefs.getString("studio_theme_background", "#F3F6FA") ?: "#F3F6FA") }
-    var themeText by remember { mutableStateOf(prefs.getString("studio_theme_text", "#17354D") ?: "#17354D") }
+    var themePrimary by remember { mutableStateOf(prefs.getString(themePrimaryPrefKey, if (allowLegacyProjectData) prefs.getString("studio_theme_primary", "#1769AA") else "#1769AA") ?: "#1769AA") }
+    var themeBackground by remember { mutableStateOf(prefs.getString(themeBackgroundPrefKey, if (allowLegacyProjectData) prefs.getString("studio_theme_background", "#F3F6FA") else "#F3F6FA") ?: "#F3F6FA") }
+    var themeText by remember { mutableStateOf(prefs.getString(themeTextPrefKey, if (allowLegacyProjectData) prefs.getString("studio_theme_text", "#17354D") else "#17354D") ?: "#17354D") }
     var assetUrl by remember { mutableStateOf("") }
-    var generatedPackage by rememberSaveable { mutableStateOf(prefs.getString("studio_generated_package", "com.generated.geivia") ?: "com.generated.geivia") }
-    val savedAssets = remember { mutableStateListOf<String>().apply { prefs.getString("studio_assets_v1", null)?.let { raw -> runCatching { val a = JSONArray(raw); for (i in 0 until a.length()) add(a.getString(i)) } } } }
+    var generatedPackage by rememberSaveable { mutableStateOf(prefs.getString(generatedPackagePrefKey, if (allowLegacyProjectData) prefs.getString("studio_generated_package", "com.generated.geivia") else "com.generated.geivia") ?: "com.generated.geivia") }
+    val savedAssets = remember { mutableStateListOf<String>().apply { prefs.getString(assetsPrefKey, if (allowLegacyProjectData) prefs.getString("studio_assets_v1", null) else null)?.let { raw -> runCatching { val a = JSONArray(raw); for (i in 0 until a.length()) add(a.getString(i)) } } } }
     val assetPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             runCatching { context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
             if (uri.toString() !in savedAssets) savedAssets.add(uri.toString())
-            prefs.edit().putString("studio_assets_v1", JSONArray(savedAssets).toString()).apply()
+            prefs.edit().putString(assetsPrefKey, JSONArray(savedAssets).toString()).apply()
             message = "Asset adicionado ao projeto"
         }
     }
@@ -192,9 +205,14 @@ internal fun VisualEditorScreen(
         }
         val registry = StudioScreenDocument(screens = screenRegistry.toList(), startScreenId = startScreenId)
         prefs.edit()
-            .putString("${EDITOR_SCHEMA_KEY}_${activeScreenId}", array.toString())
-            .putString(EDITOR_SCHEMA_KEY, if (activeScreenId == "home") array.toString() else prefs.getString(EDITOR_SCHEMA_KEY, array.toString()))
-            .putString("geivia_studio_screens_v1", registry.toJson())
+            .putString("${schemaPrefix}_${activeScreenId}", array.toString())
+            .putString(screenRegistryPrefKey, registry.toJson())
+            .putBoolean("studio_project_migrated_$projectKey", true)
+            .putString(themePrimaryPrefKey, themePrimary)
+            .putString(themeBackgroundPrefKey, themeBackground)
+            .putString(themeTextPrefKey, themeText)
+            .putString(assetsPrefKey, JSONArray(savedAssets).toString())
+            .putString(generatedPackagePrefKey, generatedPackage)
             .apply()
         message = "Tela salva neste dispositivo"
     }
@@ -207,7 +225,7 @@ internal fun VisualEditorScreen(
         val screens = JSONArray()
         screenRegistry.forEach { screen ->
             val screenElements = if (screen.id == activeScreenId) elements.toList()
-                else decodeElements(prefs.getString("${EDITOR_SCHEMA_KEY}_${screen.id}", null))
+                else decodeElements(prefs.getString("${schemaPrefix}_${screen.id}", null) ?: if (allowLegacyProjectData) prefs.getString("${schemaPrefix}_${screen.id}", null) ?: if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_${screen.id}", null) else null else null)
             val items = JSONArray()
             screenElements.forEach { item ->
                 items.put(JSONObject()
@@ -251,9 +269,9 @@ internal fun VisualEditorScreen(
         elements.clear()
         selectedId = null
         prefs.edit().putString(
-            "geivia_studio_screens_v1",
+            screenRegistryPrefKey,
             StudioScreenDocument(screenRegistry.toList(), startScreenId).toJson()
-        ).apply()
+        ).putBoolean("studio_project_migrated_$projectKey", true).apply()
         message = "Nova tela criada"
     }
 
@@ -261,9 +279,9 @@ internal fun VisualEditorScreen(
         if (screenRegistry.none { it.id == screenId }) return
         startScreenId = screenId
         prefs.edit().putString(
-            "geivia_studio_screens_v1",
+            screenRegistryPrefKey,
             StudioScreenDocument(screenRegistry.toList(), startScreenId).toJson()
-        ).apply()
+        ).putBoolean("studio_project_migrated_$projectKey", true).apply()
         message = "Tela inicial definida"
     }
     fun checkpoint() {
@@ -633,9 +651,9 @@ internal fun VisualEditorScreen(
                                     if (index >= 0 && renameValue.isNotBlank()) {
                                         screenRegistry[index] = screenRegistry[index].copy(name = renameValue.trim())
                                         prefs.edit().putString(
-                                            "geivia_studio_screens_v1",
+                                            screenRegistryPrefKey,
                                             StudioScreenDocument(screenRegistry.toList(), startScreenId).toJson()
-                                        ).apply()
+                                        ).putBoolean("studio_project_migrated_$projectKey", true).apply()
                                         message = "Nome da tela atualizado"
                                     }
                                     renamingScreenId = null
@@ -988,7 +1006,7 @@ internal fun VisualEditorScreen(
                         Button(onClick = {
                             val valid = listOf(themePrimary, themeBackground, themeText).all { runCatching { android.graphics.Color.parseColor(it) }.isSuccess }
                             if (valid) {
-                                prefs.edit().putString("studio_theme_primary", themePrimary).putString("studio_theme_background", themeBackground).putString("studio_theme_text", themeText).apply()
+                                prefs.edit().putString(themePrimaryPrefKey, themePrimary).putString(themeBackgroundPrefKey, themeBackground).putString(themeTextPrefKey, themeText).apply()
                                 message = "Tema salvo"
                             } else message = "Use cores hexadecimais válidas, por exemplo #1769AA"
                         }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Save, null); Spacer(Modifier.width(6.dp)); Text("Salvar tema") }
@@ -1047,7 +1065,7 @@ internal fun VisualEditorScreen(
                                     StudioGeneratedElement(item.id, item.type, item.text, item.fontSize, item.padding, item.alignment, item.parentId, item.backgroundColor, item.textColor, item.cornerRadius, item.visible)
                                 }
                             }
-                            prefs.edit().putString("studio_generated_package", generatedPackage).apply()
+                            prefs.edit().putString(generatedPackagePrefKey, generatedPackage).apply()
                             val files = StudioProjectGenerator.files(
                                 packageName = generatedPackage,
                                 appName = projectTitle,

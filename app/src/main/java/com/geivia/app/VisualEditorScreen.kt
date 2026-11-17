@@ -106,6 +106,7 @@ internal fun VisualEditorScreen(
     }
     var renamingScreenId by remember(projectKey) { mutableStateOf<String?>(null) }
     var renameValue by remember(projectKey) { mutableStateOf("") }
+    var screenToDeleteId by remember(projectKey) { mutableStateOf<String?>(null) }
 
     fun decodeElements(saved: String?): List<StudioElement> {
         if (saved.isNullOrBlank()) return emptyList()
@@ -366,6 +367,53 @@ internal fun VisualEditorScreen(
             StudioScreenDocument(screenRegistry.toList(), startScreenId).toJson()
         ).putBoolean("studio_project_migrated_$projectKey", true).apply()
         message = "Tela inicial definida"
+    }
+
+    fun deleteScreen(screenId: String) {
+        if (screenRegistry.size <= 1) {
+            message = "O projeto precisa manter ao menos uma tela"
+            return
+        }
+        val removedScreen = screenRegistry.firstOrNull { it.id == screenId } ?: return
+        if (activeScreenId == screenId) saveSchema()
+        val removedElements = if (activeScreenId == screenId) elements.toList()
+            else decodeElements(prefs.getString("${schemaPrefix}_$screenId", null)
+                ?: if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_$screenId", null) else null)
+        val removedIds = removedElements.map { it.id }.toSet()
+        screenRegistry.removeAll { it.id == screenId }
+        val nextStart = if (startScreenId == screenId) screenRegistry.first().id else startScreenId
+        startScreenId = nextStart
+        val logicKey = "geivia_studio_logic_v1_$projectKey"
+        val logicRaw = prefs.getString(logicKey, null)
+            ?: if (allowLegacyProjectData) prefs.getString("geivia_studio_logic_v1", null) else null
+        if (!logicRaw.isNullOrBlank()) {
+            runCatching { StudioLogicDocument.fromJson(logicRaw) }.getOrNull()?.let { logic ->
+                val updatedActions = logic.actions.map { action ->
+                    if (action.componentId in removedIds || (action.kind == "navigate" && action.target == screenId)) {
+                        action.copy(enabled = false)
+                    } else action
+                }
+                if (updatedActions != logic.actions) {
+                    prefs.edit().putString(logicKey, logic.copy(actions = updatedActions).toJson()).apply()
+                }
+            }
+        }
+        val editor = prefs.edit().remove("${schemaPrefix}_$screenId")
+        if (activeScreenId == screenId) {
+            val nextScreen = screenRegistry.first()
+            activeScreenId = nextScreen.id
+            elements.clear()
+            elements.addAll(decodeElements(prefs.getString("${schemaPrefix}_${nextScreen.id}", null)
+                ?: if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_${nextScreen.id}", null) else null))
+            selectedId = elements.firstOrNull()?.id
+        }
+        editor.putString(screenRegistryPrefKey,
+            StudioScreenDocument(screenRegistry.toList(), startScreenId).toJson())
+            .putBoolean("studio_project_migrated_$projectKey", true)
+            .apply()
+        undoStack.clear()
+        redoStack.clear()
+        message = "Tela ${removedScreen.name} removida; ações vinculadas foram desativadas"
     }
     fun undo() {
         if (undoStack.isEmpty()) return
@@ -1149,8 +1197,30 @@ internal fun VisualEditorScreen(
                                     }
                                     TextButton(onClick = { switchScreen(screen.id); workspacePanel = "canvas" }) { Text(if (screen.id == activeScreenId) "Aberta" else "Abrir") }
                                     if (screen.id != startScreenId) TextButton(onClick = { setStartScreen(screen.id) }) { Text("Início") }
+                                    if (screenRegistry.size > 1) {
+                                        IconButton(onClick = { screenToDeleteId = screen.id }) {
+                                            Icon(Icons.Default.DeleteOutline, contentDescription = "Excluir tela", tint = Color(0xFFB33A3A))
+                                        }
+                                    }
                                 }
                             }
+                        }
+                        screenToDeleteId?.let { targetId ->
+                            val targetName = screenRegistry.firstOrNull { it.id == targetId }?.name.orEmpty()
+                            AlertDialog(
+                                onDismissRequest = { screenToDeleteId = null },
+                                title = { Text("Excluir tela?") },
+                                text = { Text("A tela $targetName será removida. Ações que navegam para ela ou dependem de seus componentes serão desativadas.") },
+                                confirmButton = {
+                                    TextButton(onClick = {
+                                        deleteScreen(targetId)
+                                        screenToDeleteId = null
+                                    }) { Text("Excluir", color = Color(0xFFB33A3A)) }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { screenToDeleteId = null }) { Text("Cancelar") }
+                                }
+                            )
                         }
                         TextButton(onClick = { workspacePanel = "advanced" }) { Text("Renomear telas e editar hierarquia") }
                     }

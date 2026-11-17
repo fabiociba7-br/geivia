@@ -23,7 +23,8 @@ internal object StudioProjectGenerator {
         startScreenId: String,
         primaryColor: String,
         backgroundColor: String,
-        textColor: String
+        textColor: String,
+        logic: StudioLogicDocument = StudioLogicDocument()
     ): Map<String, String> {
         val pkg = packageName.split(".").joinToString(".") { part ->
             part.filter { it.isLetterOrDigit() || it.code == 95 }.ifBlank { "app" }
@@ -53,22 +54,64 @@ internal object StudioProjectGenerator {
             appendLine("@Composable")
             appendLine("private fun GeneratedApp() {")
             appendLine("    var current by remember { mutableStateOf(" + quote(start?.id ?: "home") + ") }")
-            appendLine("    when (current) {")
-            screens.forEach { screen ->
-                appendLine("        " + quote(screen.id) + " -> Screen_" + identifier(screen.id) + " { current = it }")
+            appendLine("    var message by remember { mutableStateOf(\"\") }")
+            appendLine("    var navigationCount by remember { mutableIntStateOf(0) }")
+            appendLine("    val variables = remember { mutableStateMapOf<String, String>().apply {")
+            logic.variables.forEach { variable -> appendLine("        put(" + quote(variable.key) + ", " + quote(variable.initialValue) + ")") }
+            appendLine("    } }")
+            appendLine("    fun resolve(expression: String, value: String = \"\"): String = Regex(\"\"\"\\\\$\\\\{([A-Za-z_][A-Za-z0-9_]*)\\\\}\"\"\").replace(expression) { match -> if (match.groupValues[1] == \"value\") value else variables[match.groupValues[1]].orEmpty() }")
+            appendLine("    fun runAction(actionId: String, value: String = \"\") {")
+            appendLine("        when (actionId) {")
+            logic.actions.filter { it.enabled }.forEach { action ->
+                appendLine("            " + quote(action.id) + " -> {")
+                when (action.kind) {
+                    "navigate" -> {
+                        appendLine("                if (navigationCount < 25) {")
+                        action.navigationParameters.forEach { parameter ->
+                            appendLine("                    variables[" + quote(parameter.key) + "] = resolve(" + quote(parameter.value) + ", value)")
+                        }
+                        appendLine("                    navigationCount += 1")
+                        appendLine("                    current = " + quote(action.target))
+                        appendLine("                }")
+                    }
+                    "set_variable" -> appendLine("                variables[" + quote(action.target) + "] = resolve(" + quote(action.expression) + ", value)")
+                    "show_message" -> appendLine("                message = resolve(" + quote(action.expression) + ", value)")
+                }
+                appendLine("            }")
             }
-            appendLine("        else -> Screen_" + identifier(start?.id ?: "home") + " { current = it }")
+            appendLine("        }")
+            appendLine("    }")
+            appendLine("    fun runActions(componentId: String, trigger: String, value: String = \"\") {")
+            appendLine("        when (componentId + \"|\" + trigger) {")
+            logic.actions.filter { it.enabled }.groupBy { it.componentId + "|" + it.trigger }.forEach { (key, actions) ->
+                appendLine("            " + quote(key) + " -> {")
+                actions.forEach { action -> appendLine("                runAction(" + quote(action.id) + ", value)") }
+                appendLine("            }")
+            }
+            appendLine("        }")
+            appendLine("    }")
+            appendLine("    LaunchedEffect(current) { runActions(\"\", \"on_screen_open\") }")
+            appendLine("    Column(Modifier.fillMaxSize()) {")
+            appendLine("        Box(Modifier.weight(1f)) {")
+            appendLine("            when (current) {")
+            screens.forEach { screen ->
+                appendLine("                " + quote(screen.id) + " -> Screen_" + identifier(screen.id) + "(::runActions, ::resolve)")
+            }
+            appendLine("                else -> Screen_" + identifier(start?.id ?: "home") + "(::runActions, ::resolve)")
+            appendLine("            }")
+            appendLine("        }")
+            appendLine("        if (message.isNotBlank()) Text(message, Modifier.fillMaxWidth().padding(12.dp))")
             appendLine("    }")
             appendLine("}")
             screens.forEach { screen ->
                 appendLine()
                 appendLine("@Composable")
-                appendLine("private fun Screen_" + identifier(screen.id) + "(navigate: (String) -> Unit) {")
+                appendLine("private fun Screen_" + identifier(screen.id) + "(runActions: (String, String, String) -> Unit, resolve: (String, String) -> String) {")
                 appendLine("    Column(Modifier.fillMaxSize().background(" + color(backgroundColor, "Color(0xFFF3F6FA)") + ").verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {")
-                appendLine("        Text(" + quote(screen.name) + ", fontSize = 22.sp, color = " + color(textColor, "Color(0xFF17354D)") + ")")
+                appendLine("        Text(resolve(" + quote(screen.name) + ", \"\"), fontSize = 22.sp, color = " + color(textColor, "Color(0xFF17354D)") + ")")
                 val screenComponents = components[screen.id].orEmpty()
                 screenComponents.filter { it.parentId == null && it.visible }.forEach {
-                    append(render(it, screenComponents, 2, primaryColor, textColor))
+                    append(render(it, screenComponents, 2, primaryColor, textColor, runActions, resolve))
                 }
                 appendLine("    }")
                 appendLine("}")

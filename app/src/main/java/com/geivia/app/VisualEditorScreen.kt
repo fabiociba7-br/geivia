@@ -1284,7 +1284,7 @@ private fun EditorCanvasNode(
     val componentText = if (element.type == "button" && element.textColor == "#17354D") Color.White else editorColor(element.textColor, defaultText)
     val container = element.type in setOf("section", "column", "row") || (element.type == "card" && children.isNotEmpty())
     Surface(
-        modifier = Modifier.fillMaxWidth().clickable { onSelect(element.id); if (element.type == "button") onActivate(element.id, "on_click", "") },
+        modifier = Modifier.fillMaxWidth().clickable { onSelect(element.id); if (interactive) onActivate(element.id, "on_click", "") },
         color = if (selected) Color(0xFFEAF3FB) else componentBackground,
         shape = RoundedCornerShape(element.cornerRadius.dp),
         border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) EditorBlue else Color(0xFFE3EAF1))

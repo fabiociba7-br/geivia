@@ -5,7 +5,7 @@ import org.json.JSONObject
 
 /**
  * Serializable, Android-native model for the Studio data and interaction layer.
- * This is deliberately a definition model only: it never executes user actions.
+ * This is a definition model; the editor preview interprets only the supported declarative actions.
  */
 internal data class StudioVariableDefinition(
     val key: String,
@@ -114,7 +114,8 @@ internal data class StudioLogicDocument(
             }
             VARIABLE_REFERENCE.findAll(action.expression).forEach { match ->
                 val referencedKey = match.groupValues[1]
-                if (referencedKey !in variableMap) errors += "Variável referenciada não existe: $referencedKey"
+                val isInputValue = referencedKey == "value" && action.trigger == "on_value_change"
+                if (!isInputValue && referencedKey !in variableMap) errors += "Variável referenciada não existe: $referencedKey"
             }
         }
         return errors.distinct()

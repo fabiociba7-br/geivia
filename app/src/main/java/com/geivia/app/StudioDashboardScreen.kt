@@ -259,14 +259,12 @@ internal fun StudioDashboardScreen(
                 Spacer(Modifier.height(18.dp))
                 Text("FERRAMENTAS DO STUDIO", color = StudioMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
                 Spacer(Modifier.height(9.dp))
-                StudioActionCard(Icons.Default.Widgets, "Editor visual", "Montagem de telas por componentes — próxima etapa", false) { }
+                StudioActionCard(Icons.Default.Widgets, "Editor visual", "Monte telas com componentes e edite suas propriedades", true, onEditor)
                 Spacer(Modifier.height(8.dp))
                 StudioActionCard(Icons.Default.Preview, "Pré-visualizar projeto", "Confira os arquivos e a estrutura importada", true, onPreview)
                 Spacer(Modifier.height(8.dp))
                 StudioActionCard(Icons.Default.CloudQueue, "Dados e Firebase", "Conecte serviços e acompanhe a configuração", true, onFirebase)
-                Spacer(Modifier.height(8.dp))
-                StudioActionCard(Icons.Default.Widgets, "Abrir editor visual", "Monte uma tela com componentes e edite suas propriedades", true, onEditor)
-                Spacer(Modifier.height(8.dp))
+                 Spacer(Modifier.height(8.dp))
                 StudioActionCard(Icons.Default.Extension, "Integrações", "Contas Google, GitHub e conexões", true, onIntegrations)
                 Spacer(Modifier.height(8.dp))
                 StudioActionCard(Icons.Default.AccountCircle, "Contas e acesso", "Gerencie as autorizações do Google Cloud, Firebase e GitHub", true, onAccounts)
@@ -279,7 +277,7 @@ internal fun StudioDashboardScreen(
                         Column {
                             Text("Evolução da plataforma", color = StudioNavy, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                             Spacer(Modifier.height(4.dp))
-                            Text("Esta primeira etapa reorganiza o workspace e a navegação. O editor visual, a biblioteca de componentes e a geração Android/Web serão construídos nas próximas etapas.", color = StudioMuted, fontSize = 12.sp, lineHeight = 18.sp)
+                            Text("O editor visual já permite adicionar, selecionar, editar, reorganizar e salvar componentes. Árvore hierárquica, arrastar e soltar, dados dinâmicos, ações e geração Android/Web serão evoluções seguintes.", color = StudioMuted, fontSize = 12.sp, lineHeight = 18.sp)
                         }
                     }
                 }

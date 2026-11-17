@@ -18,10 +18,10 @@ internal data class StudioActionDefinition(
     val id: String,
     val trigger: String,
     val kind: String,
-    val componentId: String = "",
     val target: String = "",
     val expression: String = "",
-    val enabled: Boolean = true
+    val enabled: Boolean = true,
+    val componentId: String = ""
 )
 
 internal data class StudioLogicDocument(
@@ -102,7 +102,7 @@ internal data class StudioLogicDocument(
         actions.forEach { action ->
             actionArray.put(JSONObject()
                 .put("id", action.id)
-                 .put("trigger", action.trigger)
+                .put("trigger", action.trigger)
                 .put("kind", action.kind)
                 .put("componentId", action.componentId)
                 .put("target", action.target)

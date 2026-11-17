@@ -23,7 +23,10 @@ O GEIVIA Studio é uma plataforma visual para criar aplicativos Android nativos.
 
 ## Implementação atual
 
-- O editor permite inserir e editar componentes básicos, organizar a hierarquia e salvar a estrutura localmente.
+- O editor mobile-first abre em um canvas de tela cheia com menu lateral, barra flutuante, prévia e ações de testar/publicar.
+- O editor permite inserir e editar texto, botões, cartões, campos, imagens, divisores, espaços, linhas, colunas e seções; organizar hierarquia, reordenar, duplicar, desfazer/refazer e excluir componentes.
+- Propriedades por componente incluem texto, tamanho, espaçamento, alinhamento, cores, arredondamento e visibilidade.
+- Painéis do Studio incluem páginas, componentes, tema, assets, ações/lógica e estrutura exportável.
 - O painel de dados e ações permite cadastrar variáveis de texto, número, booleano e JSON.
 - O painel permite definir gatilhos e ações de mensagem, navegação e alteração de variável.
 - Gatilhos de toque e alteração de valor podem ser associados a um componente específico da tela; o vínculo é persistido pelo ID do componente e validado contra a tela atual.
@@ -33,8 +36,16 @@ O GEIVIA Studio é uma plataforma visual para criar aplicativos Android nativos.
 - Ações de navegação aceitam até 30 parâmetros nomeados por destino, com tipos texto, número, booleano e JSON; valores podem referenciar variáveis do projeto e são validados antes de salvar.
 - Parâmetros são serializados junto à ação; documentos antigos sem esse campo continuam sendo carregados como listas vazias.
 - As definições são persistidas em JSON versionado e validadas; ainda não existe motor de execução dessas ações.
-- A geração de APK não faz parte das validações automáticas.
+- O Studio gera um projeto Android nativo inicial com Kotlin, Jetpack Compose, Manifest e arquivos Gradle, exportável em ZIP pelo seletor de arquivos do Android.
+- O pacote ZIP também contém o esquema versionado do GEIVIA e o manifesto de assets; arquivos externos não são copiados automaticamente para os recursos do app.
+- Os botões gerados ainda não executam as ações declarativas; a conexão do motor de ações e da navegação interativa segue pendente.
+- Por decisão do proprietário, os workflows GitHub Actions foram removidos de main e da branch de desenvolvimento. Não há builds nem validações automáticas; a verificação será manual quando solicitada.
 
-## Próxima entrega
+## Próximas etapas de desenvolvimento
 
-Definir o contrato de recebimento dos parâmetros em cada tela e ampliar os controles de propriedades dos componentes. As ações continuam declarativas, sem execução automática, até que o fluxo de execução seja implementado e testado explicitamente.
+1. Implementar o motor de execução das ações declarativas em eventos de toque, abertura de tela e alteração de valor, com execução explícita e previsível.
+2. Conectar os botões gerados à navegação entre telas e aos parâmetros de entrada.
+3. Incorporar assets selecionados ao pacote Android gerado, preservando referências e permissões.
+4. Completar a geração de projeto para incluir integrações e serviços selecionados pelo usuário, sem copiar credenciais ou segredos.
+5. Refinar os painéis de propriedades e o preview para aproximar o fluxo de edição do FlutterFlow.
+6. Quando o proprietário considerar o app pronto, fazer uma revisão manual conjunta antes de qualquer compilação ou publicação.

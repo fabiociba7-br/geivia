@@ -292,8 +292,11 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     context = context,
                     onBack = { page = "dashboard" },
                     onFirebase = { page = "firebase_admin" },
+                    onGoogle = { page = "google_access" },
                     onAccounts = { page = "accounts" },
                     onTools = { page = "toolchain_updates" },
+                    onDiagnostics = { page = "diagnostics" },
+                    onTerminal = { page = "terminal" },
                     onProjects = { page = "project_operations" }
                 )
                 "accounts" -> AccountsConnectionsScreen(
@@ -321,6 +324,26 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                         } else "dashboard"
                     }
                 )
+                "terminal" -> Scaffold(
+                    topBar = {
+                        TopAppBar(
+                            title = { Text("Terminal GEIVIA") },
+                            navigationIcon = {
+                                IconButton(onClick = { page = "dashboard" }) {
+                                    Icon(Icons.Default.ArrowBack, contentDescription = "Voltar ao Studio")
+                                }
+                            }
+                        )
+                    }
+                ) { terminalPadding ->
+                    Column(
+                        Modifier.fillMaxSize().padding(terminalPadding).padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text("Terminal local e ambiente Debian/PRoot", fontWeight = FontWeight.SemiBold)
+                        TerminalPanel()
+                    }
+                }
                 "toolchain_updates" -> GeiviaToolchainUpdatesScreen(onBack = { page = "dashboard" })
                 "diagnostics" -> GeiviaDiagnosticsScreen(onBack = { page = "dashboard" })
                 "project_operations" -> ProjectOperationsScreen(onBack = { page = "dashboard" })

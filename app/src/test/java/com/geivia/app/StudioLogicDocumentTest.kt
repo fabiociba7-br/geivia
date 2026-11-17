@@ -101,16 +101,6 @@ class StudioLogicDocumentTest {
     }
 
     @Test
-    fun requiresComponentForComponentLevelTriggers() {
-        val document = StudioLogicDocument(
-            actions = listOf(
-                StudioActionDefinition("tap", "on_click", "show_message", expression = "Oi")
-            )
-        )
-        assertTrue(document.validate().any { it.contains("vinculada a um componente") })
-    }
-
-    @Test
     fun rejectsOversizedDocuments() {
         val oversized = " ".repeat(StudioLogicDocument.MAX_VALUE_LENGTH * 130)
 

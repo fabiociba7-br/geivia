@@ -28,7 +28,7 @@ internal data class StudioLogicDocument(
     val actions: List<StudioActionDefinition> = emptyList(),
     val schemaVersion: Int = CURRENT_SCHEMA_VERSION
 ) {
-    fun validate(): List<String> {
+    fun validate(availableScreenIds: Set<String>? = null): List<String> {
         val errors = mutableListOf<String>()
         if (schemaVersion != CURRENT_SCHEMA_VERSION) {
             errors += "Versão de esquema não suportada: $schemaVersion"
@@ -67,7 +67,12 @@ internal data class StudioLogicDocument(
             if (action.expression.length > MAX_VALUE_LENGTH) errors += "Expressão muito longa na ação ${action.id}"
             if (action.enabled) {
                 when (action.kind) {
-                    "navigate" -> if (action.target.isBlank()) errors += "Ação de navegação sem tela de destino"
+                    "navigate" -> {
+                        if (action.target.isBlank()) errors += "Ação de navegação sem tela de destino"
+                        else if (availableScreenIds != null && action.target !in availableScreenIds) {
+                            errors += "Tela de destino não existe: ${action.target}"
+                        }
+                    }
                     "set_variable" -> if (action.target !in variableMap) errors += "Variável de destino inexistente: ${action.target}"
                     "show_message" -> if (action.expression.isBlank()) errors += "Mensagem da ação está vazia"
                 }

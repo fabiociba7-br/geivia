@@ -1212,11 +1212,28 @@ internal fun VisualEditorScreen(
                                 message = "Package inválido. Use o formato com.exemplo.aplicativo"
                             } else {
                             saveSchema()
+                            val localAssetNames = savedAssets.mapIndexedNotNull { index, asset ->
+                                if (asset.startsWith("content://") || asset.startsWith("file://")) {
+                                    val uri = android.net.Uri.parse(asset)
+                                    val mime = context.contentResolver.getType(uri)
+                                    val extension = when (mime) {
+                                        "image/png" -> "png"
+                                        "image/jpeg" -> "jpg"
+                                        "image/webp" -> "webp"
+                                        "image/svg+xml" -> "svg"
+                                        "application/pdf" -> "pdf"
+                                        "text/plain" -> "txt"
+                                        else -> uri.lastPathSegment?.substringAfterLast('.', "bin")?.filter { it.isLetterOrDigit() }?.take(8)?.ifBlank { "bin" } ?: "bin"
+                                    }
+                                    asset to "geivia_asset_${index}.$extension"
+                                } else null
+                            }.toMap()
                             val generatedComponents = screenRegistry.associate { screen ->
                                 val sourceElements = if (screen.id == activeScreenId) elements.toList()
                                     else decodeElements(prefs.getString("${schemaPrefix}_${screen.id}", null) ?: if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_${screen.id}", null) else null)
                                 screen.id to sourceElements.map { item ->
-                                    StudioGeneratedElement(item.id, item.type, item.text, item.fontSize, item.padding, item.alignment, item.parentId, item.backgroundColor, item.textColor, item.cornerRadius, item.visible)
+                                    val generatedText = if (item.type == "image") localAssetNames[item.text]?.let { "asset://$it" } ?: item.text else item.text
+                                    StudioGeneratedElement(item.id, item.type, generatedText, item.fontSize, item.padding, item.alignment, item.parentId, item.backgroundColor, item.textColor, item.cornerRadius, item.visible)
                                 }
                             }
                             prefs.edit().putString(generatedPackagePrefKey, generatedPackage).apply()
@@ -1235,20 +1252,10 @@ internal fun VisualEditorScreen(
                             files["assets.json"] = JSONArray(savedAssets).toString(2)
                             val includedAssets = linkedMapOf<String, String>()
                             val assetManifest = JSONArray()
-                            savedAssets.forEachIndexed { index, asset ->
-                                if (asset.startsWith("content://") || asset.startsWith("file://")) {
-                                    val uri = android.net.Uri.parse(asset)
-                                    val mime = context.contentResolver.getType(uri)
-                                    val extension = when (mime) {
-                                        "image/png" -> "png"
-                                        "image/jpeg" -> "jpg"
-                                        "image/webp" -> "webp"
-                                        "image/svg+xml" -> "svg"
-                                        "application/pdf" -> "pdf"
-                                        "text/plain" -> "txt"
-                                        else -> uri.lastPathSegment?.substringAfterLast('.', "bin")?.filter { it.isLetterOrDigit() }?.take(8)?.ifBlank { "bin" } ?: "bin"
-                                    }
-                                    val entryPath = "app/src/main/assets/geivia_asset_${index}.$extension"
+                            savedAssets.forEach { asset ->
+                                val assetName = localAssetNames[asset]
+                                if (assetName != null) {
+                                    val entryPath = "app/src/main/assets/$assetName"
                                     includedAssets[entryPath] = asset
                                     assetManifest.put(JSONObject().put("source", asset).put("path", entryPath).put("included", true))
                                 } else {

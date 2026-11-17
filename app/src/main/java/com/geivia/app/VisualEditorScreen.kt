@@ -232,41 +232,74 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                     if (selected == null) {
                         Text("Selecione um componente na árvore ou no canvas.", color = EditorMuted, fontSize = 12.sp)
                     } else {
-                                    modifier = Modifier.fillMaxWidth().clickable { selectedId = element.id },
-                                    color = if (isSelected) Color(0xFFEAF3FB) else Color.White,
-                                    shape = RoundedCornerShape(10.dp),
-                                    border = BorderStroke(if (isSelected) 2.dp else 1.dp, if (isSelected) EditorBlue else Color(0xFFE3EAF1))
-                                ) {
-                                    Box(Modifier.fillMaxWidth().padding(element.padding.dp), contentAlignment = Alignment.CenterStart) {
-                                        val textAlign = when (element.alignment) {
-                                            "center" -> TextAlign.Center
-                                            "end" -> TextAlign.End
-                                            else -> TextAlign.Start
-                                        }
-                                        when (element.type) {
-                                            "button" -> Box(Modifier.fillMaxWidth(), contentAlignment = when (element.alignment) {
-                                                "center" -> Alignment.Center
-                                                "end" -> Alignment.CenterEnd
-                                                else -> Alignment.CenterStart
-                                            }) {
-                                                Surface(color = EditorBlue, shape = RoundedCornerShape(9.dp)) {
-                                                    Text(element.text, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = element.fontSize.sp, modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp))
-                                                }
-                                            }
-                                            "card" -> Surface(color = Color.White, shape = RoundedCornerShape(10.dp), border = BorderStroke(1.dp, Color(0xFFDCE5EE))) {
-                                                Text(element.text, color = EditorInk, modifier = Modifier.fillMaxWidth().padding(12.dp), fontWeight = FontWeight.Medium, fontSize = element.fontSize.sp, textAlign = textAlign)
-                                            }
-                                            "spacer" -> Text("Espaçamento", color = EditorMuted, fontSize = 11.sp, modifier = Modifier.padding(vertical = 8.dp))
-                                            else -> Text(element.text, color = EditorInk, fontSize = element.fontSize.sp, textAlign = textAlign, modifier = Modifier.fillMaxWidth())
-                                        }
-                                    }
+                        Text("TIPO: ${selected.type.uppercase()}", color = EditorMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        OutlinedTextField(
+                            value = selected.text,
+                            onValueChange = { value -> updateSelected { it.copy(text = value) } },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Texto do componente") },
+                            singleLine = false,
+                            minLines = 1,
+                            maxLines = 3
+                        )
+                        Text("Tamanho do texto: ${selected.fontSize.toInt()} sp", color = EditorInk, fontSize = 12.sp)
+                        Slider(
+                            value = selected.fontSize,
+                            onValueChange = { value -> updateSelected { it.copy(fontSize = value) } },
+                            valueRange = 12f..32f,
+                            steps = 9
+                        )
+                        Text("Espaçamento interno: ${selected.padding.toInt()} dp", color = EditorInk, fontSize = 12.sp)
+                        Slider(
+                            value = selected.padding,
+                            onValueChange = { value -> updateSelected { it.copy(padding = value) } },
+                            valueRange = 4f..28f,
+                            steps = 11
+                        )
+                        Text("Alinhamento", color = EditorInk, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf("start" to "Esquerda", "center" to "Centro", "end" to "Direita").forEach { (value, label) ->
+                                if (selected.alignment == value) {
+                                    Button(onClick = { updateSelected { it.copy(alignment = value) } }, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)) { Text(label, fontSize = 11.sp) }
+                                } else {
+                                    OutlinedButton(onClick = { updateSelected { it.copy(alignment = value) } }, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)) { Text(label, fontSize = 11.sp) }
                                 }
                             }
+                        }
+                        HorizontalDivider(color = Color(0xFFE7EDF3))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = {
+                                    if (selectedIndex > 0) {
+                                        val item = elements.removeAt(selectedIndex)
+                                        elements.add(selectedIndex - 1, item)
+                                    }
+                                },
+                                enabled = selectedIndex > 0
+                            ) { Icon(Icons.Default.ArrowUpward, null); Spacer(Modifier.width(4.dp)); Text("Subir") }
+                            OutlinedButton(
+                                onClick = {
+                                    if (selectedIndex >= 0 && selectedIndex < elements.lastIndex) {
+                                        val item = elements.removeAt(selectedIndex)
+                                        elements.add(selectedIndex + 1, item)
+                                    }
+                                },
+                                enabled = selectedIndex >= 0 && selectedIndex < elements.lastIndex
+                            ) { Icon(Icons.Default.ArrowDownward, null); Spacer(Modifier.width(4.dp)); Text("Descer") }
+                            OutlinedButton(
+                                onClick = {
+                                    if (selectedIndex >= 0) {
+                                        elements.removeAt(selectedIndex)
+                                        selectedId = elements.getOrNull((selectedIndex - 1).coerceAtLeast(0))?.id
+                                    }
+                                },
+                                enabled = selectedIndex >= 0,
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFB33A3A))
+                            ) { Icon(Icons.Default.DeleteOutline, null); Spacer(Modifier.width(4.dp)); Text("Excluir") }
                         }
                     }
                 }
             }
-
             Text(message, color = EditorMuted, fontSize = 11.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
         }
     }

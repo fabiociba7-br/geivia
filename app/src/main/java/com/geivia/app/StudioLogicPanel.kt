@@ -36,10 +36,13 @@ internal fun StudioLogicPanel(
 ) {
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE) }
     val logicStorageKey = if (storageKeySuffix.isBlank()) STUDIO_LOGIC_PREFS_KEY else "${STUDIO_LOGIC_PREFS_KEY}_$storageKeySuffix"
-    var document by remember {
+    var document by remember(storageKeySuffix) {
         mutableStateOf(
-            runCatching { StudioLogicDocument.fromJson(prefs.getString(logicStorageKey, null).orEmpty()) }
-                .getOrDefault(StudioLogicDocument())
+            runCatching {
+                val saved = prefs.getString(logicStorageKey, null)
+                    ?: if (storageKeySuffix.isNotBlank()) prefs.getString(STUDIO_LOGIC_PREFS_KEY, null) else null
+                StudioLogicDocument.fromJson(saved.orEmpty())
+            }.getOrDefault(StudioLogicDocument())
         )
     }
     var variableKey by remember { mutableStateOf("") }

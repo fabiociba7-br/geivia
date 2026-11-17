@@ -36,12 +36,15 @@ internal object StudioProjectGenerator {
             appendLine("package " + pkg)
             appendLine()
             listOf(
-                "android.os.Bundle", "androidx.activity.ComponentActivity", "androidx.activity.compose.setContent",
-                "androidx.compose.foundation.background", "androidx.compose.foundation.clickable", "androidx.compose.foundation.layout.*",
+                "android.os.Bundle", "android.graphics.BitmapFactory", "androidx.activity.ComponentActivity", "androidx.activity.compose.setContent",
+                "androidx.compose.foundation.Image", "androidx.compose.foundation.background", "androidx.compose.foundation.clickable", "androidx.compose.foundation.layout.*",
                 "androidx.compose.foundation.rememberScrollState", "androidx.compose.foundation.shape.RoundedCornerShape",
                 "androidx.compose.foundation.verticalScroll", "androidx.compose.material3.*",
                 "androidx.compose.runtime.*", "androidx.compose.ui.Modifier", "androidx.compose.ui.graphics.Color",
-                "androidx.compose.ui.text.style.TextAlign", "androidx.compose.ui.unit.dp", "androidx.compose.ui.unit.sp"
+                "androidx.compose.ui.graphics.asImageBitmap", "androidx.compose.ui.layout.ContentScale",
+                "androidx.compose.ui.platform.LocalContext", "androidx.compose.ui.text.style.TextAlign",
+                "androidx.compose.ui.unit.dp", "androidx.compose.ui.unit.sp", "kotlinx.coroutines.Dispatchers",
+                "kotlinx.coroutines.withContext"
             ).forEach { appendLine("import " + it) }
             appendLine()
             appendLine("class MainActivity : ComponentActivity() {")
@@ -226,7 +229,19 @@ dependencies {
                     appendLine(indent + "var " + inputName + " by remember { mutableStateOf(\"\") }")
                     appendLine(indent + "OutlinedTextField(value = " + inputName + ", onValueChange = { " + inputName + " = it; runActions(" + quote(element.id) + ", \"on_value_change\", it) }, label = { Text(resolve(" + text + ", \"\")) }, modifier = Modifier.fillMaxWidth().padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, singleLine = true)")
                 }
-                "image" -> appendLine(indent + "Text(resolve(" + quote("[Imagem: " + element.text + "]") + ", \"\"), Modifier.padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, color = Color.Gray)")
+                "image" -> {
+                    if (element.text.startsWith("asset://")) {
+                        val assetName = element.text.removePrefix("asset://")
+                        val suffix = identifier(element.id)
+                        appendLine(indent + "val imageContext_" + suffix + " = LocalContext.current")
+                        appendLine(indent + "val imageBitmap_" + suffix + " by produceState<android.graphics.Bitmap?>(initialValue = null, key1 = " + quote(assetName) + ") {")
+                        appendLine(indent + "    value = withContext(Dispatchers.IO) { runCatching { imageContext_" + suffix + ".assets.open(" + quote(assetName) + ").use { BitmapFactory.decodeStream(it) } }.getOrNull() }")
+                        appendLine(indent + "}")
+                        appendLine(indent + "if (imageBitmap_" + suffix + " != null) Image(bitmap = imageBitmap_" + suffix + "!!.asImageBitmap(), contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxWidth().padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }) else Text(" + quote("Imagem não disponível: " + element.text) + ", color = Color.Gray)")
+                    } else {
+                        appendLine(indent + "Text(resolve(" + quote("[Imagem: " + element.text + "]") + ", \"\"), Modifier.padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, color = Color.Gray)")
+                    }
+                }
                 "divider" -> appendLine(indent + "HorizontalDivider(Modifier.padding(vertical = " + padding + ".dp))")
                 "spacer" -> appendLine(indent + "Spacer(Modifier.height(" + padding.coerceAtLeast(8f) + ".dp))")
                 else -> {

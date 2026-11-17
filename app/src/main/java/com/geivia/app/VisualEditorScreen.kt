@@ -368,7 +368,15 @@ internal fun VisualEditorScreen(
                 ) {
                     Text(projectTitle, color = EditorInk, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     Text("${screenRegistry.firstOrNull { it.id == activeScreenId }?.name ?: "Home"} · Android", color = EditorMuted, fontSize = 11.sp)
-                    Spacer(Modifier.height(18.dp))
+                    Spacer(Modifier.height(10.dp))
+                    NavigationDrawerItem(
+                        label = { Text("Voltar ao Workspace") },
+                        icon = { Icon(Icons.Default.Dashboard, null) },
+                        selected = false,
+                        onClick = { editorScope.launch { editorDrawerState.close() }; onBack() },
+                        modifier = Modifier.padding(vertical = 2.dp)
+                    )
+                    Spacer(Modifier.height(14.dp))
                     Text("PROJETO", color = EditorMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     val projectItems = listOf("Páginas", "Componentes", "Tema e estilo", "Firestore", "Autenticação", "APIs", "Ações e lógica", "Variáveis", "Assets", "Integrações", "Configurações")
                     projectItems.forEach { item ->

@@ -975,6 +975,9 @@ internal fun VisualEditorScreen(
 }
 
 
+private fun editorColor(value: String, fallback: Color): Color =
+    runCatching { Color(android.graphics.Color.parseColor(value)) }.getOrDefault(fallback)
+
 @Composable
 private fun EditorCanvasNode(
     element: StudioElement,
@@ -982,23 +985,35 @@ private fun EditorCanvasNode(
     selectedId: String?,
     onSelect: (String) -> Unit
 ) {
-    val children = allElements.filter { it.parentId == element.id }
+    if (!element.visible) return
+    val children = allElements.filter { it.parentId == element.id && it.visible }
     val selected = element.id == selectedId
+    val defaultBackground = if (element.type == "button") EditorBlue else Color.White
+    val defaultText = if (element.type == "button") Color.White else EditorInk
+    val componentBackground = editorColor(element.backgroundColor, defaultBackground)
+    val componentText = editorColor(element.textColor, defaultText)
+    val container = element.type in setOf("section", "column", "row") || (element.type == "card" && children.isNotEmpty())
     Surface(
         modifier = Modifier.fillMaxWidth().clickable { onSelect(element.id) },
-        color = if (selected) Color(0xFFEAF3FB) else Color.White,
-        shape = RoundedCornerShape(10.dp),
+        color = if (selected) Color(0xFFEAF3FB) else componentBackground,
+        shape = RoundedCornerShape(element.cornerRadius.dp),
         border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) EditorBlue else Color(0xFFE3EAF1))
     ) {
         Column(Modifier.fillMaxWidth().padding(element.padding.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (element.type == "section") {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.FolderOpen, null, tint = EditorBlue, modifier = Modifier.size(16.dp))
-                    Text(element.text, color = EditorInk, fontWeight = FontWeight.SemiBold, fontSize = element.fontSize.sp)
+            if (container) {
+                if (element.type != "row" || element.text.isNotBlank()) {
+                    Text(element.text.ifBlank { if (element.type == "row") "Linha" else "Contêiner" }, color = componentText, fontWeight = FontWeight.SemiBold, fontSize = element.fontSize.sp)
                 }
-                if (children.isEmpty()) Text("Adicione componentes selecionando esta seção", color = EditorMuted, fontSize = 10.sp)
-                children.forEach { child ->
-                    EditorCanvasNode(child, allElements, selectedId, onSelect)
+                if (children.isEmpty()) {
+                    Text("Adicione componentes a este contêiner", color = EditorMuted, fontSize = 10.sp)
+                } else if (element.type == "row") {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        children.forEach { child ->
+                            Box(Modifier.weight(1f)) { EditorCanvasNode(child, allElements, selectedId, onSelect) }
+                        }
+                    }
+                } else {
+                    children.forEach { child -> EditorCanvasNode(child, allElements, selectedId, onSelect) }
                 }
             } else {
                 val align = when (element.alignment) {
@@ -1012,15 +1027,23 @@ private fun EditorCanvasNode(
                         "end" -> Alignment.CenterEnd
                         else -> Alignment.CenterStart
                     }) {
-                        Surface(color = EditorBlue, shape = RoundedCornerShape(9.dp)) {
-                            Text(element.text, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = element.fontSize.sp, modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp))
+                        Surface(color = componentBackground, shape = RoundedCornerShape(element.cornerRadius.dp)) {
+                            Text(element.text, color = componentText, fontWeight = FontWeight.SemiBold, fontSize = element.fontSize.sp, modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp))
                         }
                     }
-                    "card" -> Surface(color = Color.White, shape = RoundedCornerShape(10.dp), border = BorderStroke(1.dp, Color(0xFFDCE5EE))) {
-                        Text(element.text, color = EditorInk, modifier = Modifier.fillMaxWidth().padding(12.dp), fontWeight = FontWeight.Medium, fontSize = element.fontSize.sp, textAlign = align)
+                    "card" -> Surface(color = componentBackground, shape = RoundedCornerShape(element.cornerRadius.dp), border = BorderStroke(1.dp, Color(0xFFDCE5EE))) {
+                        Text(element.text, color = componentText, modifier = Modifier.fillMaxWidth().padding(12.dp), fontWeight = FontWeight.Medium, fontSize = element.fontSize.sp, textAlign = align)
                     }
-                    "spacer" -> Text("Espaçamento", color = EditorMuted, fontSize = 11.sp, modifier = Modifier.padding(vertical = 8.dp))
-                    else -> Text(element.text, color = EditorInk, fontSize = element.fontSize.sp, textAlign = align, modifier = Modifier.fillMaxWidth())
+                    "input" -> OutlinedTextField(value = "", onValueChange = {}, readOnly = true, enabled = false, label = { Text(element.text) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                    "image" -> Surface(color = Color(0xFFF0F4F8), shape = RoundedCornerShape(element.cornerRadius.dp), border = BorderStroke(1.dp, Color(0xFFDCE5EE))) {
+                        Column(Modifier.fillMaxWidth().heightIn(min = 88.dp).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                            Icon(Icons.Default.Image, null, tint = EditorMuted, modifier = Modifier.size(28.dp))
+                            Text(element.text, color = EditorMuted, fontSize = 10.sp)
+                        }
+                    }
+                    "divider" -> HorizontalDivider(color = Color(0xFFDCE5EE))
+                    "spacer" -> Spacer(Modifier.fillMaxWidth().height(element.padding.coerceAtLeast(8f).dp))
+                    else -> Text(element.text, color = componentText, fontSize = element.fontSize.sp, textAlign = align, modifier = Modifier.fillMaxWidth())
                 }
             }
         }

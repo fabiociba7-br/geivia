@@ -324,25 +324,20 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                         } else "dashboard"
                     }
                 )
-                "terminal" -> Scaffold(
-                    topBar = {
-                        TopAppBar(
-                            title = { Text("Terminal GEIVIA") },
-                            navigationIcon = {
-                                IconButton(onClick = { page = "dashboard" }) {
-                                    Icon(Icons.Default.ArrowBack, contentDescription = "Voltar ao Studio")
-                                }
-                            }
-                        )
+                "terminal" -> Column(
+                    Modifier.fillMaxSize().padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { page = "dashboard" }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Voltar ao Studio")
+                        }
+                        Column {
+                            Text("Terminal GEIVIA", fontWeight = FontWeight.Bold)
+                            Text("Terminal local e ambiente Debian/PRoot", fontSize = 11.sp, color = Muted)
+                        }
                     }
-                ) { terminalPadding ->
-                    Column(
-                        Modifier.fillMaxSize().padding(terminalPadding).padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text("Terminal local e ambiente Debian/PRoot", fontWeight = FontWeight.SemiBold)
-                        TerminalPanel()
-                    }
+                    TerminalPanel()
                 }
                 "toolchain_updates" -> GeiviaToolchainUpdatesScreen(onBack = { page = "dashboard" })
                 "diagnostics" -> GeiviaDiagnosticsScreen(onBack = { page = "dashboard" })

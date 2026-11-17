@@ -551,11 +551,18 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
             StudioLogicPanel(
                 context = context,
                 screens = screenRegistry.toList(),
-                components = elements.map { element ->
-                    StudioComponentDefinition(
-                        id = element.id,
-                        label = "${element.type}: ${element.text.ifBlank { "Sem texto" }}"
-                    )
+                components = screenRegistry.flatMap { screen ->
+                    val screenElements = if (screen.id == activeScreenId) {
+                        elements.toList()
+                    } else {
+                        decodeElements(prefs.getString("${EDITOR_SCHEMA_KEY}_${screen.id}", null))
+                    }
+                    screenElements.map { element ->
+                        StudioComponentDefinition(
+                            id = element.id,
+                            label = "${screen.name} · ${element.type}: ${element.text.ifBlank { "Sem texto" }}"
+                        )
+                    }
                 }
             )
 

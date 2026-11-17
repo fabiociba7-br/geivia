@@ -18,6 +18,7 @@ internal data class StudioActionDefinition(
     val id: String,
     val trigger: String,
     val kind: String,
+    val componentId: String = "",
     val target: String = "",
     val expression: String = "",
     val enabled: Boolean = true
@@ -28,7 +29,7 @@ internal data class StudioLogicDocument(
     val actions: List<StudioActionDefinition> = emptyList(),
     val schemaVersion: Int = CURRENT_SCHEMA_VERSION
 ) {
-    fun validate(availableScreenIds: Set<String>? = null): List<String> {
+    fun validate(availableScreenIds: Set<String>? = null, availableComponentIds: Set<String>? = null): List<String> {
         val errors = mutableListOf<String>()
         if (schemaVersion != CURRENT_SCHEMA_VERSION) {
             errors += "Versão de esquema não suportada: $schemaVersion"
@@ -63,6 +64,9 @@ internal data class StudioLogicDocument(
             if (action.id.isBlank()) errors += "Toda ação precisa de um identificador"
             if (action.trigger !in ACTION_TRIGGERS) errors += "Gatilho inválido na ação ${action.id}"
             if (action.kind !in ACTION_KINDS) errors += "Tipo de ação inválido: ${action.kind}"
+            if (action.trigger != "on_screen_open" && action.componentId.isBlank()) errors += "Ação ${action.id} precisa estar vinculada a um componente"
+            if (action.componentId.length > MAX_TARGET_LENGTH) errors += "Identificador de componente muito longo: ${action.id}"
+            if (action.componentId.isNotBlank() && availableComponentIds != null && action.componentId !in availableComponentIds) errors += "Componente não existe: ${action.componentId}"
             if (action.target.length > MAX_TARGET_LENGTH) errors += "Destino muito longo na ação ${action.id}"
             if (action.expression.length > MAX_VALUE_LENGTH) errors += "Expressão muito longa na ação ${action.id}"
             if (action.enabled) {
@@ -98,8 +102,9 @@ internal data class StudioLogicDocument(
         actions.forEach { action ->
             actionArray.put(JSONObject()
                 .put("id", action.id)
-                .put("trigger", action.trigger)
+                 .put("trigger", action.trigger)
                 .put("kind", action.kind)
+                .put("componentId", action.componentId)
                 .put("target", action.target)
                 .put("expression", action.expression)
                 .put("enabled", action.enabled))
@@ -147,6 +152,7 @@ internal data class StudioLogicDocument(
                     id = item.optString("id"),
                     trigger = item.optString("trigger", "on_click"),
                     kind = item.optString("kind"),
+                    componentId = item.optString("componentId"),
                     target = item.optString("target"),
                     expression = item.optString("expression"),
                     enabled = item.optBoolean("enabled", true)

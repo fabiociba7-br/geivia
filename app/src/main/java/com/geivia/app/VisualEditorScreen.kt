@@ -1295,7 +1295,7 @@ private fun EditorCanvasNode(
                         }
                     }
                 } else {
-                    children.forEach { child -> EditorCanvasNode(child, allElements, selectedId, primaryColor, defaultTextColor, onSelect) }
+                    children.forEach { child -> EditorCanvasNode(child, allElements, selectedId, primaryColor, defaultTextColor, interactive, onActivate, onSelect) }
                 }
             } else {
                 val align = when (element.alignment) {

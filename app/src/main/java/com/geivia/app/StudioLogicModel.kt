@@ -82,21 +82,23 @@ internal data class StudioLogicDocument(
                 if (!KEY_PATTERN.matches(parameter.key)) errors += "Nome de parâmetro inválido: ${parameter.key}"
                 if (parameter.value.length > MAX_VALUE_LENGTH) errors += "Valor de parâmetro muito longo: ${parameter.key}"
                 if (parameter.type !in VARIABLE_TYPES) errors += "Tipo inválido no parâmetro ${parameter.key}"
-                val parameterReference = VARIABLE_REFERENCE.matchEntire(parameter.value)
-                if (parameterReference != null) {
-                    val referencedVariable = variableMap[parameterReference.groupValues[1]]
-                    if (referencedVariable == null) {
-                        errors += "Variável referenciada não existe: ${parameterReference.groupValues[1]}"
-                    } else if (referencedVariable.type != parameter.type) {
-                        errors += "Tipo incompatível na referência do parâmetro ${parameter.key}"
+                if (action.enabled) {
+                    val parameterReference = VARIABLE_REFERENCE.matchEntire(parameter.value)
+                    if (parameterReference != null) {
+                        val referencedVariable = variableMap[parameterReference.groupValues[1]]
+                        if (referencedVariable == null) {
+                            errors += "Variável referenciada não existe: ${parameterReference.groupValues[1]}"
+                        } else if (referencedVariable.type != parameter.type) {
+                            errors += "Tipo incompatível na referência do parâmetro ${parameter.key}"
+                        }
+                    } else {
+                        VARIABLE_REFERENCE.findAll(parameter.value).forEach { match ->
+                            if (match.groupValues[1] !in variableMap) errors += "Variável referenciada não existe: ${match.groupValues[1]}"
+                        }
+                        if (parameter.type == "number" && parameter.value.isNotBlank() && parameter.value.toDoubleOrNull() == null) errors += "Parâmetro numérico inválido: ${parameter.key}"
+                        if (parameter.type == "boolean" && parameter.value !in setOf("true", "false")) errors += "Parâmetro booleano inválido: ${parameter.key}"
+                        if (parameter.type == "json" && parameter.value.isNotBlank() && !isJsonValue(parameter.value)) errors += "Parâmetro JSON inválido: ${parameter.key}"
                     }
-                } else {
-                    VARIABLE_REFERENCE.findAll(parameter.value).forEach { match ->
-                        if (match.groupValues[1] !in variableMap) errors += "Variável referenciada não existe: ${match.groupValues[1]}"
-                    }
-                    if (parameter.type == "number" && parameter.value.isNotBlank() && parameter.value.toDoubleOrNull() == null) errors += "Parâmetro numérico inválido: ${parameter.key}"
-                    if (parameter.type == "boolean" && parameter.value !in setOf("true", "false")) errors += "Parâmetro booleano inválido: ${parameter.key}"
-                    if (parameter.type == "json" && parameter.value.isNotBlank() && !isJsonValue(parameter.value)) errors += "Parâmetro JSON inválido: ${parameter.key}"
                 }
             }
             if (action.kind != "navigate" && action.navigationParameters.isNotEmpty()) errors += "Parâmetros de navegação só podem ser usados em ações de navegação"
@@ -112,10 +114,12 @@ internal data class StudioLogicDocument(
                     "show_message" -> if (action.expression.isBlank()) errors += "Mensagem da ação está vazia"
                 }
             }
-            VARIABLE_REFERENCE.findAll(action.expression).forEach { match ->
-                val referencedKey = match.groupValues[1]
-                val isInputValue = referencedKey == "value" && action.trigger == "on_value_change"
-                if (!isInputValue && referencedKey !in variableMap) errors += "Variável referenciada não existe: $referencedKey"
+            if (action.enabled) {
+                VARIABLE_REFERENCE.findAll(action.expression).forEach { match ->
+                    val referencedKey = match.groupValues[1]
+                    val isInputValue = referencedKey == "value" && action.trigger == "on_value_change"
+                    if (!isInputValue && referencedKey !in variableMap) errors += "Variável referenciada não existe: $referencedKey"
+                }
             }
         }
         return errors.distinct()

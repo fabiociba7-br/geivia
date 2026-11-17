@@ -72,8 +72,8 @@ internal fun StudioDashboardScreen(
         StudioNavItem("TESTAR E PUBLICAR", "Operações do projeto", Icons.Default.Publish) { navigate(onProjects) },
         StudioNavItem("AMBIENTE", "Ferramentas e atualizações", Icons.Default.Terminal) { navigate(onTools) },
         StudioNavItem("AMBIENTE", "Diagnóstico", Icons.Default.Build) { navigate(onDiagnostics) },
-        StudioNavItem("CONTA", "Contas e acesso", Icons.Default.AccountCircle) { navigate(onAccounts) },
-        StudioNavItem("AMBIENTE", "Acompanhamento clássico", Icons.Default.History) { navigate(onLegacyDashboard) }
+        StudioNavItem("AMBIENTE", "Acompanhamento clássico", Icons.Default.History) { navigate(onLegacyDashboard) },
+        StudioNavItem("CONTA", "Contas e acesso", Icons.Default.AccountCircle) { navigate(onAccounts) }
     )
 
     ModalNavigationDrawer(

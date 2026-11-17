@@ -309,7 +309,7 @@ internal fun StudioLogicPanel(
                 onClick = {
                     val errors = document.validate(screens.map { it.id }.toSet())
                     if (errors.isEmpty()) {
-                        prefs.edit().putString(STUDIO_LOGIC_PREFS_KEY, document.toJson()).apply()
+                        save(document)
                         feedback = "Configuração validada e salva neste dispositivo."
                     } else feedback = errors.first()
                 },

@@ -27,10 +27,21 @@ data class WorkflowStepRecord(
     val updatedAt: Long,
     val operationId: String,
     val message: String,
-    val evidence: String
+    val evidence: String,
+    val preparedAt: Long = 0L
 )
 
 data class WorkflowBackupValidationResult(val valid: Boolean, val message: String)
+
+data class WorkflowHistoryEntry(
+    val projectId: String,
+    val stepId: String,
+    val state: String,
+    val updatedAt: Long,
+    val operationId: String,
+    val message: String,
+    val evidence: String
+)
 
 object WorkflowBackupValidator {
     private const val FORMAT = "GEIVIA_WORKFLOW_BACKUP"
@@ -106,6 +117,7 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
     @Synchronized
     fun healthError(): String? = runCatching {
         readRecords()
+        readHistory()
         null
     }.getOrElse { error ->
         error.message ?: "O histórico local está inválido. As operações foram bloqueadas."
@@ -117,7 +129,7 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
         require(stepId.isNotBlank()) { "Identificador da etapa obrigatório." }
         val record = readRecords().optJSONObject(recordKey(projectId, stepId))
         return record?.toRecord(projectId, stepId) ?: WorkflowStepRecord(
-            projectId, stepId, WorkflowStepState.NOT_STARTED, 0L, "", "", ""
+            projectId, stepId, WorkflowStepState.NOT_STARTED, 0L, "", "", "", 0L
         )
     }
 
@@ -128,12 +140,20 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
         check(current.state != WorkflowStepState.UNKNOWN) {
             "A operação anterior tem resultado desconhecido. Reconcilie-a antes de continuar."
         }
+        check(current.state != WorkflowStepState.IN_PROGRESS) {
+            "Já existe uma operação em andamento. Faça o diagnóstico da operação atual antes de preparar outra."
+        }
+        check(current.state != WorkflowStepState.USER_CONFIRMED) {
+            "A conclusão foi declarada manualmente, mas ainda não foi verificada. Faça o diagnóstico antes de preparar outra operação."
+        }
         check(current.state != WorkflowStepState.COMPLETED) {
             "Esta etapa já foi confirmada como concluída."
         }
+        val now = System.currentTimeMillis()
         return save(current.copy(
             state = WorkflowStepState.WAITING_CONFIRMATION,
-            updatedAt = System.currentTimeMillis(),
+            updatedAt = now,
+            preparedAt = now,
             message = message,
             evidence = ""
         ))
@@ -150,12 +170,32 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
         check(operationId != current.operationId) {
             "Cada tentativa precisa de um identificador de operação novo."
         }
+        val now = System.currentTimeMillis()
+        return save(current.copy(
+            state = WorkflowStepState.IN_PROGRESS,
+            updatedAt = now,
+            operationId = operationId,
+            message = message,
+            evidence = ""
+        ))
+    }
+
+    /** Moves a prepared manual command to execution tracking only after the user attests it was run. */
+    @Synchronized
+    fun markManualExecutionStarted(projectId: String, stepId: String, operationId: String, attestation: String): WorkflowStepRecord {
+        require(operationId.isNotBlank()) { "Identificador da operação obrigatório." }
+        require(attestation.isNotBlank()) { "Confirmação de execução manual obrigatória." }
+        val current = get(projectId, stepId)
+        check(current.state == WorkflowStepState.WAITING_CONFIRMATION) {
+            "A etapa não está aguardando execução manual. Estado atual: ${current.state}."
+        }
+        check(operationId != current.operationId) { "Cada execução manual precisa de um identificador novo." }
         return save(current.copy(
             state = WorkflowStepState.IN_PROGRESS,
             updatedAt = System.currentTimeMillis(),
             operationId = operationId,
-            message = message,
-            evidence = ""
+            message = "Usuário declarou que executou o comando manualmente; aguardando diagnóstico atualizado.",
+            evidence = "DECLARAÇÃO DE EXECUÇÃO MANUAL: $attestation"
         ))
     }
 
@@ -237,6 +277,55 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
         ))
     }
 
+    /** Append-only audit event, scoped to the selected project and operation. */
+    @Synchronized
+    fun appendAuditEvent(
+        projectId: String,
+        stepId: String,
+        state: String,
+        operationId: String,
+        message: String,
+        evidence: String = ""
+    ) {
+        require(projectId.isNotBlank()) { "Project ID obrigatório para registrar o histórico." }
+        require(stepId.isNotBlank()) { "Etapa obrigatória para registrar o histórico." }
+        require(state.isNotBlank()) { "Estado obrigatório para registrar o histórico." }
+        val history = readHistory()
+        history.put(JSONObject().apply {
+            put("projectId", projectId)
+            put("stepId", stepId)
+            put("state", state)
+            put("updatedAt", System.currentTimeMillis())
+            put("operationId", operationId)
+            put("message", message)
+            put("evidence", evidence)
+        })
+        persistHistory(history)
+    }
+
+    /** Chronological audit trail for exactly one Project ID, newest first. */
+    @Synchronized
+    fun historyForProject(projectId: String): List<WorkflowHistoryEntry> {
+        if (projectId.isBlank()) return emptyList()
+        val history = readHistory()
+        val result = mutableListOf<WorkflowHistoryEntry>()
+        for (i in 0 until history.length()) {
+            val item = history.optJSONObject(i) ?: continue
+            if (item.optString("projectId") == projectId) {
+                result += WorkflowHistoryEntry(
+                    projectId = projectId,
+                    stepId = item.optString("stepId"),
+                    state = item.optString("state"),
+                    updatedAt = item.optLong("updatedAt"),
+                    operationId = item.optString("operationId"),
+                    message = item.optString("message"),
+                    evidence = item.optString("evidence")
+                )
+            }
+        }
+        return result.sortedByDescending { it.updatedAt }
+    }
+
     @Synchronized
     fun allForProject(projectId: String): List<WorkflowStepRecord> {
         if (projectId.isBlank()) return emptyList()
@@ -257,7 +346,7 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
     private fun save(record: WorkflowStepRecord): WorkflowStepRecord {
         val records = readRecords()
         records.put(recordKey(record.projectId, record.stepId), record.toJson())
-        val history = runCatching { JSONArray(prefs.getString(KEY_HISTORY, "[]")) }.getOrDefault(JSONArray())
+        val history = readHistory()
         history.put(JSONObject().apply {
             put("projectId", record.projectId)
             put("stepId", record.stepId)
@@ -265,15 +354,31 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
             put("updatedAt", record.updatedAt)
             put("operationId", record.operationId)
             put("message", record.message)
+            put("evidence", record.evidence)
         })
-        // Keep a bounded local audit trail.
+        prefs.edit().putString(KEY_RECORDS, records.toString()).apply()
+        persistHistory(history)
+        return record
+    }
+
+    private fun readHistory(): JSONArray {
+        val raw = prefs.getString(KEY_HISTORY, "[]") ?: "[]"
+        return try {
+            JSONArray(raw)
+        } catch (error: Exception) {
+            throw IllegalStateException(
+                "O histórico detalhado do GEIVIA está inválido. Os registros foram preservados e novas operações foram bloqueadas.",
+                error
+            )
+        }
+    }
+
+    private fun persistHistory(history: JSONArray) {
         val bounded = JSONArray()
-        for (i in (history.length() - 200).coerceAtLeast(0) until history.length()) {
+        for (i in (history.length() - 500).coerceAtLeast(0) until history.length()) {
             bounded.put(history.getJSONObject(i))
         }
-        prefs.edit().putString(KEY_RECORDS, records.toString())
-            .putString(KEY_HISTORY, bounded.toString()).apply()
-        return record
+        prefs.edit().putString(KEY_HISTORY, bounded.toString()).apply()
     }
 
     private fun readRecords(): JSONObject {
@@ -300,6 +405,7 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
         put("operationId", operationId)
         put("message", message)
         put("evidence", evidence)
+        put("preparedAt", preparedAt)
     }
 
     private fun JSONObject.toRecord(projectId: String, stepId: String) = WorkflowStepRecord(
@@ -309,6 +415,7 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
         updatedAt = optLong("updatedAt"),
         operationId = optString("operationId"),
         message = optString("message"),
-        evidence = optString("evidence")
+        evidence = optString("evidence"),
+        preparedAt = optLong("preparedAt", optLong("updatedAt"))
     )
 }

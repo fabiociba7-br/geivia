@@ -16,6 +16,7 @@ internal class LinuxRuntimeController(context: Context) {
     private val launcher: ProotLauncher by lazy { host.prepare() }
     @Volatile private var activeSession: ProotLauncher.Session? = null
     val prefixDir: File get() = host.prefixDir
+    val homeDir: File get() = host.homeDir
 
     fun prepareEngine() { launcher }
 

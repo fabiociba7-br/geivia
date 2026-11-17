@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-internal fun GoogleCloudAccessScreen(onBack: () -> Unit) {
+internal fun GoogleCloudAccessScreen(accountEmail: String = "", projectId: String = "", autoStartLogin: Boolean = false, onAutoStartConsumed: () -> Unit = {}, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val controller = remember { LinuxRuntimeController(context) }
@@ -45,6 +45,43 @@ internal fun GoogleCloudAccessScreen(onBack: () -> Unit) {
     }
 
     fun append(message: String) { output = (output + message).takeLast(24000) }
+
+    fun loginCommand(): String {
+        val email = accountEmail.trim().replace("\u0027", "\u0027\\\u0027\u0027")
+        val id = projectId.trim().replace("\u0027", "")
+        val commands = mutableListOf(if (email.isBlank()) "gcloud auth login --no-launch-browser" else "gcloud auth login '$email' --no-launch-browser")
+        if (id.matches(Regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$"))) commands.add("gcloud config set project '$id'")
+        return commands.joinToString(" && ") + "\n"
+    }
+
+    LaunchedEffect(autoStartLogin) {
+        if (!autoStartLogin) return@LaunchedEffect
+        busy = true
+        append("\n[GEIVIA] Recebi os dados do questionário. Preparando o ambiente e iniciando o login…\n")
+        try {
+            if (!ready) {
+                withContext(Dispatchers.IO) { controller.prepareEngine() }
+                controller.installAndVerifyDebian { chunk -> scope.launch { append(chunk) } }
+                val code = controller.execute(GoogleCloudCliCommands.install()) { chunk -> scope.launch { append(chunk) } }
+                check(code == 0) { "A instalação do Google Cloud CLI terminou com código $code." }
+                ready = true
+                prefs.edit().putBoolean("google_cloud_cli_ready", true).apply()
+            }
+            val started = withContext(Dispatchers.IO) { controller.startDebianShell() }
+            session = started
+            controller.send(started, loginCommand())
+            append("\n[GEIVIA] Login Google iniciado. Após a autorização oficial, o Project ID informado será selecionado automaticamente.\n")
+            scope.launch(Dispatchers.IO) {
+                runCatching { controller.readSession(started) { chunk -> scope.launch { append(chunk) } } }
+                withContext(Dispatchers.Main) { session = null; append("\n[GEIVIA] Sessão encerrada.\n") }
+            }
+        } catch (error: Exception) {
+            append("\n[GEIVIA] Não foi possível iniciar o login automático: " + (error.message ?: "erro desconhecido") + "\n")
+        } finally {
+            busy = false
+            onAutoStartConsumed()
+        }
+    }
 
     Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(20.dp)) {
         Text("ACESSO AO GOOGLE CLOUD", color = Color(0xFF173B5E), fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
@@ -100,7 +137,7 @@ internal fun GoogleCloudAccessScreen(onBack: () -> Unit) {
         if (ready) {
             Text("CONTA GOOGLE", color = Color(0xFF173B5E), fontWeight = FontWeight.Black, fontSize = 11.sp)
             Text(
-                "A autorização é feita pelo fluxo oficial do Google. O GEIVIA inicia o login no terminal integrado; o Google poderá pedir uma confirmação no navegador. Não informe senha ou código a ninguém.",
+                "Conta: " + accountEmail.ifBlank { "não informada" } + "\nProject ID: " + projectId.ifBlank { "será definido depois" } + "\nA autorização é feita pelo fluxo oficial do Google. O GEIVIA inicia o login no terminal integrado; conclua a confirmação solicitada pelo Google. Não informe sua senha ao aplicativo.",
                 color = Color(0xFF657382), fontSize = 12.sp, lineHeight = 18.sp
             )
             Spacer(Modifier.height(8.dp))
@@ -112,7 +149,7 @@ internal fun GoogleCloudAccessScreen(onBack: () -> Unit) {
                                 val started = withContext(Dispatchers.IO) { controller.startDebianShell() }
                                 session = started
                                 append("\n[GEIVIA] Iniciando autorização Google…\n")
-                                controller.send(started, "gcloud auth login --no-launch-browser\n")
+                                controller.send(started, loginCommand())
                                 scope.launch(Dispatchers.IO) {
                                     runCatching { controller.readSession(started) { chunk -> scope.launch { append(chunk) } } }
                                     withContext(Dispatchers.Main) { session = null; append("\n[GEIVIA] Sessão encerrada.\n") }

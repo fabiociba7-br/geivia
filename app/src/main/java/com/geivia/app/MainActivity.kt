@@ -27,6 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -55,11 +57,38 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+
+@Composable
+private fun BrandSplashScreen() {
+    Column(
+        modifier = Modifier.fillMaxSize().background(Color(0xFFF7FBFD)).padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Image(
+            painter = painterResource(R.drawable.geivia_splash_icon),
+            contentDescription = "Símbolo GEIVIA",
+            modifier = Modifier.size(196.dp)
+        )
+        Spacer(Modifier.height(12.dp))
+        Text("GEIVIA", fontSize = 42.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF101820), letterSpacing = 2.sp)
+        Spacer(Modifier.height(4.dp))
+        Text("FIREBASE DEPLOY &", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Blue, letterSpacing = 0.5.sp)
+        Text("HOSTING AUTOMATION", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Ink, letterSpacing = 0.5.sp)
+        Spacer(Modifier.height(28.dp))
+        Text("Configuração e ativação de APIs  •  Diagnóstico e regras", fontSize = 11.sp, color = Muted, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(6.dp))
+        Text("Authentication  •  Registro Android/Web", fontSize = 11.sp, color = Muted, textAlign = TextAlign.Center)
+    }
+}
+
 private data class Question(val id: String, val title: String, val help: String, val options: List<String>, val multi: Boolean = false)
 
 @Composable
 private fun GeiviaApp(githubCallbackUri: Uri? = null) {
     val context = LocalContext.current
+    var showBrandSplash by rememberSaveable { mutableStateOf(true) }
+    LaunchedEffect(Unit) { kotlinx.coroutines.delay(1200); showBrandSplash = false }
     val prefs = remember { context.getSharedPreferences(PREFS, Context.MODE_PRIVATE) }
     val answerKeys = setOf("platform", "purpose", "audience", "login", "data", "files", "hosting", "extras")
     val answers = remember {
@@ -73,7 +102,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
         }
     }
     var workspaceName by rememberSaveable { mutableStateOf(prefs.getString("workspace_name", "GEIVIA-" + workspaceId.removePrefix("GEIVIA-")) ?: ("GEIVIA-" + workspaceId.removePrefix("GEIVIA-"))) }
-    val validWorkflowPages = setOf("device_access", "workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "accounts", "google_access", "github", "terminal", "toolchain_updates", "diagnostics")
+    val validWorkflowPages = setOf("device_access", "workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "accounts", "google_access", "github", "terminal", "toolchain_updates", "diagnostics", "project_operations", "project_preview", "firebase_admin")
     val savedCheckpoint = remember {
         prefs.getString("workflow_checkpoint", null)?.takeIf { it in validWorkflowPages }
             ?.let { when (it) { "cloud_setup" -> "questions"; "terminal" -> "dashboard"; else -> it } }
@@ -93,6 +122,9 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
     }
     var costMode by rememberSaveable { mutableStateOf(prefs.getString("cost_mode", "") ?: "") }
     var preflightGoogleAccount by rememberSaveable { mutableStateOf(prefs.getString("preflight_google_account", "") ?: "") }
+    var preflightGoogleEmail by rememberSaveable { mutableStateOf(prefs.getString("preflight_google_email", "") ?: "") }
+    var preflightCloudProjectId by rememberSaveable { mutableStateOf(prefs.getString("preflight_cloud_project_id", "") ?: "") }
+    var preflightFirebaseProjectId by rememberSaveable { mutableStateOf(prefs.getString("preflight_firebase_project_id", "") ?: "") }
     var preflightCloudProject by rememberSaveable { mutableStateOf(prefs.getString("preflight_cloud_project", "") ?: "") }
     var preflightFirebaseProject by rememberSaveable { mutableStateOf(prefs.getString("preflight_firebase_project", "") ?: "") }
     var preflightGithubRepo by rememberSaveable { mutableStateOf(prefs.getString("preflight_github_repo", "") ?: "") }
@@ -160,7 +192,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
 
     MaterialTheme(colorScheme = lightColorScheme(primary = Blue, secondary = Orange, background = Color(0xFFF7FBFD), surface = Color.White, onSurface = Ink)) {
         Surface(Modifier.fillMaxSize(), color = Color(0xFFF7FBFD)) {
-            when (page) {
+            if (showBrandSplash) BrandSplashScreen() else when (page) {
                 "device_access" -> DeviceAccessSetupScreen(onCompleted = {
                     prefs.edit().putBoolean("device_access_completed", true).putLong("device_access_completed_at", System.currentTimeMillis()).apply()
                     page = "environment_setup"
@@ -182,12 +214,18 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                 )
                 "preflight" -> InitialEnvironmentScreen(
                     googleAccount = preflightGoogleAccount,
+                    googleEmail = preflightGoogleEmail,
                     cloudProject = preflightCloudProject,
+                    cloudProjectId = preflightCloudProjectId,
+                    firebaseProjectId = preflightFirebaseProjectId,
                     firebaseProject = preflightFirebaseProject,
                     githubRepo = preflightGithubRepo,
                     projectId = preflightProjectId,
                     onGoogleAccountChange = { preflightGoogleAccount = it },
+                    onGoogleEmailChange = { preflightGoogleEmail = it },
                     onCloudProjectChange = { preflightCloudProject = it },
+                    onCloudProjectIdChange = { preflightCloudProjectId = it },
+                    onFirebaseProjectIdChange = { preflightFirebaseProjectId = it },
                     onFirebaseProjectChange = { preflightFirebaseProject = it },
                     onGithubRepoChange = { preflightGithubRepo = it },
                     onProjectIdChange = { preflightProjectId = it },
@@ -195,15 +233,20 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onContinue = {
                         prefs.edit()
                             .putString("preflight_google_account", preflightGoogleAccount)
+                            .putString("preflight_google_email", preflightGoogleEmail.trim())
+                            .putString("preflight_cloud_project_id", preflightCloudProjectId.trim())
+                            .putString("preflight_firebase_project_id", preflightFirebaseProjectId.trim())
                             .putString("preflight_cloud_project", preflightCloudProject)
                             .putString("preflight_firebase_project", preflightFirebaseProject)
                             .putString("preflight_github_repo", preflightGithubRepo)
                             .putString("preflight_project_id", preflightProjectId.trim())
+                            .putString("selected_project_id", preflightCloudProjectId.trim().ifBlank { preflightFirebaseProjectId.trim() }.ifBlank { preflightProjectId.trim() })
                             .putBoolean("preflight_completed", true)
                             .putLong("preflight_completed_at", System.currentTimeMillis())
                             .apply()
-                        val hasExistingCloud = preflightCloudProject == "yes" || preflightFirebaseProject == "yes"
-                        page = if (hasExistingCloud) "google_access" else if (prefs.contains("workflow_checkpoint")) savedCheckpoint else "workspace_setup"
+                        val shouldLoginNow = preflightGoogleAccount == "yes"
+                        prefs.edit().putBoolean("preflight_auto_cloud_login", shouldLoginNow).putBoolean("preflight_return_to_workspace", shouldLoginNow).apply()
+                        page = if (shouldLoginNow) "google_access" else if (prefs.contains("workflow_checkpoint")) savedCheckpoint else "workspace_setup"
                     }
                 )
                 "workspace_setup" -> WorkspaceSetupScreen(
@@ -256,11 +299,23 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onConnectedChanged = { githubConnected = it }
                 )
                 "google_access" -> GoogleCloudAccessScreen(
-                    onBack = { page = "dashboard" }
+                    accountEmail = prefs.getString("preflight_google_email", "").orEmpty(),
+                    projectId = prefs.getString("preflight_cloud_project_id", "").orEmpty().ifBlank { prefs.getString("preflight_firebase_project_id", "").orEmpty() }.ifBlank { prefs.getString("preflight_project_id", "").orEmpty() },
+                    autoStartLogin = prefs.getBoolean("preflight_auto_cloud_login", false),
+                    onAutoStartConsumed = { prefs.edit().putBoolean("preflight_auto_cloud_login", false).apply() },
+                    onBack = {
+                        page = if (prefs.getBoolean("preflight_return_to_workspace", false)) {
+                            prefs.edit().putBoolean("preflight_return_to_workspace", false).apply()
+                            "workspace_setup"
+                        } else "dashboard"
+                    }
                 )
                 "toolchain_updates" -> GeiviaToolchainUpdatesScreen(onBack = { page = "dashboard" })
                 "diagnostics" -> GeiviaDiagnosticsScreen(onBack = { page = "dashboard" })
-                else -> DashboardScreen(answers.toMap(), costMode, onAccounts = { page = "accounts" }, onToolchainUpdates = { page = "toolchain_updates" }, onDiagnostics = { page = "diagnostics" }) {
+                "project_operations" -> ProjectOperationsScreen(onBack = { page = "dashboard" })
+                "project_preview" -> ProjectPreviewScreen(prefs.getString("imported_project_dir", "").orEmpty()) { page = "project_operations" }
+                "firebase_admin" -> FirebaseAdminScreen(prefs.getString("selected_project_id", preflightProjectId).orEmpty()) { page = "project_operations" }
+                else -> DashboardScreen(answers.toMap(), costMode, onOperations = { page = "project_operations" }, onPreview = { page = "project_preview" }, onFirebaseAdmin = { page = "firebase_admin" }, onAccounts = { page = "accounts" }, onToolchainUpdates = { page = "toolchain_updates" }, onDiagnostics = { page = "diagnostics" }) {
                     answers.clear()
                     val editor = prefs.edit()
                     answerKeys.forEach { editor.remove(it) }
@@ -301,12 +356,18 @@ private fun WelcomeScreen(hasCheckpoint: Boolean, onStart: () -> Unit) {
 @Composable
 private fun InitialEnvironmentScreen(
     googleAccount: String,
+    googleEmail: String,
     cloudProject: String,
+    cloudProjectId: String,
+    firebaseProjectId: String,
     firebaseProject: String,
     githubRepo: String,
     projectId: String,
     onGoogleAccountChange: (String) -> Unit,
+    onGoogleEmailChange: (String) -> Unit,
     onCloudProjectChange: (String) -> Unit,
+    onCloudProjectIdChange: (String) -> Unit,
+    onFirebaseProjectIdChange: (String) -> Unit,
     onFirebaseProjectChange: (String) -> Unit,
     onGithubRepoChange: (String) -> Unit,
     onProjectIdChange: (String) -> Unit,
@@ -314,7 +375,10 @@ private fun InitialEnvironmentScreen(
     onContinue: () -> Unit
 ) {
     val complete = googleAccount.isNotBlank() && cloudProject.isNotBlank() &&
-        firebaseProject.isNotBlank() && githubRepo.isNotBlank()
+        firebaseProject.isNotBlank() && githubRepo.isNotBlank() &&
+        (googleAccount != "yes" || googleEmail.trim().matches(Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"))) &&
+        (cloudProject != "yes" || cloudProjectId.trim().matches(Regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$"))) &&
+        (firebaseProject != "yes" || firebaseProjectId.trim().matches(Regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$")))
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp),
         verticalArrangement = Arrangement.spacedBy(13.dp)
@@ -328,10 +392,23 @@ private fun InitialEnvironmentScreen(
         )
         InitialStatusQuestion("Você já tem uma conta Google?", googleAccount, onGoogleAccountChange,
             "Ela é usada para acessar o Google Cloud e o Firebase.")
+        if (googleAccount == "yes") OutlinedTextField(
+            value = googleEmail, onValueChange = onGoogleEmailChange, modifier = Modifier.fillMaxWidth(),
+            label = { Text("E-mail da conta Google") }, placeholder = { Text("voce@gmail.com") }, singleLine = true,
+            supportingText = { Text("O GEIVIA usará este e-mail para iniciar o login oficial no terminal. A senha nunca será solicitada.") }
+        )
         InitialStatusQuestion("Você já tem um projeto no Google Cloud?", cloudProject, onCloudProjectChange,
             "Se já tiver, vamos tentar localizar e reutilizar esse projeto.")
+        if (cloudProject == "yes") OutlinedTextField(
+            value = cloudProjectId, onValueChange = onCloudProjectIdChange, modifier = Modifier.fillMaxWidth(),
+            label = { Text("Project ID do Google Cloud") }, placeholder = { Text("meu-projeto-123") }, singleLine = true
+        )
         InitialStatusQuestion("Você já tem um projeto no Firebase?", firebaseProject, onFirebaseProjectChange,
             "Um projeto Firebase também é um projeto Google Cloud associado ao Firebase.")
+        if (firebaseProject == "yes") OutlinedTextField(
+            value = firebaseProjectId, onValueChange = onFirebaseProjectIdChange, modifier = Modifier.fillMaxWidth(),
+            label = { Text("Project ID do Firebase") }, placeholder = { Text("meu-projeto-123") }, singleLine = true
+        )
         InitialStatusQuestion("Você já tem um repositório GitHub para esse projeto?", githubRepo, onGithubRepoChange,
             "Se já existir, o GEIVIA poderá trabalhar com ele após a autorização.")
         OutlinedTextField(
@@ -573,7 +650,7 @@ private fun SummaryScreen(answers: Map<String, String>, costMode: String, onBack
 }
 
 @Composable
-private fun DashboardScreen(answers: Map<String, String>, costMode: String, onAccounts: () -> Unit, onToolchainUpdates: () -> Unit, onDiagnostics: () -> Unit, onRestart: () -> Unit) {
+private fun DashboardScreen(answers: Map<String, String>, costMode: String, onOperations: () -> Unit, onPreview: () -> Unit, onFirebaseAdmin: () -> Unit, onAccounts: () -> Unit, onToolchainUpdates: () -> Unit, onDiagnostics: () -> Unit, onRestart: () -> Unit) {
     val context = LocalContext.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(22.dp)) {
         BrandMark()
@@ -675,9 +752,14 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onAc
             "authentication" to "Firebase Authentication",
             "hosting" to "Firebase Hosting",
             "hosting_deploy" to "Publicação do site",
+            "firebase_deploy" to "Deploy dos alvos do projeto",
             "storage" to "Cloud Storage"
         )
         val workflowRecords = if (workflowStorageError == null) workflowStore.allForProject(chosenProjectId).associateBy { it.stepId } else emptyMap()
+        val workflowDisplayCatalog = workflowCatalog + workflowRecords.keys
+            .filterNot { stepId -> workflowCatalog.any { it.first == stepId } }
+            .map { stepId -> stepId to stepId.replace('_', ' ').replaceFirstChar { it.uppercase() } }
+        val workflowHistory = if (workflowStorageError == null) workflowStore.historyForProject(chosenProjectId).take(30) else emptyList()
         Spacer(Modifier.height(16.dp))
         Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(15.dp)) {
             Column(Modifier.padding(16.dp)) {
@@ -714,13 +796,13 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onAc
                 Spacer(Modifier.height(5.dp))
                 Text(if (chosenProjectId.isBlank()) "Selecione um projeto para iniciar o acompanhamento." else "Projeto: $chosenProjectId", color = Muted, fontSize = 11.sp)
                 Spacer(Modifier.height(8.dp))
-                workflowCatalog.forEach { (stepId, label) ->
+                workflowDisplayCatalog.forEach { (stepId, label) ->
                     val record = workflowRecords[stepId]
                     val state = record?.state ?: WorkflowStepState.NOT_STARTED
                     val stateLabel = if (stepId == "storage" && costMode == "zero") "Bloqueada no modo custo zero" else when (state) {
                         WorkflowStepState.NOT_STARTED -> "Não iniciada"
                         WorkflowStepState.IN_PROGRESS -> "Aguardando diagnóstico"
-                        WorkflowStepState.WAITING_CONFIRMATION -> "Aguardando confirmação"
+                        WorkflowStepState.WAITING_CONFIRMATION -> if (stepId == "firebase_deploy") "Comando preparado — aguardando execução manual" else "Aguardando confirmação"
                         WorkflowStepState.UNKNOWN -> "Resultado desconhecido — reconciliar"
                         WorkflowStepState.COMPLETED -> "Concluída por diagnóstico"
                         WorkflowStepState.USER_CONFIRMED -> "Declarada concluída pelo usuário"
@@ -742,7 +824,33 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onAc
                     if (record?.message?.isNotBlank() == true) Text(record.message, color = Muted, fontSize = 10.sp, lineHeight = 14.sp)
                     Divider(color = Color(0xFFE7EEF2))
                 }
-                Text("As etapas são vinculadas ao Project ID. Uma operação pendente ou desconhecida não é repetida automaticamente.", color = Muted, fontSize = 10.sp, lineHeight = 15.sp)
+                Divider(color = Color(0xFFE7EEF2))
+                Spacer(Modifier.height(8.dp))
+                Text("HISTÓRICO DETALHADO • ÚLTIMAS 30 AÇÕES", color = DeepBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                if (chosenProjectId.isBlank()) {
+                    Text("Selecione um Project ID para consultar o histórico.", color = Muted, fontSize = 10.sp)
+                } else if (workflowHistory.isEmpty()) {
+                    Text("Ainda não há operações registradas para este projeto.", color = Muted, fontSize = 10.sp)
+                } else {
+                    workflowHistory.forEach { event ->
+                        Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Text(event.stepId.replace('_', ' ').uppercase(), color = Ink, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Text(android.text.format.DateFormat.format("dd/MM/yyyy HH:mm:ss", event.updatedAt).toString(), color = Muted, fontSize = 9.sp)
+                            }
+                            Text(event.state, color = when {
+                                event.state.contains("FAIL", true) || event.state.contains("UNKNOWN", true) -> Color(0xFFB05A18)
+                                event.state.contains("SUCCESS", true) || event.state.contains("COMPLETED", true) -> Color(0xFF238653)
+                                else -> Muted
+                            }, fontSize = 10.sp)
+                            if (event.message.isNotBlank()) Text(event.message, color = Muted, fontSize = 10.sp, lineHeight = 14.sp)
+                            if (event.operationId.isNotBlank()) Text("Operação: " + event.operationId, color = Muted, fontSize = 9.sp)
+                            if (event.evidence.isNotBlank()) Text("Evidência: " + event.evidence, color = Muted, fontSize = 9.sp, lineHeight = 13.sp)
+                        }
+                        Divider(color = Color(0xFFE7EEF2))
+                    }
+                }
+                Text("Histórico isolado por Project ID. Operações pendentes ou desconhecidas não são repetidas automaticamente.", color = Muted, fontSize = 10.sp, lineHeight = 15.sp)
             }
         }
         Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(15.dp)) {
@@ -809,6 +917,12 @@ private fun DashboardScreen(answers: Map<String, String>, costMode: String, onAc
             )
         }
         Spacer(Modifier.height(16.dp))
+        Button(onClick = onOperations, modifier = Modifier.fillMaxWidth()) { Text("Importar projeto ZIP e fazer deploy") }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(onClick = onPreview, modifier = Modifier.fillMaxWidth()) { Text("Prévia do projeto importado") }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(onClick = onFirebaseAdmin, modifier = Modifier.fillMaxWidth()) { Text("Administrar Firebase e baixar JSON") }
+        Spacer(Modifier.height(8.dp))
         Button(onClick = onAccounts, modifier = Modifier.fillMaxWidth()) { Text("Conectar minhas contas") }
         Spacer(Modifier.height(8.dp))
         OutlinedButton(onClick = onToolchainUpdates, modifier = Modifier.fillMaxWidth()) { Text("Gerenciar atualizações das ferramentas") }

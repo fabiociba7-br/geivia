@@ -89,6 +89,26 @@ class WorkflowProgressStoreTest {
     }
 
     @Test
+    fun unresolvedAndManuallyConfirmedOperationsCannotBePreparedAgain() {
+        val store = store()
+        store.waitForConfirmation("project-no-duplicate", "deploy", "Review")
+        store.confirmAndStart("project-no-duplicate", "deploy", "op-active", "Started")
+
+        val activeError = org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+            store.waitForConfirmation("project-no-duplicate", "deploy", "Duplicate preparation")
+        }
+        assertTrue(activeError.message.orEmpty().contains("operação em andamento"))
+        assertEquals(WorkflowStepState.IN_PROGRESS, store.get("project-no-duplicate", "deploy").state)
+
+        store.confirmManualCompletion("project-no-duplicate", "deploy", "User reports completion")
+        val manualError = org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+            store.waitForConfirmation("project-no-duplicate", "deploy", "Retry before diagnostic")
+        }
+        assertTrue(manualError.message.orEmpty().contains("declarada manualmente"))
+        assertEquals(WorkflowStepState.USER_CONFIRMED, store.get("project-no-duplicate", "deploy").state)
+    }
+
+    @Test
     fun reconciliationRequiresEvidenceAndExplicitAcknowledgement() {
         val store = store()
         store.waitForConfirmation("project-evidence", "create", "Review")
@@ -132,6 +152,43 @@ class WorkflowProgressStoreTest {
         org.junit.Assert.assertThrows(IllegalStateException::class.java) {
             store.confirmManualCompletion("project-manual", "authentication", "Not started yet")
         }
+    }
+
+    @Test
+    fun manualExecutionAcknowledgementStaysPendingUntilDiagnosticEvidence() {
+        val preferences = InMemorySharedPreferences()
+        val store = WorkflowProgressStore(preferences)
+        val prepared = store.waitForConfirmation("project-manual-run", "firebase_deploy", "Command reviewed")
+        assertTrue(prepared.preparedAt > 0L)
+        val started = store.markManualExecutionStarted(
+            "project-manual-run", "firebase_deploy", "manual-run-1", "User says command was run in Cloud Shell"
+        )
+        assertEquals(WorkflowStepState.IN_PROGRESS, started.state)
+        assertEquals(prepared.preparedAt, started.preparedAt)
+        assertTrue(started.evidence.startsWith("DECLARAÇÃO DE EXECUÇÃO MANUAL:"))
+        val reopened = WorkflowProgressStore(preferences).get("project-manual-run", "firebase_deploy")
+        assertEquals(started.preparedAt, reopened.preparedAt)
+        assertTrue(reopened.preparedAt <= reopened.updatedAt)
+        assertTrue(started.message.contains("aguardando diagnóstico"))
+        org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+            store.markManualExecutionStarted("project-manual-run", "firebase_deploy", "manual-run-2", "Duplicate")
+        }
+        store.reconcileCompleted("project-manual-run", "firebase_deploy", "Fresh diagnostic evidence for same Project ID")
+        assertEquals(WorkflowStepState.COMPLETED, store.get("project-manual-run", "firebase_deploy").state)
+    }
+
+    @Test
+    fun automaticExecutionKeepsOriginalPreparationTimestamp() {
+        val preferences = InMemorySharedPreferences()
+        val store = WorkflowProgressStore(preferences)
+        val prepared = store.waitForConfirmation("project-timestamp", "firestore", "Review command")
+        val started = store.confirmAndStart("project-timestamp", "firestore", "operation-timestamp", "User confirmed")
+        assertEquals(prepared.preparedAt, started.preparedAt)
+        assertTrue(started.preparedAt <= started.updatedAt)
+        assertEquals(
+            prepared.preparedAt,
+            WorkflowProgressStore(preferences).get("project-timestamp", "firestore").preparedAt
+        )
     }
 
     @Test
@@ -263,6 +320,36 @@ class WorkflowProgressStoreTest {
             store.allForProject("project-protected")
         }
         assertEquals("{invalid-json", preferences.getString("workflow_step_records_v1", null))
+    }
+
+    @Test
+    fun detailedAuditHistoryIsIsolatedByProjectAndKeepsEvidence() {
+        val preferences = InMemorySharedPreferences()
+        val store = WorkflowProgressStore(preferences)
+        store.appendAuditEvent("project-a", "firebase_deploy", "STARTED", "op-a", "Deploy solicitado", "comando revisado")
+        store.appendAuditEvent("project-a", "firebase_deploy", "SUCCEEDED", "op-a", "Deploy concluído", "exitCode=0")
+        store.appendAuditEvent("project-b", "firebase_deploy", "FAILED", "op-b", "Falha em outro projeto", "exitCode=1")
+
+        val historyA = store.historyForProject("project-a")
+        assertEquals(2, historyA.size)
+        assertEquals("SUCCEEDED", historyA.first().state)
+        assertEquals("op-a", historyA.first().operationId)
+        assertEquals("exitCode=0", historyA.first().evidence)
+        assertEquals(1, store.historyForProject("project-b").size)
+
+        val reopened = WorkflowProgressStore(preferences)
+        assertEquals("Deploy concluído", reopened.historyForProject("project-a").first().message)
+    }
+
+    @Test
+    fun corruptedDetailedHistoryBlocksFurtherOperations() {
+        val preferences = InMemorySharedPreferences()
+        preferences.edit().putString("workflow_step_history_v1", "{invalid-json").apply()
+        val store = WorkflowProgressStore(preferences)
+        assertTrue(store.healthError().orEmpty().contains("histórico detalhado"))
+        org.junit.Assert.assertThrows(IllegalStateException::class.java) {
+            store.appendAuditEvent("project-a", "deploy", "STARTED", "op-a", "No start", "")
+        }
     }
 
     @Test

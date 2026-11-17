@@ -51,6 +51,19 @@ class StudioLogicDocumentTest {
     }
 
     @Test
+    fun rejectsNavigationToUnknownScreenWhenRegistryIsProvided() {
+        val document = StudioLogicDocument(
+            actions = listOf(
+                StudioActionDefinition("go", "on_click", "navigate", target = "missing")
+            )
+        )
+        assertTrue(document.validate(setOf("home", "profile")).any {
+            it.contains("Tela de destino não existe: missing")
+        })
+        assertTrue(document.validate().isEmpty())
+    }
+
+    @Test
     fun rejectsInvalidTypedInitialValues() {
         val document = StudioLogicDocument(
             variables = listOf(

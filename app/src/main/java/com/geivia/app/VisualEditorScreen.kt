@@ -1180,7 +1180,7 @@ internal fun VisualEditorScreen(
                     )
                     "code" -> {
                         val projectJson = buildProjectJson()
-                        Text("Exporte um projeto Android nativo com Kotlin, Jetpack Compose, Manifest e arquivos Gradle. Arquivos locais selecionados entram no ZIP; URLs externas e ações de produção ainda precisam ser conectadas.", color = EditorMuted, fontSize = 12.sp)
+                        Text("Exporte um projeto Android nativo com Kotlin, Jetpack Compose, Manifest e arquivos Gradle. Arquivos locais entram no ZIP e ações declarativas suportadas são geradas; URLs externas e integrações remotas exigem configuração própria.", color = EditorMuted, fontSize = 12.sp)
                         OutlinedTextField(
                             value = generatedPackage,
                             onValueChange = { generatedPackage = it.filter { ch -> ch.isLetterOrDigit() || ch == '_' || ch == '.' }.take(120) },

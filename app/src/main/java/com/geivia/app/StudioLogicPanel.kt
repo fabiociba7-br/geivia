@@ -58,7 +58,7 @@ internal fun StudioLogicPanel(
     var navigationParameterKey by remember { mutableStateOf("") }
     var navigationParameterValue by remember { mutableStateOf("") }
     var navigationParameterType by remember { mutableStateOf("text") }
-    var feedback by remember { mutableStateOf("As ações são apenas configurações; nada é executado automaticamente.") }
+    var feedback by remember { mutableStateOf("As ações são executadas somente na prévia do editor.") }
 
     fun save(next: StudioLogicDocument) {
         document = next
@@ -246,7 +246,232 @@ internal fun StudioLogicPanel(
                 onValueChange = { actionExpression = it.take(StudioLogicDocument.MAX_VALUE_LENGTH) },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(if (actionKind == "show_message") "Mensagem" else "Valor / expressão") },
-                supportingText = { Text("Referencie variáveis com ${'$'}{identificador}.") }
+                supportingText = { Text(if (actionTrigger == "on_value_change") "Use ${'
+            )
+            Button(
+                onClick = {
+                    val action = StudioActionDefinition(
+                        id = UUID.randomUUID().toString(),
+                        trigger = actionTrigger,
+                        kind = actionKind,
+                        componentId = if (actionTrigger == "on_screen_open") "" else actionComponentId,
+                        target = actionTarget.trim(),
+                        expression = actionExpression.trim(),
+                        navigationParameters = if (actionKind == "navigate") navigationParameters else emptyList()
+                    )
+                    val next = document.copy(actions = document.actions + action)
+                    val errors = next.validate(screens.map { it.id }.toSet(), components.map { it.id }.toSet())
+                    if (errors.isEmpty()) {
+                        save(next)
+                        actionTarget = ""; actionExpression = ""
+                        navigationParameters = emptyList()
+                        navigationParameterKey = ""; navigationParameterValue = ""; navigationParameterType = "text"
+                        feedback = "Ação salva. Será executada somente na prévia do editor."
+                    } else feedback = errors.first()
+                },
+                enabled = document.actions.size < StudioLogicDocument.MAX_ACTIONS &&
+                    (actionTrigger == "on_screen_open" || (actionComponentId.isNotBlank() && components.any { it.id == actionComponentId })) &&
+                    (actionKind == "show_message" && actionExpression.isNotBlank() ||
+                     actionKind == "navigate" && actionTarget.isNotBlank() ||
+                     actionKind == "set_variable" && actionTarget.isNotBlank() && actionExpression.isNotBlank()),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Add, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Adicionar ação")
+            }
+
+            if (document.actions.isEmpty()) {
+                Text("Nenhuma ação configurada.", color = LogicMuted, fontSize = 12.sp)
+            } else {
+                document.actions.forEach { action ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("${action.trigger} · ${components.firstOrNull { it.id == action.componentId }?.label ?: if (action.trigger == "on_screen_open") "Tela" else "Componente removido"} → ${action.kind}", color = LogicInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                (listOf(action.target, action.expression).filter { it.isNotBlank() } +
+                                    action.navigationParameters.map { it.key + "=" + it.value + " (" + it.type + ")" }).joinToString(" · ").ifBlank { "Sem parâmetros" } +
+                                    if (action.enabled) "" else " · DESATIVADA",
+                                color = LogicMuted, fontSize = 10.sp
+                            )
+                        }
+                        IconButton(onClick = { save(document.copy(actions = document.actions.filterNot { it.id == action.id })) }) {
+                            Icon(Icons.Default.DeleteOutline, contentDescription = "Remover ação", tint = LogicMuted)
+                        }
+                    }
+                    HorizontalDivider(color = Color(0xFFE8EDF3))
+                }
+            }
+
+            Text(feedback, color = LogicMuted, fontSize = 11.sp, lineHeight = 16.sp)
+            OutlinedButton(
+                onClick = {
+                    val errors = document.validate(screens.map { it.id }.toSet())
+                    if (errors.isEmpty()) {
+                        prefs.edit().putString(STUDIO_LOGIC_PREFS_KEY, document.toJson()).apply()
+                        feedback = "Configuração validada e salva neste dispositivo."
+                    } else feedback = errors.first()
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Save, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Validar e salvar dados e ações")
+            }
+        }
+    }
+}
+}{value} para o valor digitado ou ${'
+            )
+            Button(
+                onClick = {
+                    val action = StudioActionDefinition(
+                        id = UUID.randomUUID().toString(),
+                        trigger = actionTrigger,
+                        kind = actionKind,
+                        componentId = if (actionTrigger == "on_screen_open") "" else actionComponentId,
+                        target = actionTarget.trim(),
+                        expression = actionExpression.trim(),
+                        navigationParameters = if (actionKind == "navigate") navigationParameters else emptyList()
+                    )
+                    val next = document.copy(actions = document.actions + action)
+                    val errors = next.validate(screens.map { it.id }.toSet(), components.map { it.id }.toSet())
+                    if (errors.isEmpty()) {
+                        save(next)
+                        actionTarget = ""; actionExpression = ""
+                        navigationParameters = emptyList()
+                        navigationParameterKey = ""; navigationParameterValue = ""; navigationParameterType = "text"
+                        feedback = "Ação salva. Ela ainda não é executada pelo editor."
+                    } else feedback = errors.first()
+                },
+                enabled = document.actions.size < StudioLogicDocument.MAX_ACTIONS &&
+                    (actionTrigger == "on_screen_open" || (actionComponentId.isNotBlank() && components.any { it.id == actionComponentId })) &&
+                    (actionKind == "show_message" && actionExpression.isNotBlank() ||
+                     actionKind == "navigate" && actionTarget.isNotBlank() ||
+                     actionKind == "set_variable" && actionTarget.isNotBlank() && actionExpression.isNotBlank()),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Add, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Adicionar ação")
+            }
+
+            if (document.actions.isEmpty()) {
+                Text("Nenhuma ação configurada.", color = LogicMuted, fontSize = 12.sp)
+            } else {
+                document.actions.forEach { action ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("${action.trigger} · ${components.firstOrNull { it.id == action.componentId }?.label ?: if (action.trigger == "on_screen_open") "Tela" else "Componente removido"} → ${action.kind}", color = LogicInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                (listOf(action.target, action.expression).filter { it.isNotBlank() } +
+                                    action.navigationParameters.map { it.key + "=" + it.value + " (" + it.type + ")" }).joinToString(" · ").ifBlank { "Sem parâmetros" } +
+                                    if (action.enabled) "" else " · DESATIVADA",
+                                color = LogicMuted, fontSize = 10.sp
+                            )
+                        }
+                        IconButton(onClick = { save(document.copy(actions = document.actions.filterNot { it.id == action.id })) }) {
+                            Icon(Icons.Default.DeleteOutline, contentDescription = "Remover ação", tint = LogicMuted)
+                        }
+                    }
+                    HorizontalDivider(color = Color(0xFFE8EDF3))
+                }
+            }
+
+            Text(feedback, color = LogicMuted, fontSize = 11.sp, lineHeight = 16.sp)
+            OutlinedButton(
+                onClick = {
+                    val errors = document.validate(screens.map { it.id }.toSet())
+                    if (errors.isEmpty()) {
+                        prefs.edit().putString(STUDIO_LOGIC_PREFS_KEY, document.toJson()).apply()
+                        feedback = "Configuração validada e salva neste dispositivo."
+                    } else feedback = errors.first()
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Save, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Validar e salvar dados e ações")
+            }
+        }
+    }
+}
+}{identificador} para variáveis." else "Referencie variáveis com ${'
+            )
+            Button(
+                onClick = {
+                    val action = StudioActionDefinition(
+                        id = UUID.randomUUID().toString(),
+                        trigger = actionTrigger,
+                        kind = actionKind,
+                        componentId = if (actionTrigger == "on_screen_open") "" else actionComponentId,
+                        target = actionTarget.trim(),
+                        expression = actionExpression.trim(),
+                        navigationParameters = if (actionKind == "navigate") navigationParameters else emptyList()
+                    )
+                    val next = document.copy(actions = document.actions + action)
+                    val errors = next.validate(screens.map { it.id }.toSet(), components.map { it.id }.toSet())
+                    if (errors.isEmpty()) {
+                        save(next)
+                        actionTarget = ""; actionExpression = ""
+                        navigationParameters = emptyList()
+                        navigationParameterKey = ""; navigationParameterValue = ""; navigationParameterType = "text"
+                        feedback = "Ação salva. Ela ainda não é executada pelo editor."
+                    } else feedback = errors.first()
+                },
+                enabled = document.actions.size < StudioLogicDocument.MAX_ACTIONS &&
+                    (actionTrigger == "on_screen_open" || (actionComponentId.isNotBlank() && components.any { it.id == actionComponentId })) &&
+                    (actionKind == "show_message" && actionExpression.isNotBlank() ||
+                     actionKind == "navigate" && actionTarget.isNotBlank() ||
+                     actionKind == "set_variable" && actionTarget.isNotBlank() && actionExpression.isNotBlank()),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Add, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Adicionar ação")
+            }
+
+            if (document.actions.isEmpty()) {
+                Text("Nenhuma ação configurada.", color = LogicMuted, fontSize = 12.sp)
+            } else {
+                document.actions.forEach { action ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("${action.trigger} · ${components.firstOrNull { it.id == action.componentId }?.label ?: if (action.trigger == "on_screen_open") "Tela" else "Componente removido"} → ${action.kind}", color = LogicInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text(
+                                (listOf(action.target, action.expression).filter { it.isNotBlank() } +
+                                    action.navigationParameters.map { it.key + "=" + it.value + " (" + it.type + ")" }).joinToString(" · ").ifBlank { "Sem parâmetros" } +
+                                    if (action.enabled) "" else " · DESATIVADA",
+                                color = LogicMuted, fontSize = 10.sp
+                            )
+                        }
+                        IconButton(onClick = { save(document.copy(actions = document.actions.filterNot { it.id == action.id })) }) {
+                            Icon(Icons.Default.DeleteOutline, contentDescription = "Remover ação", tint = LogicMuted)
+                        }
+                    }
+                    HorizontalDivider(color = Color(0xFFE8EDF3))
+                }
+            }
+
+            Text(feedback, color = LogicMuted, fontSize = 11.sp, lineHeight = 16.sp)
+            OutlinedButton(
+                onClick = {
+                    val errors = document.validate(screens.map { it.id }.toSet())
+                    if (errors.isEmpty()) {
+                        prefs.edit().putString(STUDIO_LOGIC_PREFS_KEY, document.toJson()).apply()
+                        feedback = "Configuração validada e salva neste dispositivo."
+                    } else feedback = errors.first()
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Save, null)
+                Spacer(Modifier.width(6.dp))
+                Text("Validar e salvar dados e ações")
+            }
+        }
+    }
+}
+}{identificador}.") }
             )
             Button(
                 onClick = {

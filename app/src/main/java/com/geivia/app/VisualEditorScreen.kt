@@ -507,7 +507,7 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                     }
                 }
             }
-            StudioLogicPanel(context)
+            StudioLogicPanel(context, screenRegistry.toList())
 
             Text(message, color = EditorMuted, fontSize = 11.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
         }

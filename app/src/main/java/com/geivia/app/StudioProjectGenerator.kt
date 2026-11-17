@@ -127,7 +127,7 @@ dependencies {
         val readme = "# " + appName + "\n\nProjeto Android Kotlin/Jetpack Compose gerado pelo GEIVIA Studio.\nAbra no Android Studio e sincronize o Gradle.\nAs ações declarativas ainda precisam ser conectadas às regras de negócio. Assets externos precisam ser copiados para os recursos do app.\n\nPackage: " + pkg + "\n"
         return linkedMapOf(
             "settings.gradle.kts" to settings,
-            "gradle.properties" to "android.useAndroidX=true\\norg.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8\\nkotlin.code.style=official\\n",
+            "gradle.properties" to "android.useAndroidX=true\norg.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8\nkotlin.code.style=official\n",
             "build.gradle.kts" to rootGradle,
             "app/build.gradle.kts" to appGradle,
             "app/src/main/AndroidManifest.xml" to manifest,

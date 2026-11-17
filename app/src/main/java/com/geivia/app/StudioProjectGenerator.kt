@@ -58,6 +58,7 @@ internal object StudioProjectGenerator {
             appendLine("    var navigationCount by remember { mutableIntStateOf(0) }")
             appendLine("    val variables = remember { mutableStateMapOf<String, String>().apply {")
             logic.variables.forEach { variable -> appendLine("        put(" + quote(variable.key) + ", " + quote(variable.initialValue) + ")") }
+            start?.inputParameters?.forEach { parameter -> appendLine("        put(" + quote(parameter.key) + ", " + quote(parameter.defaultValue) + ")") }
             appendLine("    } }")
             appendLine("    fun resolve(expression: String, value: String = \"\"): String = Regex(\"\\\\$\\\\{([A-Za-z_][A-Za-z0-9_]*)\\\\}\").replace(expression) { match -> if (match.groupValues[1] == \"value\") value else variables[match.groupValues[1]].orEmpty() }")
             appendLine("    fun runAction(actionId: String, value: String = \"\") {")
@@ -67,6 +68,9 @@ internal object StudioProjectGenerator {
                 when (action.kind) {
                     "navigate" -> {
                         appendLine("                if (navigationCount < 25) {")
+                        screens.firstOrNull { it.id == action.target }?.inputParameters?.forEach { parameter ->
+                            appendLine("                    variables[" + quote(parameter.key) + "] = " + quote(parameter.defaultValue))
+                        }
                         action.navigationParameters.forEach { parameter ->
                             appendLine("                    variables[" + quote(parameter.key) + "] = resolve(" + quote(parameter.value) + ", value)")
                         }

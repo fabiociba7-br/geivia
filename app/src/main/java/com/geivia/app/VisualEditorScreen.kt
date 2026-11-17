@@ -155,6 +155,7 @@ internal fun VisualEditorScreen(
         }
     }
     var pendingExportFiles by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var pendingExportAssets by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     val projectExportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
         if (uri != null) {
             val result = runCatching {
@@ -163,6 +164,13 @@ internal fun VisualEditorScreen(
                     pendingExportFiles.forEach { (name, fileContent) ->
                         zip.putNextEntry(java.util.zip.ZipEntry(name))
                         zip.write(fileContent.toByteArray(Charsets.UTF_8))
+                        zip.closeEntry()
+                    }
+                    pendingExportAssets.forEach { (name, uriText) ->
+                        val input = context.contentResolver.openInputStream(android.net.Uri.parse(uriText))
+                            ?: error("Não foi possível ler um asset selecionado")
+                        zip.putNextEntry(java.util.zip.ZipEntry(name))
+                        input.use { it.copyTo(zip) }
                         zip.closeEntry()
                     }
                 }
@@ -1081,7 +1089,31 @@ internal fun VisualEditorScreen(
                             ).toMutableMap()
                             files["geivia-project.json"] = buildProjectJson()
                             files["assets.json"] = JSONArray(savedAssets).toString(2)
+                            val includedAssets = linkedMapOf<String, String>()
+                            val assetManifest = JSONArray()
+                            savedAssets.forEachIndexed { index, asset ->
+                                if (asset.startsWith("content://") || asset.startsWith("file://")) {
+                                    val uri = android.net.Uri.parse(asset)
+                                    val mime = context.contentResolver.getType(uri)
+                                    val extension = when (mime) {
+                                        "image/png" -> "png"
+                                        "image/jpeg" -> "jpg"
+                                        "image/webp" -> "webp"
+                                        "image/svg+xml" -> "svg"
+                                        "application/pdf" -> "pdf"
+                                        "text/plain" -> "txt"
+                                        else -> uri.lastPathSegment?.substringAfterLast('.', "bin")?.filter { it.isLetterOrDigit() }?.take(8)?.ifBlank { "bin" } ?: "bin"
+                                    }
+                                    val entryPath = "app/src/main/assets/geivia_asset_${index}.$extension"
+                                    includedAssets[entryPath] = asset
+                                    assetManifest.put(JSONObject().put("source", asset).put("path", entryPath).put("included", true))
+                                } else {
+                                    assetManifest.put(JSONObject().put("source", asset).put("included", false).put("note", "URL externa; adicione o arquivo ao projeto gerado"))
+                                }
+                            }
+                            files["assets-manifest.json"] = assetManifest.toString(2)
                             pendingExportFiles = files
+                            pendingExportAssets = includedAssets
                             val fileName = "GEIVIA_" + projectTitle.replace(Regex("[^A-Za-z0-9_-]"), "_") + ".zip"
                             projectExportLauncher.launch(fileName)
                             }

@@ -26,6 +26,7 @@ private val LogicInk = Color(0xFF17354D)
 private val LogicMuted = Color(0xFF718397)
 
 /** Visual editor for the declarative data/action layer. Actions are stored, never executed here. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun StudioLogicPanel(context: Context) {
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE) }

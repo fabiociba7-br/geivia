@@ -28,7 +28,8 @@ internal object StudioProjectGenerator {
         val pkg = packageName.split(".").joinToString(".") { part ->
             part.filter { it.isLetterOrDigit() || it.code == 95 }.ifBlank { "app" }
         }
-        val app = appName.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        val app = appName.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&apos;")
+        val projectSlug = appName.replace(Regex("[^A-Za-z0-9_-]"), "_").ifBlank { "GEIVIAApp" }
         val start = screens.firstOrNull { it.id == startScreenId } ?: screens.firstOrNull()
         val source = buildString {
             appendLine("package " + pkg)
@@ -90,7 +91,7 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories { google(); mavenCentral() }
 }
-rootProject.name = "$app"
+rootProject.name = "$projectSlug"
 include(":app")
 """
         val rootGradle = """plugins {

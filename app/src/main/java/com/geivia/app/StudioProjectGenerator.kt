@@ -59,7 +59,7 @@ internal object StudioProjectGenerator {
             appendLine("    val variables = remember { mutableStateMapOf<String, String>().apply {")
             logic.variables.forEach { variable -> appendLine("        put(" + quote(variable.key) + ", " + quote(variable.initialValue) + ")") }
             appendLine("    } }")
-            appendLine("    fun resolve(expression: String, value: String = \"\"): String = Regex(\"\"\"\\\\$\\\\{([A-Za-z_][A-Za-z0-9_]*)\\\\}\"\"\").replace(expression) { match -> if (match.groupValues[1] == \"value\") value else variables[match.groupValues[1]].orEmpty() }")
+            appendLine("    fun resolve(expression: String, value: String = \"\"): String = Regex(\"\\\\$\\\\{([A-Za-z_][A-Za-z0-9_]*)\\\\}\").replace(expression) { match -> if (match.groupValues[1] == \"value\") value else variables[match.groupValues[1]].orEmpty() }")
             appendLine("    fun runAction(actionId: String, value: String = \"\") {")
             appendLine("        when (actionId) {")
             logic.actions.filter { it.enabled }.forEach { action ->
@@ -206,19 +206,23 @@ dependencies {
                     val layout = if (isRow) "Row" else "Column"
                     val arrangement = if (isRow) "horizontalArrangement" else "verticalArrangement"
                     appendLine(indent + layout + "(Modifier.fillMaxWidth().padding(" + padding + ".dp), " + arrangement + " = Arrangement.spacedBy(8.dp)) {")
-                    if (element.text.isNotBlank()) appendLine(indent + "    Text(" + text + ", fontSize = " + size + ".sp, color = " + foreground + ")")
+                    if (element.text.isNotBlank()) appendLine(indent + "    Text(resolve(" + text + ", \"\"), fontSize = " + size + ".sp, color = " + foreground + ")")
                     children.forEach { append(render(it, all, depth + 1, primaryColor, defaultTextColor)) }
                     appendLine(indent + "}")
                 }
-                "button" -> appendLine(indent + "Button(onClick = {}, shape = RoundedCornerShape(" + radius + ".dp), colors = ButtonDefaults.buttonColors(containerColor = " + background + "), modifier = Modifier.padding(" + padding + ".dp)) { Text(" + text + ", color = " + foreground + ", fontSize = " + size + ".sp) }")
+                "button" -> appendLine(indent + "Button(onClick = { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, shape = RoundedCornerShape(" + radius + ".dp), colors = ButtonDefaults.buttonColors(containerColor = " + background + "), modifier = Modifier.padding(" + padding + ".dp)) { Text(resolve(" + text + ", \"\"), color = " + foreground + ", fontSize = " + size + ".sp) }")
                 "card" -> {
                     appendLine(indent + "Card(Modifier.fillMaxWidth().padding(" + padding + ".dp), shape = RoundedCornerShape(" + radius + ".dp), colors = CardDefaults.cardColors(containerColor = " + background + ")) {")
-                    if (children.isEmpty()) appendLine(indent + "    Text(" + text + ", Modifier.padding(12.dp), color = " + foreground + ", fontSize = " + size + ".sp)")
+                    if (children.isEmpty()) appendLine(indent + "    Text(resolve(" + text + ", \"\"), Modifier.padding(12.dp), color = " + foreground + ", fontSize = " + size + ".sp)")
                     else children.forEach { append(render(it, all, depth + 1, primaryColor, defaultTextColor)) }
                     appendLine(indent + "}")
                 }
-                "input" -> appendLine(indent + "OutlinedTextField(value = \"\", onValueChange = {}, label = { Text(" + text + ") }, modifier = Modifier.fillMaxWidth().padding(" + padding + ".dp), singleLine = true)")
-                "image" -> appendLine(indent + "Text(" + quote("[Imagem: " + element.text + "]") + ", Modifier.padding(" + padding + ".dp), color = Color.Gray)")
+                "input" -> {
+                    val inputName = "input_" + identifier(element.id)
+                    appendLine(indent + "var " + inputName + " by remember { mutableStateOf(\"\") }")
+                    appendLine(indent + "OutlinedTextField(value = " + inputName + ", onValueChange = { " + inputName + " = it; runActions(" + quote(element.id) + ", \"on_value_change\", it) }, label = { Text(resolve(" + text + ", \"\")) }, modifier = Modifier.fillMaxWidth().padding(" + padding + ".dp), singleLine = true)")
+                }
+                "image" -> appendLine(indent + "Text(resolve(" + quote("[Imagem: " + element.text + "]") + ", \"\"), Modifier.padding(" + padding + ".dp), color = Color.Gray)")
                 "divider" -> appendLine(indent + "HorizontalDivider(Modifier.padding(vertical = " + padding + ".dp))")
                 "spacer" -> appendLine(indent + "Spacer(Modifier.height(" + padding.coerceAtLeast(8f) + ".dp))")
                 else -> {
@@ -227,7 +231,7 @@ dependencies {
                         "end" -> "TextAlign.End"
                         else -> "TextAlign.Start"
                     }
-                    appendLine(indent + "Text(" + text + ", Modifier.fillMaxWidth().padding(" + padding + ".dp), color = " + foreground + ", fontSize = " + size + ".sp, textAlign = " + alignment + ")")
+                    appendLine(indent + "Text(resolve(" + text + ", \"\"), Modifier.fillMaxWidth().padding(" + padding + ".dp), color = " + foreground + ", fontSize = " + size + ".sp, textAlign = " + alignment + ")")
                 }
             }
         }

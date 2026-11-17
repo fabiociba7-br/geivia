@@ -74,11 +74,13 @@ class StudioLogicDocumentTest {
     fun disabledActionsMayKeepReferencesToDeletedComponents() {
         val document = StudioLogicDocument(actions = listOf(
             StudioActionDefinition(
-                "old-action", "on_click", "show_message",
-                expression = "Ação antiga", enabled = false, componentId = "deletedButton"
+                "old-action", "on_click", "navigate",
+                target = "home", expression = "$" + "{deletedVariable}",
+                enabled = false, componentId = "deletedButton",
+                navigationParameters = listOf(StudioNavigationParameter("oldValue", "$" + "{deletedVariable}"))
             )
         ))
-        assertTrue(document.validate(availableComponentIds = setOf("currentButton")).isEmpty())
+        assertTrue(document.validate(setOf("home"), setOf("currentButton")).isEmpty())
     }
 
     @Test

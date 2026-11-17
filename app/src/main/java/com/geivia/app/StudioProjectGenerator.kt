@@ -125,7 +125,7 @@ dependencies {
     implementation("androidx.compose.material3:material3")
 }
 """
-        val readme = "# " + appName + "\n\nProjeto Android Kotlin/Jetpack Compose gerado pelo GEIVIA Studio.\nAbra no Android Studio e sincronize o Gradle.\nAs ações declarativas ainda precisam ser conectadas às regras de negócio. Assets externos precisam ser copiados para os recursos do app.\n\nPackage: " + pkg + "\n"
+        val readme = "# " + appName + "\n\nProjeto Android Kotlin/Jetpack Compose gerado pelo GEIVIA Studio.\nAbra no Android Studio e sincronize o Gradle.\nAs ações declarativas precisam ser conectadas às regras de negócio da versão de produção. Assets locais selecionados são incluídos em app/src/main/assets; URLs externas precisam ser baixadas e associadas manualmente.\n\nPackage: " + pkg + "\n"
         return linkedMapOf(
             "settings.gradle.kts" to settings,
             "gradle.properties" to "android.useAndroidX=true\norg.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8\nkotlin.code.style=official\n",

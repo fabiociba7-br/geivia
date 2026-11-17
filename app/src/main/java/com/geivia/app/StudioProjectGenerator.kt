@@ -118,7 +118,7 @@ internal object StudioProjectGenerator {
                 appendLine("        Text(resolve(" + quote(screen.name) + ", \"\"), fontSize = 22.sp, color = " + color(textColor, "Color(0xFF17354D)") + ")")
                 val screenComponents = components[screen.id].orEmpty()
                 screenComponents.filter { it.parentId == null && it.visible }.forEach {
-                    append(render(it, screenComponents, 2, primaryColor, textColor, runActions, resolve))
+                    append(render(it, screenComponents, 2, primaryColor, textColor))
                 }
                 appendLine("    }")
                 appendLine("}")

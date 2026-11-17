@@ -28,7 +28,7 @@ private val LogicMuted = Color(0xFF718397)
 /** Visual editor for the declarative data/action layer. Actions are stored, never executed here. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun StudioLogicPanel(context: Context) {
+internal fun StudioLogicPanel(context: Context, screens: List<StudioScreenDefinition> = emptyList()) {
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE) }
     var document by remember {
         mutableStateOf(
@@ -106,7 +106,7 @@ internal fun StudioLogicPanel(context: Context) {
                 onClick = {
                     val item = StudioVariableDefinition(variableKey.trim(), variableLabel.trim(), variableType, variableInitial)
                     val next = document.copy(variables = document.variables + item)
-                    val errors = next.validate()
+                    val errors = next.validate(screens.map { it.id }.toSet())
                     if (errors.isEmpty()) {
                         save(next)
                         variableKey = ""; variableLabel = ""; variableInitial = ""
@@ -161,7 +161,26 @@ internal fun StudioLogicPanel(context: Context) {
                 }
             }
             if (actionKind == "navigate") {
-                OutlinedTextField(value = actionTarget, onValueChange = { actionTarget = it.take(256) }, modifier = Modifier.fillMaxWidth(), label = { Text("ID da tela de destino") }, singleLine = true)
+                var screenMenuExpanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(expanded = screenMenuExpanded, onExpandedChange = { screenMenuExpanded = it }) {
+                    OutlinedTextField(
+                        value = screens.firstOrNull { it.id == actionTarget }?.let { "${it.name} (${it.id})" } ?: actionTarget,
+                        onValueChange = {},
+                        readOnly = true,
+                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        label = { Text("Tela de destino") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = screenMenuExpanded) }
+                    )
+                    ExposedDropdownMenu(expanded = screenMenuExpanded, onDismissRequest = { screenMenuExpanded = false }) {
+                        screens.forEach { screen ->
+                            DropdownMenuItem(
+                                text = { Text("${screen.name} · ${screen.id}") },
+                                onClick = { actionTarget = screen.id; screenMenuExpanded = false }
+                            )
+                        }
+                    }
+                }
+                if (screens.isEmpty()) Text("Crie uma tela antes de configurar a navegação.", color = LogicMuted, fontSize = 10.sp)
             } else if (actionKind == "set_variable") {
                 var expanded by remember { mutableStateOf(false) }
                 ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
@@ -239,7 +258,7 @@ internal fun StudioLogicPanel(context: Context) {
             Text(feedback, color = LogicMuted, fontSize = 11.sp, lineHeight = 16.sp)
             OutlinedButton(
                 onClick = {
-                    val errors = document.validate()
+                    val errors = document.validate(screens.map { it.id }.toSet())
                     if (errors.isEmpty()) {
                         prefs.edit().putString(STUDIO_LOGIC_PREFS_KEY, document.toJson()).apply()
                         feedback = "Configuração validada e salva neste dispositivo."

@@ -42,6 +42,11 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            // Keep the test build installable alongside an existing production GEIVIA.
+            applicationIdSuffix = ".test"
+            versionNameSuffix = "-test"
+        }
         getByName("release") {
             // CI refuses to publish an unsigned or differently signed APK.
             signingConfig = if (releaseSigningConfigured) {

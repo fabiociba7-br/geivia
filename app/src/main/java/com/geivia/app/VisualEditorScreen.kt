@@ -394,8 +394,24 @@ internal fun VisualEditorScreen(
             elements.filter { it.parentId in removed }.forEach { if (removed.add(it.id)) changed = true }
         } while (changed)
         elements.removeAll { it.id in removed }
+        // Keep the logic document consistent when a component (or its descendants) is deleted.
+        // Actions remain in the editor for recovery, but are disabled so preview/export cannot
+        // silently reference component IDs that no longer exist.
+        val logicKey = "geivia_studio_logic_v1_$projectKey"
+        val logicRaw = prefs.getString(logicKey, null)
+            ?: if (allowLegacyProjectData) prefs.getString("geivia_studio_logic_v1", null) else null
+        if (!logicRaw.isNullOrBlank()) {
+            runCatching { StudioLogicDocument.fromJson(logicRaw) }.getOrNull()?.let { logic ->
+                val updatedActions = logic.actions.map { action ->
+                    if (action.componentId in removed) action.copy(enabled = false) else action
+                }
+                if (updatedActions != logic.actions) {
+                    prefs.edit().putString(logicKey, logic.copy(actions = updatedActions).toJson()).apply()
+                }
+            }
+        }
         selectedId = elements.getOrNull((index - 1).coerceAtLeast(0))?.id
-        message = "Componente removido"
+        message = "Componente removido; ações vinculadas foram desativadas"
     }
 
     fun duplicateSelected() {

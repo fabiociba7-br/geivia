@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -34,7 +35,11 @@ private data class StudioElement(
     val fontSize: Float = 16f,
     val padding: Float = 12f,
     val alignment: String = "start",
-    val parentId: String? = null
+    val parentId: String? = null,
+    val backgroundColor: String = "#FFFFFF",
+    val textColor: String = "#17354D",
+    val cornerRadius: Float = 10f,
+    val visible: Boolean = true
 )
 
 private val EditorBlue = Color(0xFF1769AA)
@@ -93,7 +98,11 @@ internal fun VisualEditorScreen(
                     alignment = item.optString("alignment", "start").let {
                         if (it in listOf("start", "center", "end")) it else "start"
                     },
-                    parentId = item.optString("parentId").takeIf { it.isNotBlank() }
+                    parentId = item.optString("parentId").takeIf { it.isNotBlank() },
+                    backgroundColor = item.optString("backgroundColor", "#FFFFFF"),
+                    textColor = item.optString("textColor", "#17354D"),
+                    cornerRadius = item.optDouble("cornerRadius", 10.0).toFloat().coerceIn(0f, 32f),
+                    visible = item.optBoolean("visible", true)
                 )
             }
         }.getOrDefault(emptyList())
@@ -121,7 +130,7 @@ internal fun VisualEditorScreen(
     val selected = elements.getOrNull(selectedIndex)
 
     fun addElement(type: String, text: String) {
-        val parent = selected?.takeIf { it.type == "section" }?.id
+        val parent = selected?.takeIf { it.type in setOf("section", "column", "row", "card") }?.id
         val element = StudioElement(type = type, text = text, parentId = parent)
         elements.add(element)
         selectedId = element.id
@@ -137,7 +146,11 @@ internal fun VisualEditorScreen(
                 .put("fontSize", element.fontSize.toDouble())
                 .put("padding", element.padding.toDouble())
                 .put("alignment", element.alignment)
-                .put("parentId", element.parentId ?: ""))
+                .put("parentId", element.parentId ?: "")
+                .put("backgroundColor", element.backgroundColor)
+                .put("textColor", element.textColor)
+                .put("cornerRadius", element.cornerRadius.toDouble())
+                .put("visible", element.visible))
         }
         val registry = StudioScreenDocument(screens = screenRegistry.toList(), startScreenId = startScreenId)
         prefs.edit()
@@ -597,7 +610,7 @@ internal fun VisualEditorScreen(
                             found
                         }
                         val availableParents = elements.filter {
-                            it.type == "section" && it.id != selectedId && it.id !in descendantIds
+                            it.type in setOf("section", "column", "row", "card") && it.id != selectedId && it.id !in descendantIds
                         }
                         Box {
                             OutlinedButton(onClick = { parentMenuExpanded = true }) {

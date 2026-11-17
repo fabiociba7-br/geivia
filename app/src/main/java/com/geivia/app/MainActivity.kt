@@ -328,8 +328,8 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { page = "dashboard" }) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Voltar ao Studio")
+                        IconButton(onClick = { page = "visual_editor" }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Voltar ao editor")
                         }
                         Column {
                             Text("Terminal GEIVIA", fontWeight = FontWeight.Bold)

@@ -140,6 +140,22 @@ internal fun VisualEditorScreen(
             message = "Asset adicionado ao projeto"
         }
     }
+    var pendingExportFiles by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    val projectExportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        if (uri != null) {
+            val result = runCatching {
+                val output = context.contentResolver.openOutputStream(uri) ?: error("Não foi possível abrir o arquivo de destino")
+                java.util.zip.ZipOutputStream(output).use { zip ->
+                    pendingExportFiles.forEach { (name, fileContent) ->
+                        zip.putNextEntry(java.util.zip.ZipEntry(name))
+                        zip.write(fileContent.toByteArray(Charsets.UTF_8))
+                        zip.closeEntry()
+                    }
+                }
+            }
+            message = if (result.isSuccess) "Projeto Android exportado em ZIP" else "Falha ao exportar o projeto"
+        }
+    }
     val editorDrawerState = rememberDrawerState(DrawerValue.Closed)
     val editorScope = rememberCoroutineScope()
     var parentMenuExpanded by remember { mutableStateOf(false) }
@@ -1015,7 +1031,33 @@ internal fun VisualEditorScreen(
                     )
                     "code" -> {
                         val projectJson = buildProjectJson()
-                        Text("Estrutura versionada do projeto GEIVIA. Este arquivo preserva telas, componentes, hierarquia, tema e assets; ainda não é o código Kotlin/Gradle final.", color = EditorMuted, fontSize = 12.sp)
+                        Text("Exporte um projeto Android nativo com Kotlin, Jetpack Compose, Manifest e arquivos Gradle. As ações declarativas e os assets externos ainda precisam ser conectados ao projeto gerado.", color = EditorMuted, fontSize = 12.sp)
+                        Button(onClick = {
+                            saveSchema()
+                            val generatedComponents = screenRegistry.associate { screen ->
+                                val sourceElements = if (screen.id == activeScreenId) elements.toList()
+                                    else decodeElements(prefs.getString("${EDITOR_SCHEMA_KEY}_${screen.id}", null))
+                                screen.id to sourceElements.map { item ->
+                                    StudioGeneratedElement(item.id, item.type, item.text, item.fontSize, item.padding, item.alignment, item.parentId, item.backgroundColor, item.textColor, item.cornerRadius, item.visible)
+                                }
+                            }
+                            val files = StudioProjectGenerator.files(
+                                packageName = "com.generated.geivia",
+                                appName = projectTitle,
+                                screens = screenRegistry.toList(),
+                                components = generatedComponents,
+                                startScreenId = startScreenId,
+                                primaryColor = themePrimary,
+                                backgroundColor = themeBackground,
+                                textColor = themeText
+                            ).toMutableMap()
+                            files["geivia-project.json"] = buildProjectJson()
+                            pendingExportFiles = files
+                            val fileName = "GEIVIA_" + projectTitle.replace(Regex("[^A-Za-z0-9_-]"), "_") + ".zip"
+                            projectExportLauncher.launch(fileName)
+                        }, modifier = Modifier.fillMaxWidth()) {
+                            Icon(Icons.Default.Archive, null); Spacer(Modifier.width(7.dp)); Text("Exportar projeto Android (.ZIP)")
+                        }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager

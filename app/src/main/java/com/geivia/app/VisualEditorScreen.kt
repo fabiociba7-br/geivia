@@ -66,7 +66,7 @@ internal fun VisualEditorScreen(
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE) }
     val projectIdForStorage = prefs.getString("selected_project_id", null).orEmpty().ifBlank { "local" }
     val projectKey = projectIdForStorage.replace(Regex("[^A-Za-z0-9_-]"), "_")
-    val allowLegacyProjectData = !prefs.getBoolean("studio_project_migrated_$projectKey", false)
+    val allowLegacyProjectData = !prefs.getBoolean("studio_legacy_data_migrated", false) && !prefs.getBoolean("studio_project_migrated_$projectKey", false)
     val screenRegistryPrefKey = "geivia_studio_screens_v1_$projectKey"
     val schemaPrefix = "${EDITOR_SCHEMA_KEY}_$projectKey"
     val themePrimaryPrefKey = "studio_theme_primary_$projectKey"
@@ -127,7 +127,7 @@ internal fun VisualEditorScreen(
         mutableStateListOf<StudioElement>().apply {
             val perScreen = prefs.getString("${schemaPrefix}_${activeScreenId}", null)
             val legacyPerScreen = if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_${activeScreenId}", null) else null
-            val legacyHome = if (allowLegacyProjectData) prefs.getString(EDITOR_SCHEMA_KEY, null) else null
+            val legacyHome = if (allowLegacyProjectData && activeScreenId == "home") prefs.getString(EDITOR_SCHEMA_KEY, null) else null
             addAll(decodeElements(perScreen ?: legacyPerScreen ?: legacyHome))
             if (isEmpty() && perScreen == null && legacyPerScreen == null && legacyHome == null) {
                 add(StudioElement(type = "text", text = "Meu primeiro aplicativo"))
@@ -208,6 +208,7 @@ internal fun VisualEditorScreen(
             .putString("${schemaPrefix}_${activeScreenId}", array.toString())
             .putString(screenRegistryPrefKey, registry.toJson())
             .putBoolean("studio_project_migrated_$projectKey", true)
+            .putBoolean("studio_legacy_data_migrated", true)
             .putString(themePrimaryPrefKey, themePrimary)
             .putString(themeBackgroundPrefKey, themeBackground)
             .putString(themeTextPrefKey, themeText)

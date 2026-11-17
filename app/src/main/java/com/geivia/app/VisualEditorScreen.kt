@@ -1196,7 +1196,7 @@ internal fun VisualEditorScreen(
                             saveSchema()
                             val generatedComponents = screenRegistry.associate { screen ->
                                 val sourceElements = if (screen.id == activeScreenId) elements.toList()
-                                    else decodeElements(prefs.getString("${EDITOR_SCHEMA_KEY}_${screen.id}", null))
+                                    else decodeElements(prefs.getString("${schemaPrefix}_${screen.id}", null) ?: if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_${screen.id}", null) else null)
                                 screen.id to sourceElements.map { item ->
                                     StudioGeneratedElement(item.id, item.type, item.text, item.fontSize, item.padding, item.alignment, item.parentId, item.backgroundColor, item.textColor, item.cornerRadius, item.visible)
                                 }

@@ -46,27 +46,56 @@ private const val EDITOR_SCHEMA_KEY = "geivia_studio_schema_v1"
 @Composable
 internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE) }
+    val screenRegistry = remember {
+        mutableStateListOf<StudioScreenDefinition>().apply {
+            val saved = prefs.getString("geivia_studio_screens_v1", null)
+            if (!saved.isNullOrBlank()) runCatching {
+                addAll(StudioScreenDocument.fromJson(saved).screens)
+            }
+            if (isEmpty()) add(StudioScreenDefinition("home", "Início"))
+        }
+    }
+    var activeScreenId by remember { mutableStateOf(screenRegistry.first().id) }
+    var startScreenId by remember {
+        mutableStateOf(
+            runCatching {
+                StudioScreenDocument.fromJson(prefs.getString("geivia_studio_screens_v1", null).orEmpty()).startScreenId
+            }.getOrDefault(screenRegistry.first().id).takeIf { candidate ->
+                screenRegistry.any { it.id == candidate }
+            } ?: screenRegistry.first().id
+        )
+    }
+    var renamingScreenId by remember { mutableStateOf<String?>(null) }
+    var renameValue by remember { mutableStateOf("") }
+
+    fun decodeElements(saved: String?): List<StudioElement> {
+        if (saved.isNullOrBlank()) return emptyList()
+        return runCatching {
+            val array = JSONArray(saved)
+            (0 until array.length()).map { index ->
+                val item = array.getJSONObject(index)
+                StudioElement(
+                    id = item.optString("id", UUID.randomUUID().toString()),
+                    type = item.optString("type", "text"),
+                    text = item.optString("text", ""),
+                    fontSize = item.optDouble("fontSize", 16.0).toFloat().coerceIn(12f, 32f),
+                    padding = item.optDouble("padding", 12.0).toFloat().coerceIn(4f, 28f),
+                    alignment = item.optString("alignment", "start").let {
+                        if (it in listOf("start", "center", "end")) it else "start"
+                    },
+                    parentId = item.optString("parentId").takeIf { it.isNotBlank() }
+                )
+            }
+        }.getOrDefault(emptyList())
+    }
+
     val elements = remember {
         mutableStateListOf<StudioElement>().apply {
-            val saved = prefs.getString(EDITOR_SCHEMA_KEY, null)
-            if (!saved.isNullOrBlank()) runCatching {
-                val array = JSONArray(saved)
-                for (i in 0 until array.length()) {
-                    val item = array.getJSONObject(i)
-                    add(StudioElement(
-                        id = item.optString("id", UUID.randomUUID().toString()),
-                        type = item.optString("type", "text"),
-                        text = item.optString("text", ""),
-                        fontSize = item.optDouble("fontSize", 16.0).toFloat().coerceIn(12f, 32f),
-                        padding = item.optDouble("padding", 12.0).toFloat().coerceIn(4f, 28f),
-                        alignment = item.optString("alignment", "start").let {
-                            if (it in listOf("start", "center", "end")) it else "start"
-                        },
-                        parentId = item.optString("parentId").takeIf { it.isNotBlank() }
-                    ))
-                }
+            val perScreen = prefs.getString("${EDITOR_SCHEMA_KEY}_${activeScreenId}", null)
+            addAll(decodeElements(perScreen ?: prefs.getString(EDITOR_SCHEMA_KEY, null)))
+            if (isEmpty() && perScreen == null && prefs.getString(EDITOR_SCHEMA_KEY, null) == null) {
+                add(StudioElement(type = "text", text = "Meu primeiro aplicativo"))
             }
-            if (isEmpty()) add(StudioElement(type = "text", text = "Meu primeiro aplicativo"))
         }
     }
     var selectedId by remember { mutableStateOf(elements.firstOrNull()?.id) }
@@ -97,8 +126,52 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                 .put("alignment", element.alignment)
                 .put("parentId", element.parentId ?: ""))
         }
-        prefs.edit().putString(EDITOR_SCHEMA_KEY, array.toString()).apply()
-        message = "Projeto salvo neste dispositivo"
+        val registry = StudioScreenDocument(screens = screenRegistry.toList(), startScreenId = startScreenId)
+        prefs.edit()
+            .putString("${EDITOR_SCHEMA_KEY}_${activeScreenId}", array.toString())
+            .putString(EDITOR_SCHEMA_KEY, if (activeScreenId == "home") array.toString() else prefs.getString(EDITOR_SCHEMA_KEY, array.toString()))
+            .putString("geivia_studio_screens_v1", registry.toJson())
+            .apply()
+        message = "Tela salva neste dispositivo"
+    }
+
+    fun switchScreen(screenId: String) {
+        if (screenId == activeScreenId || screenRegistry.none { it.id == screenId }) return
+        saveSchema()
+        activeScreenId = screenId
+        elements.clear()
+        elements.addAll(decodeElements(prefs.getString("${EDITOR_SCHEMA_KEY}_${screenId}", null)))
+        selectedId = elements.firstOrNull()?.id
+        message = "Tela alterada"
+    }
+
+    fun addScreen() {
+        if (screenRegistry.size >= StudioScreenDocument.MAX_SCREENS) {
+            message = "Limite de telas atingido"
+            return
+        }
+        saveSchema()
+        val number = screenRegistry.size + 1
+        val id = "screen_${UUID.randomUUID().toString().replace("-", "").take(10)}"
+        screenRegistry.add(StudioScreenDefinition(id, "Tela $number"))
+        activeScreenId = id
+        elements.clear()
+        selectedId = null
+        prefs.edit().putString(
+            "geivia_studio_screens_v1",
+            StudioScreenDocument(screenRegistry.toList(), startScreenId).toJson()
+        ).apply()
+        message = "Nova tela criada"
+    }
+
+    fun setStartScreen(screenId: String) {
+        if (screenRegistry.none { it.id == screenId }) return
+        startScreenId = screenId
+        prefs.edit().putString(
+            "geivia_studio_screens_v1",
+            StudioScreenDocument(screenRegistry.toList(), startScreenId).toJson()
+        ).apply()
+        message = "Tela inicial definida"
     }
     fun updateSelected(transform: (StudioElement) -> StudioElement) {
         if (selectedIndex >= 0) elements[selectedIndex] = transform(elements[selectedIndex])
@@ -166,6 +239,76 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                         EditorPaletteButton("Espaço", Icons.Default.SpaceBar) { addElement("spacer", "Espaço") }
                     }
                     Text("Adicione elementos. Segure e arraste um item na árvore para reordenar componentes do mesmo nível.", color = EditorMuted, fontSize = 11.sp)
+                }
+            }
+
+            Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(18.dp)) {
+                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Telas do aplicativo", color = EditorInk, fontWeight = FontWeight.Bold)
+                            Text("${screenRegistry.size} tela(s) · cada tela possui seus próprios componentes", color = EditorMuted, fontSize = 11.sp)
+                        }
+                        Button(onClick = { addScreen() }, enabled = screenRegistry.size < StudioScreenDocument.MAX_SCREENS) {
+                            Icon(Icons.Default.Add, null)
+                            Spacer(Modifier.width(4.dp))
+                            Text("Nova tela")
+                        }
+                    }
+                    screenRegistry.forEach { screen ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            FilterChip(
+                                selected = activeScreenId == screen.id,
+                                onClick = { switchScreen(screen.id) },
+                                label = { Text(screen.name, maxLines = 1) },
+                                leadingIcon = if (activeScreenId == screen.id) {
+                                    { Icon(Icons.Default.PhoneAndroid, null, modifier = Modifier.size(16.dp)) }
+                                } else null
+                            )
+                            Spacer(Modifier.weight(1f))
+                            TextButton(onClick = {
+                                renamingScreenId = screen.id
+                                renameValue = screen.name
+                            }) {
+                                Text("Renomear", fontSize = 10.sp)
+                            }
+                            TextButton(onClick = { setStartScreen(screen.id) }) {
+                                Text(if (startScreenId == screen.id) "Tela inicial" else "Definir início", fontSize = 10.sp)
+                            }
+                        }
+                        Text("ID: ${screen.id}", color = EditorMuted, fontSize = 9.sp)
+                    }
+                    if (renamingScreenId != null) {
+                        AlertDialog(
+                            onDismissRequest = { renamingScreenId = null },
+                            title = { Text("Renomear tela") },
+                            text = {
+                                OutlinedTextField(
+                                    value = renameValue,
+                                    onValueChange = { renameValue = it.take(StudioScreenDocument.MAX_NAME_LENGTH) },
+                                    label = { Text("Nome da tela") },
+                                    singleLine = true
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    val index = screenRegistry.indexOfFirst { it.id == renamingScreenId }
+                                    if (index >= 0 && renameValue.isNotBlank()) {
+                                        screenRegistry[index] = screenRegistry[index].copy(name = renameValue.trim())
+                                        prefs.edit().putString(
+                                            "geivia_studio_screens_v1",
+                                            StudioScreenDocument(screenRegistry.toList(), startScreenId).toJson()
+                                        ).apply()
+                                        message = "Nome da tela atualizado"
+                                    }
+                                    renamingScreenId = null
+                                }, enabled = renameValue.isNotBlank()) { Text("Salvar") }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { renamingScreenId = null }) { Text("Cancelar") }
+                            }
+                        )
+                    }
                 }
             }
 
@@ -405,6 +548,24 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                     }
                 }
             }
+            StudioLogicPanel(
+                context = context,
+                screens = screenRegistry.toList(),
+                components = screenRegistry.flatMap { screen ->
+                    val screenElements = if (screen.id == activeScreenId) {
+                        elements.toList()
+                    } else {
+                        decodeElements(prefs.getString("${EDITOR_SCHEMA_KEY}_${screen.id}", null))
+                    }
+                    screenElements.map { element ->
+                        StudioComponentDefinition(
+                            id = element.id,
+                            label = "${screen.name} · ${element.type}: ${element.text.ifBlank { "Sem texto" }}"
+                        )
+                    }
+                }
+            )
+
             Text(message, color = EditorMuted, fontSize = 11.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
         }
     }

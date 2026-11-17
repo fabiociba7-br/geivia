@@ -66,7 +66,7 @@ internal fun StudioDashboardScreen(
         StudioNavItem("WORKSPACE", "Meus projetos", Icons.Default.FolderOpen, { navigate(onProjects) }),
         StudioNavItem("CRIAR APLICATIVOS", "Editor visual", Icons.Default.Widgets, { navigate(onEditor) }),
         StudioNavItem("CRIAR APLICATIVOS", "Biblioteca de componentes", Icons.Default.Extension, enabled = false),
-        StudioNavItem("CRIAR APLICATIVOS", "Ações e lógica", Icons.Default.AccountTree, enabled = false),
+        StudioNavItem("CRIAR APLICATIVOS", "Ações e lógica", Icons.Default.AccountTree, { navigate(onEditor) }),
         StudioNavItem("DADOS E SERVIÇOS", "Firebase e dados", Icons.Default.CloudQueue, { navigate(onFirebase) }),
         StudioNavItem("DADOS E SERVIÇOS", "Integrações", Icons.Default.Extension, { navigate(onIntegrations) }),
         StudioNavItem("TESTAR E PUBLICAR", "Pré-visualização", Icons.Default.Visibility, { navigate(onPreview) }),
@@ -146,7 +146,7 @@ internal fun StudioDashboardScreen(
                         }
                     }
                     Spacer(Modifier.height(8.dp))
-                    Text("Android + Web", color = StudioNavy, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                    Text("Plataforma Android", color = StudioNavy, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                     Text("Plataformas do GEIVIA", color = StudioMuted, fontSize = 10.sp)
                     Spacer(Modifier.height(12.dp))
                 }
@@ -183,7 +183,7 @@ internal fun StudioDashboardScreen(
             ) {
                 Text("Olá! Vamos construir?", color = StudioNavy, fontSize = 27.sp, fontWeight = FontWeight.ExtraBold)
                 Spacer(Modifier.height(5.dp))
-                Text("Crie, organize e prepare seus aplicativos Android e web em um só lugar.", color = StudioMuted, fontSize = 14.sp, lineHeight = 20.sp)
+                Text("Crie, organize e prepare aplicativos Android nativos em um só lugar.", color = StudioMuted, fontSize = 14.sp, lineHeight = 20.sp)
                 Spacer(Modifier.height(20.dp))
 
                 Card(
@@ -230,8 +230,8 @@ internal fun StudioDashboardScreen(
                     StudioMetricCard(
                         modifier = Modifier.weight(1f),
                         icon = Icons.Default.Devices,
-                        value = "2",
-                        label = "Plataformas"
+                        value = "1",
+                        label = "Plataforma"
                     )
                 }
 
@@ -277,7 +277,7 @@ internal fun StudioDashboardScreen(
                         Column {
                             Text("Evolução da plataforma", color = StudioNavy, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                             Spacer(Modifier.height(4.dp))
-                            Text("O editor visual já permite adicionar, selecionar, editar, reorganizar e salvar componentes. Árvore hierárquica, arrastar e soltar, dados dinâmicos, ações e geração Android/Web serão evoluções seguintes.", color = StudioMuted, fontSize = 12.sp, lineHeight = 18.sp)
+                            Text("O editor visual já permite adicionar, selecionar, editar, reorganizar e salvar componentes. Árvore hierárquica, arrastar e soltar, dados dinâmicos, ações e geração de aplicativos Android serão evoluções seguintes.", color = StudioMuted, fontSize = 12.sp, lineHeight = 18.sp)
                         }
                     }
                 }

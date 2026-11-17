@@ -154,8 +154,10 @@ dependencies {
         return buildString {
             when (element.type) {
                 "section", "column", "row" -> {
-                    val layout = if (element.type == "row") "Row" else "Column"
-                    appendLine(indent + layout + "(Modifier.fillMaxWidth().padding(" + padding + ".dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {")
+                    val isRow = element.type == "row"
+                    val layout = if (isRow) "Row" else "Column"
+                    val arrangement = if (isRow) "horizontalArrangement" else "verticalArrangement"
+                    appendLine(indent + layout + "(Modifier.fillMaxWidth().padding(" + padding + ".dp), " + arrangement + " = Arrangement.spacedBy(8.dp)) {")
                     if (element.text.isNotBlank()) appendLine(indent + "    Text(" + text + ", fontSize = " + size + ".sp, color = " + foreground + ")")
                     children.forEach { append(render(it, all, depth + 1, primaryColor, defaultTextColor)) }
                     appendLine(indent + "}")

@@ -26,6 +26,7 @@ O GEIVIA Studio é uma plataforma visual para criar aplicativos Android nativos.
 - O editor mobile-first abre em um canvas de tela cheia com menu lateral, barra flutuante, prévia e ações de testar/publicar.
 - O editor permite inserir e editar texto, botões, cartões, campos, imagens, divisores, espaços, linhas, colunas e seções; organizar hierarquia, reordenar, duplicar, desfazer/refazer e excluir componentes.
 - Propriedades por componente incluem texto, tamanho, espaçamento, alinhamento, cores, arredondamento e visibilidade.
+- Telas, componentes, tema, assets, variáveis e ações são armazenados por projeto e salvos localmente automaticamente.
 - Painéis do Studio incluem páginas, componentes, tema, assets, ações/lógica e estrutura exportável.
 - O painel de dados e ações permite cadastrar variáveis de texto, número, booleano e JSON.
 - O painel permite definir gatilhos e ações de mensagem, navegação e alteração de variável.

@@ -397,7 +397,7 @@ internal fun VisualEditorScreen(
                             Text("PRÉVIA", color = EditorBlue, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                         }
                         elements.filter { it.parentId == null }.forEach { element ->
-                            EditorCanvasNode(element, elements, null) {}
+                            EditorCanvasNode(element, elements, null, editorColor(themePrimary, EditorBlue), editorColor(themeText, EditorInk)) {}
                         }
                     }
                 }
@@ -451,7 +451,7 @@ internal fun VisualEditorScreen(
                                 }
                             } else {
                                 elements.filter { it.parentId == null && it.visible }.forEach { element ->
-                                    EditorCanvasNode(element, elements, selectedId) { selectedId = it }
+                                    EditorCanvasNode(element, elements, selectedId, editorColor(themePrimary, EditorBlue), editorColor(themeText, EditorInk)) { selectedId = it }
                                 }
                             }
                         }
@@ -681,7 +681,7 @@ internal fun VisualEditorScreen(
                                 Icon(Icons.Default.MoreHoriz, null, tint = EditorMuted)
                             }
                             elements.filter { it.parentId == null }.forEach { element ->
-                                EditorCanvasNode(element = element, allElements = elements, selectedId = selectedId, onSelect = { selectedId = it })
+                                EditorCanvasNode(element = element, allElements = elements, selectedId = selectedId, primaryColor = editorColor(themePrimary, EditorBlue), defaultTextColor = editorColor(themeText, EditorInk), onSelect = { selectedId = it })
                             }
                         }
                     }
@@ -722,6 +722,26 @@ internal fun VisualEditorScreen(
                             valueRange = 4f..28f,
                             steps = 11
                         )
+                        OutlinedTextField(
+                            value = selected.backgroundColor,
+                            onValueChange = { value -> updateSelected { it.copy(backgroundColor = value.take(9)) } },
+                            label = { Text("Fundo do componente (HEX)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = selected.textColor,
+                            onValueChange = { value -> updateSelected { it.copy(textColor = value.take(9)) } },
+                            label = { Text("Cor do texto (HEX)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Text("Arredondamento: ${selected.cornerRadius.toInt()} dp", color = EditorInk, fontSize = 12.sp)
+                        Slider(value = selected.cornerRadius, onValueChange = { value -> updateSelected { it.copy(cornerRadius = value) } }, valueRange = 0f..32f, steps = 7)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Componente visível", color = EditorInk, modifier = Modifier.weight(1f))
+                            Switch(checked = selected.visible, onCheckedChange = { value -> updateSelected { it.copy(visible = value) } })
+                        }
                         Text("Alinhamento", color = EditorInk, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             listOf("start" to "Esquerda", "center" to "Centro", "end" to "Direita").forEach { (value, label) ->
@@ -983,15 +1003,17 @@ private fun EditorCanvasNode(
     element: StudioElement,
     allElements: List<StudioElement>,
     selectedId: String?,
+    primaryColor: Color = EditorBlue,
+    defaultTextColor: Color = EditorInk,
     onSelect: (String) -> Unit
 ) {
     if (!element.visible) return
     val children = allElements.filter { it.parentId == element.id && it.visible }
     val selected = element.id == selectedId
-    val defaultBackground = if (element.type == "button") EditorBlue else Color.White
-    val defaultText = if (element.type == "button") Color.White else EditorInk
-    val componentBackground = editorColor(element.backgroundColor, defaultBackground)
-    val componentText = editorColor(element.textColor, defaultText)
+    val defaultBackground = if (element.type == "button") primaryColor else Color.White
+    val defaultText = if (element.type == "button") Color.White else defaultTextColor
+    val componentBackground = if (element.type == "button" && element.backgroundColor == "#FFFFFF") primaryColor else editorColor(element.backgroundColor, defaultBackground)
+    val componentText = if (element.type == "button" && element.textColor == "#17354D") Color.White else editorColor(element.textColor, defaultText)
     val container = element.type in setOf("section", "column", "row") || (element.type == "card" && children.isNotEmpty())
     Surface(
         modifier = Modifier.fillMaxWidth().clickable { onSelect(element.id) },
@@ -1009,11 +1031,11 @@ private fun EditorCanvasNode(
                 } else if (element.type == "row") {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                         children.forEach { child ->
-                            Box(Modifier.weight(1f)) { EditorCanvasNode(child, allElements, selectedId, onSelect) }
+                            Box(Modifier.weight(1f)) { EditorCanvasNode(child, allElements, selectedId, primaryColor, defaultTextColor, onSelect) }
                         }
                     }
                 } else {
-                    children.forEach { child -> EditorCanvasNode(child, allElements, selectedId, onSelect) }
+                    children.forEach { child -> EditorCanvasNode(child, allElements, selectedId, primaryColor, defaultTextColor, onSelect) }
                 }
             } else {
                 val align = when (element.alignment) {

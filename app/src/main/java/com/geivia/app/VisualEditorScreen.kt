@@ -107,6 +107,12 @@ internal fun VisualEditorScreen(
     var renamingScreenId by remember(projectKey) { mutableStateOf<String?>(null) }
     var renameValue by remember(projectKey) { mutableStateOf("") }
     var screenToDeleteId by remember(projectKey) { mutableStateOf<String?>(null) }
+    var parameterEditorScreenId by remember(projectKey) { mutableStateOf<String?>(null) }
+    var parameterKeyInput by remember(projectKey) { mutableStateOf("") }
+    var parameterLabelInput by remember(projectKey) { mutableStateOf("") }
+    var parameterDefaultInput by remember(projectKey) { mutableStateOf("") }
+    var parameterTypeInput by remember(projectKey) { mutableStateOf("text") }
+    var parameterRequiredInput by remember(projectKey) { mutableStateOf(false) }
 
     fun decodeElements(saved: String?): List<StudioElement> {
         if (saved.isNullOrBlank()) return emptyList()
@@ -415,6 +421,53 @@ internal fun VisualEditorScreen(
         redoStack.clear()
         message = "Tela ${removedScreen.name} removida; ações vinculadas foram desativadas"
     }
+    fun updateScreenDefinition(updated: StudioScreenDefinition) {
+        val index = screenRegistry.indexOfFirst { it.id == updated.id }
+        if (index < 0) return
+        screenRegistry[index] = updated
+        prefs.edit().putString(
+            screenRegistryPrefKey,
+            StudioScreenDocument(screenRegistry.toList(), startScreenId).toJson()
+        ).putBoolean("studio_project_migrated_$projectKey", true).apply()
+    }
+
+    fun addScreenParameter(screenId: String) {
+        val screen = screenRegistry.firstOrNull { it.id == screenId } ?: return
+        if (screen.inputParameters.size >= StudioScreenDocument.MAX_INPUT_PARAMETERS) {
+            message = "Limite de parâmetros desta tela atingido"
+            return
+        }
+        val parameter = StudioScreenInputParameter(
+            key = parameterKeyInput.trim(),
+            label = parameterLabelInput.trim(),
+            type = parameterTypeInput,
+            required = parameterRequiredInput,
+            defaultValue = parameterDefaultInput
+        )
+        val updated = screen.copy(inputParameters = screen.inputParameters + parameter)
+        val errors = StudioScreenDocument(
+            screens = screenRegistry.map { if (it.id == screenId) updated else it },
+            startScreenId = startScreenId
+        ).validate()
+        if (errors.isNotEmpty()) {
+            message = errors.first()
+            return
+        }
+        updateScreenDefinition(updated)
+        parameterKeyInput = ""
+        parameterLabelInput = ""
+        parameterDefaultInput = ""
+        parameterTypeInput = "text"
+        parameterRequiredInput = false
+        message = "Parâmetro de entrada adicionado"
+    }
+
+    fun removeScreenParameter(screenId: String, key: String) {
+        val screen = screenRegistry.firstOrNull { it.id == screenId } ?: return
+        updateScreenDefinition(screen.copy(inputParameters = screen.inputParameters.filterNot { it.key == key }))
+        message = "Parâmetro removido"
+    }
+
     fun undo() {
         if (undoStack.isEmpty()) return
         redoStack.add(elements.toList())
@@ -1196,6 +1249,14 @@ internal fun VisualEditorScreen(
                                         Text(if (screen.id == startScreenId) "Tela inicial" else "Tela do aplicativo", color = EditorMuted, fontSize = 10.sp)
                                     }
                                     TextButton(onClick = { switchScreen(screen.id); workspacePanel = "canvas" }) { Text(if (screen.id == activeScreenId) "Aberta" else "Abrir") }
+                                    TextButton(onClick = {
+                                        parameterEditorScreenId = screen.id
+                                        parameterKeyInput = ""
+                                        parameterLabelInput = ""
+                                        parameterDefaultInput = ""
+                                        parameterTypeInput = "text"
+                                        parameterRequiredInput = false
+                                    }) { Text("Entradas") }
                                     if (screen.id != startScreenId) TextButton(onClick = { setStartScreen(screen.id) }) { Text("Início") }
                                     if (screenRegistry.size > 1) {
                                         IconButton(onClick = { screenToDeleteId = screen.id }) {
@@ -1203,6 +1264,64 @@ internal fun VisualEditorScreen(
                                         }
                                     }
                                 }
+                            }
+                        }
+                        parameterEditorScreenId?.let { targetId ->
+                            val targetScreen = screenRegistry.firstOrNull { it.id == targetId }
+                            if (targetScreen == null) {
+                                parameterEditorScreenId = null
+                            } else {
+                                AlertDialog(
+                                    onDismissRequest = { parameterEditorScreenId = null },
+                                    title = { Text("Parâmetros de entrada · ${targetScreen.name}") },
+                                    text = {
+                                        Column(
+                                            Modifier.fillMaxWidth().heightIn(max = 480.dp).verticalScroll(rememberScrollState()),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Text("Valores padrão e parâmetros que podem ser enviados ao navegar para esta tela.", color = EditorMuted, fontSize = 11.sp)
+                                            targetScreen.inputParameters.forEach { parameter ->
+                                                Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF4F7FB))) {
+                                                    Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                                        Column(Modifier.weight(1f)) {
+                                                            Text(parameter.label, color = EditorInk, fontWeight = FontWeight.SemiBold)
+                                                            Text("${parameter.key} · ${parameter.type} · padrão: ${parameter.defaultValue.ifBlank { "vazio" }}", color = EditorMuted, fontSize = 10.sp)
+                                                        }
+                                                        IconButton(onClick = { removeScreenParameter(targetId, parameter.key) }) {
+                                                            Icon(Icons.Default.DeleteOutline, contentDescription = "Remover parâmetro", tint = Color(0xFFB33A3A))
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            if (targetScreen.inputParameters.size < StudioScreenDocument.MAX_INPUT_PARAMETERS) {
+                                                OutlinedTextField(value = parameterKeyInput, onValueChange = { parameterKeyInput = it.take(64) }, label = { Text("Identificador (ex.: userId)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                                                OutlinedTextField(value = parameterLabelInput, onValueChange = { parameterLabelInput = it.take(60) }, label = { Text("Nome exibido") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                                                Text("Tipo do parâmetro", color = EditorMuted, fontSize = 11.sp)
+                                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                    listOf("text", "number", "boolean", "json").forEach { type ->
+                                                        FilterChip(selected = parameterTypeInput == type, onClick = { parameterTypeInput = type }, label = { Text(type) })
+                                                    }
+                                                }
+                                                OutlinedTextField(value = parameterDefaultInput, onValueChange = { parameterDefaultInput = it.take(4096) }, label = { Text("Valor padrão") }, modifier = Modifier.fillMaxWidth())
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Text("Obrigatório", color = EditorInk, modifier = Modifier.weight(1f))
+                                                    Switch(checked = parameterRequiredInput, onCheckedChange = { parameterRequiredInput = it })
+                                                }
+                                            } else {
+                                                Text("Limite de parâmetros atingido.", color = EditorMuted, fontSize = 11.sp)
+                                            }
+                                        }
+                                    },
+                                    confirmButton = {
+                                        TextButton(
+                                            onClick = { addScreenParameter(targetId) },
+                                            enabled = targetScreen.inputParameters.size < StudioScreenDocument.MAX_INPUT_PARAMETERS
+                                        ) { Text("Adicionar") }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { parameterEditorScreenId = null }) { Text("Fechar") }
+                                    }
+                                )
                             }
                         }
                         screenToDeleteId?.let { targetId ->

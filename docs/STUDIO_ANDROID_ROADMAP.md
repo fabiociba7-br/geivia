@@ -26,9 +26,11 @@ O GEIVIA Studio é uma plataforma visual para criar aplicativos Android nativos.
 - O editor permite inserir e editar componentes básicos, organizar a hierarquia e salvar a estrutura localmente.
 - O painel de dados e ações permite cadastrar variáveis de texto, número, booleano e JSON.
 - O painel permite definir gatilhos e ações de mensagem, navegação e alteração de variável.
+- O editor já possui cadastro, seleção, renomeação e definição da tela inicial, com componentes persistidos separadamente por tela.
+- A navegação declarativa usa a lista de telas do projeto e valida referências a destinos inexistentes.
 - As definições são persistidas em JSON versionado e validadas; ainda não existe motor de execução dessas ações.
 - A geração de APK não faz parte das validações automáticas.
 
 ## Próxima entrega
 
-Conectar ações aos componentes selecionados e implementar navegação entre múltiplas telas, mantendo as ações como definições até que o fluxo de execução seja implementado e testado explicitamente.
+Vincular gatilhos aos componentes selecionados e definir parâmetros de navegação entre telas. As ações continuam declarativas, sem execução automática, até que o fluxo de execução seja implementado e testado explicitamente.

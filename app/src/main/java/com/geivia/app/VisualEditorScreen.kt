@@ -324,6 +324,11 @@ internal fun VisualEditorScreen(
         message = "Ordem dos componentes atualizada"
     }
 
+    LaunchedEffect(activeScreenId, elements.toList(), screenRegistry.toList(), startScreenId) {
+        kotlinx.coroutines.delay(400)
+        saveSchema()
+    }
+
     ModalNavigationDrawer(
         drawerState = editorDrawerState,
         drawerContent = {
@@ -482,7 +487,7 @@ internal fun VisualEditorScreen(
                         Text("Editor de aplicativo · Android", color = EditorMuted, fontSize = 10.sp)
                     }
                     Surface(color = Color(0xFFEAF3FB), shape = RoundedCornerShape(18.dp)) {
-                        Text("SALVO LOCALMENTE", modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp), color = EditorBlue, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                        Text("SALVAMENTO AUTOMÁTICO", modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp), color = EditorBlue, fontSize = 8.sp, fontWeight = FontWeight.Bold)
                     }
                 }
                 Box(Modifier.weight(1f).fillMaxWidth()) {

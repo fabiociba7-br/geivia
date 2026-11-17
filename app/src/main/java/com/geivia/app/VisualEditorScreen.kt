@@ -10,6 +10,7 @@ import org.json.JSONObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -1173,6 +1174,14 @@ internal fun VisualEditorScreen(
                                 Icon(Icons.Default.Description, null, tint = EditorBlue)
                                 Spacer(Modifier.width(8.dp))
                                 Text(asset, color = EditorInk, fontSize = 10.sp, modifier = Modifier.weight(1f), maxLines = 2)
+                                TextButton(onClick = {
+                                    if (selectedIndex >= 0) {
+                                        checkpoint()
+                                        updateSelected { it.copy(type = "image", text = asset) }
+                                        workspacePanel = "canvas"
+                                        message = "Imagem vinculada ao componente"
+                                    } else message = "Selecione um componente para vincular a imagem"
+                                }) { Text("Usar") }
                                 IconButton(onClick = { savedAssets.remove(asset); prefs.edit().putString(assetsPrefKey, JSONArray(savedAssets).toString()).apply() }) { Icon(Icons.Default.DeleteOutline, "Remover asset", tint = Color(0xFFB33A3A)) }
                             }
                         }

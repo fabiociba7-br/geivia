@@ -149,7 +149,12 @@ internal fun StudioLogicPanel(
                             save(document.copy(
                                 variables = document.variables.filterNot { it.key == variable.key },
                                 actions = document.actions.map { action ->
-                                    if (action.kind == "set_variable" && action.target == variable.key) action.copy(enabled = false) else action
+                                    val reference = "${" + variable.key + "}"
+                                    val dependsOnRemovedVariable =
+                                        (action.kind == "set_variable" && action.target == variable.key) ||
+                                            action.expression.contains(reference) ||
+                                            action.navigationParameters.any { it.value.contains(reference) }
+                                    if (dependsOnRemovedVariable) action.copy(enabled = false) else action
                                 }
                             ))
                             feedback = "Variável removida. Ações relacionadas foram desativadas para revisão."

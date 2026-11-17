@@ -220,6 +220,7 @@ internal fun VisualEditorScreen(
         previewMode = true
     }
     fun executePreviewActions(componentId: String, trigger: String, inputValue: String = "") {
+        if (trigger != "on_screen_open") previewNavigationGuard = 0
         val logic = readLogicDocument()
         val actions = logic.actions.filter {
             it.enabled && it.trigger == trigger &&

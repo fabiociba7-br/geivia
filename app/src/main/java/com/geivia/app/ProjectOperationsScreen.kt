@@ -113,15 +113,9 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
         val configFile = File(projectDir, "firebase.json")
         require(configFile.isFile) { "firebase.json não encontrado na raiz do projeto importado." }
         val config = JSONObject(configFile.readText())
-        val targets = mutableListOf<String>()
-        if (config.has("hosting") && config.opt("hosting") != JSONObject.NULL) targets += "hosting"
-        val firestore = config.optJSONObject("firestore")
-        if (firestore?.has("rules") == true) targets += "firestore:rules"
-        if (firestore?.has("indexes") == true) targets += "firestore:indexes"
-        if (config.has("storage") && config.opt("storage") != JSONObject.NULL) targets += "storage"
-        if (config.has("functions") && config.opt("functions") != JSONObject.NULL) targets += "functions"
-        require(targets.isNotEmpty()) { "Nenhum alvo Hosting, Firestore, Storage ou Functions foi encontrado no firebase.json." }
-        deployTargets = targets.distinct()
+        val targets = FirebaseDeployPlanner.targets(config)
+        require(targets.isNotEmpty()) { "Nenhum alvo implantável foi encontrado no firebase.json." }
+        deployTargets = targets
         showDeployConfirm = true
     }.onFailure { output = "Não foi possível preparar o deploy: ${it.message}" }
 }, enabled = !busy && projectDir.isNotBlank() && projectId.matches(Regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$")), modifier = Modifier.fillMaxWidth()) { Text("Preparar comando de deploy Firebase") }
@@ -183,10 +177,11 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Projeto: $projectId\nPasta importada no aparelho: $projectDir")
-                    Text("Alvos detectados no firebase.json: ${deployTargets.joinToString(", ")}. O deploy pode substituir conteúdo publicado e alterar regras de segurança. Nenhum comando será executado pelo GEIVIA.")
+                    Text("Alvos detectados no firebase.json: ${deployTargets.joinToString(", ")}. Hosting/Storage usam destinos individuais quando o arquivo define target; sem isso, o seletor pode abranger todos os destinos configurados. Firestore usa o seletor oficial único, que publica regras e índices juntos. Nenhum comando será executado pelo GEIVIA.")
                     Text("ANTES DE EXECUTAR", style = androidx.compose.material3.MaterialTheme.typography.labelMedium)
                     Text("1. Envie o mesmo ZIP para o ambiente Google Cloud Shell.\n2. Entre na pasta que contém firebase.json.\n3. Confira os alvos e as regras.\n4. Execute o comando abaixo somente depois da revisão.")
                     SelectionContainer { Text(deployCommand, fontSize = 12.sp, color = Color(0xFF1565C0)) }
+                    if ("functions" in deployTargets) Text("ATENÇÃO: Functions podem exigir plano Blaze e faturamento ativo; não execute se a exigência de custo zero continuar valendo.", fontSize = 12.sp, color = Color(0xFF9A3D22))
                     Text("O deploy pode gerar cobrança e afetar usuários. A confirmação nesta tela apenas prepara e copia o comando; não publica o projeto.", fontSize = 12.sp)
                 }
             },

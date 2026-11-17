@@ -37,7 +37,7 @@ internal object StudioProjectGenerator {
             appendLine()
             listOf(
                 "android.os.Bundle", "androidx.activity.ComponentActivity", "androidx.activity.compose.setContent",
-                "androidx.compose.foundation.background", "androidx.compose.foundation.layout.*",
+                "androidx.compose.foundation.background", "androidx.compose.foundation.clickable", "androidx.compose.foundation.layout.*",
                 "androidx.compose.foundation.rememberScrollState", "androidx.compose.foundation.shape.RoundedCornerShape",
                 "androidx.compose.foundation.verticalScroll", "androidx.compose.material3.*",
                 "androidx.compose.runtime.*", "androidx.compose.ui.Modifier", "androidx.compose.ui.graphics.Color",
@@ -205,14 +205,14 @@ dependencies {
                     val isRow = element.type == "row"
                     val layout = if (isRow) "Row" else "Column"
                     val arrangement = if (isRow) "horizontalArrangement" else "verticalArrangement"
-                    appendLine(indent + layout + "(Modifier.fillMaxWidth().padding(" + padding + ".dp), " + arrangement + " = Arrangement.spacedBy(8.dp)) {")
+                    appendLine(indent + layout + "(Modifier.fillMaxWidth().padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, " + arrangement + " = Arrangement.spacedBy(8.dp)) {")
                     if (element.text.isNotBlank()) appendLine(indent + "    Text(resolve(" + text + ", \"\"), fontSize = " + size + ".sp, color = " + foreground + ")")
                     children.forEach { append(render(it, all, depth + 1, primaryColor, defaultTextColor)) }
                     appendLine(indent + "}")
                 }
                 "button" -> appendLine(indent + "Button(onClick = { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, shape = RoundedCornerShape(" + radius + ".dp), colors = ButtonDefaults.buttonColors(containerColor = " + background + "), modifier = Modifier.padding(" + padding + ".dp)) { Text(resolve(" + text + ", \"\"), color = " + foreground + ", fontSize = " + size + ".sp) }")
                 "card" -> {
-                    appendLine(indent + "Card(Modifier.fillMaxWidth().padding(" + padding + ".dp), shape = RoundedCornerShape(" + radius + ".dp), colors = CardDefaults.cardColors(containerColor = " + background + ")) {")
+                    appendLine(indent + "Card(Modifier.fillMaxWidth().padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, shape = RoundedCornerShape(" + radius + ".dp), colors = CardDefaults.cardColors(containerColor = " + background + ")) {")
                     if (children.isEmpty()) appendLine(indent + "    Text(resolve(" + text + ", \"\"), Modifier.padding(12.dp), color = " + foreground + ", fontSize = " + size + ".sp)")
                     else children.forEach { append(render(it, all, depth + 1, primaryColor, defaultTextColor)) }
                     appendLine(indent + "}")
@@ -220,9 +220,9 @@ dependencies {
                 "input" -> {
                     val inputName = "input_" + identifier(element.id)
                     appendLine(indent + "var " + inputName + " by remember { mutableStateOf(\"\") }")
-                    appendLine(indent + "OutlinedTextField(value = " + inputName + ", onValueChange = { " + inputName + " = it; runActions(" + quote(element.id) + ", \"on_value_change\", it) }, label = { Text(resolve(" + text + ", \"\")) }, modifier = Modifier.fillMaxWidth().padding(" + padding + ".dp), singleLine = true)")
+                    appendLine(indent + "OutlinedTextField(value = " + inputName + ", onValueChange = { " + inputName + " = it; runActions(" + quote(element.id) + ", \"on_value_change\", it) }, label = { Text(resolve(" + text + ", \"\")) }, modifier = Modifier.fillMaxWidth().padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, singleLine = true)")
                 }
-                "image" -> appendLine(indent + "Text(resolve(" + quote("[Imagem: " + element.text + "]") + ", \"\"), Modifier.padding(" + padding + ".dp), color = Color.Gray)")
+                "image" -> appendLine(indent + "Text(resolve(" + quote("[Imagem: " + element.text + "]") + ", \"\"), Modifier.padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, color = Color.Gray)")
                 "divider" -> appendLine(indent + "HorizontalDivider(Modifier.padding(vertical = " + padding + ".dp))")
                 "spacer" -> appendLine(indent + "Spacer(Modifier.height(" + padding.coerceAtLeast(8f) + ".dp))")
                 else -> {
@@ -231,7 +231,7 @@ dependencies {
                         "end" -> "TextAlign.End"
                         else -> "TextAlign.Start"
                     }
-                    appendLine(indent + "Text(resolve(" + text + ", \"\"), Modifier.fillMaxWidth().padding(" + padding + ".dp), color = " + foreground + ", fontSize = " + size + ".sp, textAlign = " + alignment + ")")
+                    appendLine(indent + "Text(resolve(" + text + ", \"\"), Modifier.fillMaxWidth().padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, color = " + foreground + ", fontSize = " + size + ".sp, textAlign = " + alignment + ")")
                 }
             }
         }

@@ -246,7 +246,7 @@ internal fun StudioLogicPanel(
                 onValueChange = { actionExpression = it.take(StudioLogicDocument.MAX_VALUE_LENGTH) },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(if (actionKind == "show_message") "Mensagem" else "Valor / expressão") },
-                supportingText = { Text(if (actionTrigger == "on_value_change") "Use ${'
+                supportingText = { Text(if (actionTrigger == "on_value_change") "Use o valor digitado para atualizar uma variável." else "Referencie variáveis do projeto pelo identificador.") }
             )
             Button(
                 onClick = {

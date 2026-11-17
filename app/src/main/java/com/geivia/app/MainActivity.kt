@@ -285,6 +285,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onContinue = { page = "summary" })
                 "summary" -> SummaryScreen(answers.toMap(), costMode,
                     onBack = { page = "cost" }, onEdit = { page = "questions"; index = 0 }, onFinish = { page = "dashboard" })
+                "visual_editor" -> VisualEditorScreen(context) { page = "dashboard" }
                 "accounts" -> AccountsConnectionsScreen(
                     googleReady = prefs.getBoolean("google_cloud_cli_ready", false),
                     githubConnected = githubConnected,
@@ -353,6 +354,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                         page = "workspace_setup"
                     },
                     onProjects = { page = "project_operations" },
+                    onEditor = { page = "visual_editor" },
                     onPreview = { page = "project_preview" },
                     onFirebase = { page = "firebase_admin" },
                     onIntegrations = { page = "accounts" },

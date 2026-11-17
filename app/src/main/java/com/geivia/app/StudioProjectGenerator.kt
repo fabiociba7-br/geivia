@@ -1,0 +1,201 @@
+package com.geivia.app
+
+internal data class StudioGeneratedElement(
+    val id: String,
+    val type: String,
+    val text: String,
+    val fontSize: Float,
+    val padding: Float,
+    val alignment: String,
+    val parentId: String?,
+    val backgroundColor: String,
+    val textColor: String,
+    val cornerRadius: Float,
+    val visible: Boolean
+)
+
+internal object StudioProjectGenerator {
+    fun files(
+        packageName: String,
+        appName: String,
+        screens: List<StudioScreenDefinition>,
+        components: Map<String, List<StudioGeneratedElement>>,
+        startScreenId: String,
+        primaryColor: String,
+        backgroundColor: String,
+        textColor: String
+    ): Map<String, String> {
+        val pkg = packageName.split(".").joinToString(".") { part ->
+            part.filter { it.isLetterOrDigit() || it.code == 95 }.ifBlank { "app" }
+        }
+        val app = appName.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        val start = screens.firstOrNull { it.id == startScreenId } ?: screens.firstOrNull()
+        val source = buildString {
+            appendLine("package " + pkg)
+            appendLine()
+            listOf(
+                "android.os.Bundle", "androidx.activity.ComponentActivity", "androidx.activity.compose.setContent",
+                "androidx.compose.foundation.background", "androidx.compose.foundation.layout.*",
+                "androidx.compose.foundation.rememberScrollState", "androidx.compose.foundation.shape.RoundedCornerShape",
+                "androidx.compose.foundation.verticalScroll", "androidx.compose.material3.*",
+                "androidx.compose.runtime.*", "androidx.compose.ui.Modifier", "androidx.compose.ui.graphics.Color",
+                "androidx.compose.ui.text.style.TextAlign", "androidx.compose.ui.unit.dp", "androidx.compose.ui.unit.sp"
+            ).forEach { appendLine("import " + it) }
+            appendLine()
+            appendLine("class MainActivity : ComponentActivity() {")
+            appendLine("    override fun onCreate(savedInstanceState: Bundle?) {")
+            appendLine("        super.onCreate(savedInstanceState)")
+            appendLine("        setContent { MaterialTheme { GeneratedApp() } }")
+            appendLine("    }")
+            appendLine("}")
+            appendLine()
+            appendLine("@Composable")
+            appendLine("private fun GeneratedApp() {")
+            appendLine("    var current by remember { mutableStateOf(" + quote(start?.id ?: "home") + ") }")
+            appendLine("    when (current) {")
+            screens.forEach { screen ->
+                appendLine("        " + quote(screen.id) + " -> Screen_" + identifier(screen.id) + " { current = it }")
+            }
+            appendLine("        else -> Screen_" + identifier(start?.id ?: "home") + " { current = it }")
+            appendLine("    }")
+            appendLine("}")
+            screens.forEach { screen ->
+                appendLine()
+                appendLine("@Composable")
+                appendLine("private fun Screen_" + identifier(screen.id) + "(navigate: (String) -> Unit) {")
+                appendLine("    Column(Modifier.fillMaxSize().background(" + color(backgroundColor, "0xFFF3F6FA") + ").verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {")
+                appendLine("        Text(" + quote(screen.name) + ", fontSize = 22.sp, color = " + color(textColor, "0xFF17354D") + ")")
+                val screenComponents = components[screen.id].orEmpty()
+                screenComponents.filter { it.parentId == null && it.visible }.forEach {
+                    append(render(it, screenComponents, 2, primaryColor, textColor))
+                }
+                appendLine("    }")
+                appendLine("}")
+            }
+        }
+        val manifest = """<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:theme="@android:style/Theme.Material.Light.NoActionBar" android:label="$app">
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+"""
+        val settings = """pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories { google(); mavenCentral() }
+}
+rootProject.name = "$app"
+include(":app")
+"""
+        val rootGradle = """plugins {
+    id("com.android.application") version "8.7.3" apply false
+    id("org.jetbrains.kotlin.android") version "2.0.21" apply false
+    id("org.jetbrains.kotlin.plugin.compose") version "2.0.21" apply false
+}
+"""
+        val appGradle = """plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
+}
+android {
+    namespace = "$pkg"
+    compileSdk = 35
+    defaultConfig {
+        applicationId = "$pkg"
+        minSdk = 26
+        targetSdk = 35
+        versionCode = 1
+        versionName = "1.0"
+    }
+    buildFeatures { compose = true }
+}
+dependencies {
+    implementation(platform("androidx.compose:compose-bom:2024.12.01"))
+    implementation("androidx.activity:activity-compose:1.9.3")
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.material3:material3")
+}
+"""
+        val readme = "# " + appName + "\n\nProjeto Android Kotlin/Jetpack Compose gerado pelo GEIVIA Studio.\nAbra no Android Studio e sincronize o Gradle.\nAs ações declarativas ainda precisam ser conectadas às regras de negócio. Assets externos precisam ser copiados para os recursos do app.\n\nPackage: " + pkg + "\n"
+        return linkedMapOf(
+            "settings.gradle.kts" to settings,
+            "build.gradle.kts" to rootGradle,
+            "app/build.gradle.kts" to appGradle,
+            "app/src/main/AndroidManifest.xml" to manifest,
+            "app/src/main/java/" + pkg.replace('.', '/') + "/MainActivity.kt" to source,
+            "README.md" to readme
+        )
+    }
+
+    private fun render(
+        element: StudioGeneratedElement,
+        all: List<StudioGeneratedElement>,
+        depth: Int,
+        primaryColor: String,
+        defaultTextColor: String
+    ): String {
+        if (!element.visible) return ""
+        val indent = "    ".repeat(depth)
+        val text = quote(element.text)
+        val size = element.fontSize.coerceIn(8f, 48f)
+        val padding = element.padding.coerceIn(0f, 64f)
+        val radius = element.cornerRadius.coerceIn(0f, 40f)
+        val foreground = color(element.textColor, color(defaultTextColor, "0xFF17354D"))
+        val background = color(element.backgroundColor, color(primaryColor, "0xFF1769AA"))
+        val children = all.filter { it.parentId == element.id && it.visible }
+        return buildString {
+            when (element.type) {
+                "section", "column", "row" -> {
+                    val layout = if (element.type == "row") "Row" else "Column"
+                    appendLine(indent + layout + "(Modifier.fillMaxWidth().padding(" + padding + ".dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {")
+                    if (element.text.isNotBlank()) appendLine(indent + "    Text(" + text + ", fontSize = " + size + ".sp, color = " + foreground + ")")
+                    children.forEach { append(render(it, all, depth + 1, primaryColor, defaultTextColor)) }
+                    appendLine(indent + "}")
+                }
+                "button" -> appendLine(indent + "Button(onClick = {}, shape = RoundedCornerShape(" + radius + ".dp), colors = ButtonDefaults.buttonColors(containerColor = " + background + "), modifier = Modifier.padding(" + padding + ".dp)) { Text(" + text + ", color = " + foreground + ", fontSize = " + size + ".sp) }")
+                "card" -> {
+                    appendLine(indent + "Card(Modifier.fillMaxWidth().padding(" + padding + ".dp), shape = RoundedCornerShape(" + radius + ".dp), colors = CardDefaults.cardColors(containerColor = " + background + ")) {")
+                    if (children.isEmpty()) appendLine(indent + "    Text(" + text + ", Modifier.padding(12.dp), color = " + foreground + ", fontSize = " + size + ".sp)")
+                    else children.forEach { append(render(it, all, depth + 1, primaryColor, defaultTextColor)) }
+                    appendLine(indent + "}")
+                }
+                "input" -> appendLine(indent + "OutlinedTextField(value = \"\", onValueChange = {}, label = { Text(" + text + ") }, modifier = Modifier.fillMaxWidth().padding(" + padding + ".dp), singleLine = true)")
+                "image" -> appendLine(indent + "Text(" + quote("[Imagem: " + element.text + "]") + ", Modifier.padding(" + padding + ".dp), color = Color.Gray)")
+                "divider" -> appendLine(indent + "HorizontalDivider(Modifier.padding(vertical = " + padding + ".dp))")
+                "spacer" -> appendLine(indent + "Spacer(Modifier.height(" + padding.coerceAtLeast(8f) + ".dp))")
+                else -> {
+                    val alignment = when (element.alignment) {
+                        "center" -> "TextAlign.Center"
+                        "end" -> "TextAlign.End"
+                        else -> "TextAlign.Start"
+                    }
+                    appendLine(indent + "Text(" + text + ", Modifier.fillMaxWidth().padding(" + padding + ".dp), color = " + foreground + ", fontSize = " + size + ".sp, textAlign = " + alignment + ")")
+                }
+            }
+        }
+    }
+
+    private fun identifier(value: String): String = value.split(Regex("[^A-Za-z0-9]+"))
+        .filter { it.isNotBlank() }.joinToString("") { it.replaceFirstChar { c -> c.uppercase() } }
+        .ifBlank { "Screen" }
+
+    private fun quote(value: String): String = "\"" + value.replace("\\", "\\\\")
+        .replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r") + "\""
+
+    private fun color(value: String, fallback: String): String {
+        val hex = value.removePrefix("#")
+        return when {
+            hex.length == 6 && hex.all { it.digitToIntOrNull(16) != null } -> "Color(0xFF" + hex + ")"
+            hex.length == 8 && hex.all { it.digitToIntOrNull(16) != null } -> "Color(0x" + hex + ")"
+            else -> fallback
+        }
+    }
+}

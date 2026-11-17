@@ -29,9 +29,11 @@ private val StudioBackground = Color(0xFFF4F7FB)
 private val StudioMuted = Color(0xFF6B7C8F)
 
 private data class StudioNavItem(
+    val section: String,
     val title: String,
     val icon: ImageVector,
-    val action: () -> Unit
+    val action: () -> Unit,
+    val enabled: Boolean = true
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,6 +47,7 @@ internal fun StudioDashboardScreen(
     onIntegrations: () -> Unit,
     onTools: () -> Unit,
     onDiagnostics: () -> Unit,
+    onAccounts: () -> Unit,
     onLegacyDashboard: () -> Unit
 ) {
     val prefs = context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE)
@@ -58,14 +61,19 @@ internal fun StudioDashboardScreen(
         action()
     }
     val navItems = listOf(
-        StudioNavItem("Visão geral", Icons.Default.Dashboard) { },
-        StudioNavItem("Meus projetos", Icons.Default.FolderOpen) { navigate(onProjects) },
-        StudioNavItem("Pré-visualização", Icons.Default.Visibility) { navigate(onPreview) },
-        StudioNavItem("Firebase e dados", Icons.Default.CloudQueue) { navigate(onFirebase) },
-        StudioNavItem("Integrações", Icons.Default.Extension) { navigate(onIntegrations) },
-        StudioNavItem("Terminal e ferramentas", Icons.Default.Terminal) { navigate(onTools) },
-        StudioNavItem("Diagnóstico", Icons.Default.Build) { navigate(onDiagnostics) },
-        StudioNavItem("Acompanhamento clássico", Icons.Default.History) { navigate(onLegacyDashboard) }
+        StudioNavItem("WORKSPACE", "Visão geral", Icons.Default.Dashboard) { },
+        StudioNavItem("WORKSPACE", "Meus projetos", Icons.Default.FolderOpen) { navigate(onProjects) },
+        StudioNavItem("CRIAR APLICATIVOS", "Editor visual", Icons.Default.Widgets, {}, enabled = false),
+        StudioNavItem("CRIAR APLICATIVOS", "Biblioteca de componentes", Icons.Default.Extension, {}, enabled = false),
+        StudioNavItem("CRIAR APLICATIVOS", "Ações e lógica", Icons.Default.AccountTree, {}, enabled = false),
+        StudioNavItem("DADOS E SERVIÇOS", "Firebase e dados", Icons.Default.CloudQueue) { navigate(onFirebase) },
+        StudioNavItem("DADOS E SERVIÇOS", "Integrações", Icons.Default.Extension) { navigate(onIntegrations) },
+        StudioNavItem("TESTAR E PUBLICAR", "Pré-visualização", Icons.Default.Visibility) { navigate(onPreview) },
+        StudioNavItem("TESTAR E PUBLICAR", "Operações do projeto", Icons.Default.Publish) { navigate(onProjects) },
+        StudioNavItem("AMBIENTE", "Ferramentas e atualizações", Icons.Default.Terminal) { navigate(onTools) },
+        StudioNavItem("AMBIENTE", "Diagnóstico", Icons.Default.Build) { navigate(onDiagnostics) },
+        StudioNavItem("CONTA", "Contas e acesso", Icons.Default.AccountCircle) { navigate(onAccounts) },
+        StudioNavItem("AMBIENTE", "Acompanhamento clássico", Icons.Default.History) { navigate(onLegacyDashboard) }
     )
 
     ModalNavigationDrawer(
@@ -93,26 +101,48 @@ internal fun StudioDashboardScreen(
                     Text("WORKSPACE", color = StudioMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
                     Spacer(Modifier.height(8.dp))
                     navItems.forEachIndexed { index, item ->
+                        if (index == 0 || navItems[index - 1].section != item.section) {
+                            Spacer(Modifier.height(if (index == 0) 4.dp else 14.dp))
+                            Text(item.section, color = StudioMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+                            Spacer(Modifier.height(5.dp))
+                        }
                         NavigationDrawerItem(
-                            label = { Text(item.title, fontWeight = if (index == 0) FontWeight.SemiBold else FontWeight.Normal) },
+                            label = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(item.title, modifier = Modifier.weight(1f), fontWeight = if (index == 0) FontWeight.SemiBold else FontWeight.Normal)
+                                    if (!item.enabled) Text("EM BREVE", color = StudioMuted, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                                }
+                            },
                             icon = { Icon(item.icon, null) },
                             selected = index == 0,
+                            enabled = item.enabled,
                             onClick = item.action,
-                            modifier = Modifier.padding(vertical = 2.dp),
+                            modifier = Modifier.padding(vertical = 1.dp),
                             colors = NavigationDrawerItemDefaults.colors(
                                 selectedContainerColor = Color(0xFFE8F2FC),
                                 selectedIconColor = StudioBlue,
                                 selectedTextColor = StudioBlue,
                                 unselectedIconColor = StudioMuted,
-                                unselectedTextColor = StudioNavy
+                                unselectedTextColor = StudioNavy,
+                                disabledIconColor = Color(0xFFB7C1CC),
+                                disabledTextColor = Color(0xFF9AA7B4)
                             )
                         )
                     }
                     Spacer(Modifier.weight(1f))
                     HorizontalDivider(color = Color(0xFFE8EDF3))
                     Spacer(Modifier.height(12.dp))
-                    Text("Android + Web", color = StudioNavy, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                    Text("Plataformas atuais do GEIVIA", color = StudioMuted, fontSize = 11.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.AccountCircle, null, tint = StudioBlue, modifier = Modifier.size(19.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text("Conta e permissões", color = StudioNavy, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                            Text("Google Cloud • Firebase • GitHub", color = StudioMuted, fontSize = 10.sp)
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text("Android + Web", color = StudioNavy, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                    Text("Plataformas do GEIVIA", color = StudioMuted, fontSize = 10.sp)
                     Spacer(Modifier.height(12.dp))
                 }
             }
@@ -231,6 +261,8 @@ internal fun StudioDashboardScreen(
                 StudioActionCard(Icons.Default.CloudQueue, "Dados e Firebase", "Conecte serviços e acompanhe a configuração", true, onFirebase)
                 Spacer(Modifier.height(8.dp))
                 StudioActionCard(Icons.Default.Extension, "Integrações", "Contas Google, GitHub e conexões", true, onIntegrations)
+                Spacer(Modifier.height(8.dp))
+                StudioActionCard(Icons.Default.AccountCircle, "Contas e acesso", "Gerencie as autorizações do Google Cloud, Firebase e GitHub", true, onAccounts)
 
                 Spacer(Modifier.height(18.dp))
                 Card(shape = RoundedCornerShape(17.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF7EA))) {

@@ -32,7 +32,7 @@ private data class StudioNavItem(
     val section: String,
     val title: String,
     val icon: ImageVector,
-    val action: () -> Unit,
+    val action: () -> Unit = {},
     val enabled: Boolean = true
 )
 
@@ -61,19 +61,19 @@ internal fun StudioDashboardScreen(
         action()
     }
     val navItems = listOf(
-        StudioNavItem("WORKSPACE", "Visão geral", Icons.Default.Dashboard) { },
-        StudioNavItem("WORKSPACE", "Meus projetos", Icons.Default.FolderOpen) { navigate(onProjects) },
-        StudioNavItem("CRIAR APLICATIVOS", "Editor visual", Icons.Default.Widgets, {}, enabled = false),
-        StudioNavItem("CRIAR APLICATIVOS", "Biblioteca de componentes", Icons.Default.Extension, {}, enabled = false),
-        StudioNavItem("CRIAR APLICATIVOS", "Ações e lógica", Icons.Default.AccountTree, {}, enabled = false),
-        StudioNavItem("DADOS E SERVIÇOS", "Firebase e dados", Icons.Default.CloudQueue) { navigate(onFirebase) },
-        StudioNavItem("DADOS E SERVIÇOS", "Integrações", Icons.Default.Extension) { navigate(onIntegrations) },
-        StudioNavItem("TESTAR E PUBLICAR", "Pré-visualização", Icons.Default.Visibility) { navigate(onPreview) },
-        StudioNavItem("TESTAR E PUBLICAR", "Operações do projeto", Icons.Default.Publish) { navigate(onProjects) },
-        StudioNavItem("AMBIENTE", "Ferramentas e atualizações", Icons.Default.Terminal) { navigate(onTools) },
-        StudioNavItem("AMBIENTE", "Diagnóstico", Icons.Default.Build) { navigate(onDiagnostics) },
-        StudioNavItem("AMBIENTE", "Acompanhamento clássico", Icons.Default.History) { navigate(onLegacyDashboard) },
-        StudioNavItem("CONTA", "Contas e acesso", Icons.Default.AccountCircle) { navigate(onAccounts) }
+        StudioNavItem("WORKSPACE", "Visão geral", Icons.Default.Dashboard, {}),
+        StudioNavItem("WORKSPACE", "Meus projetos", Icons.Default.FolderOpen, { navigate(onProjects) }),
+        StudioNavItem("CRIAR APLICATIVOS", "Editor visual", Icons.Default.Widgets, enabled = false),
+        StudioNavItem("CRIAR APLICATIVOS", "Biblioteca de componentes", Icons.Default.Extension, enabled = false),
+        StudioNavItem("CRIAR APLICATIVOS", "Ações e lógica", Icons.Default.AccountTree, enabled = false),
+        StudioNavItem("DADOS E SERVIÇOS", "Firebase e dados", Icons.Default.CloudQueue, { navigate(onFirebase) }),
+        StudioNavItem("DADOS E SERVIÇOS", "Integrações", Icons.Default.Extension, { navigate(onIntegrations) }),
+        StudioNavItem("TESTAR E PUBLICAR", "Pré-visualização", Icons.Default.Visibility, { navigate(onPreview) }),
+        StudioNavItem("TESTAR E PUBLICAR", "Operações do projeto", Icons.Default.Publish, { navigate(onProjects) }),
+        StudioNavItem("AMBIENTE", "Ferramentas e atualizações", Icons.Default.Terminal, { navigate(onTools) }),
+        StudioNavItem("AMBIENTE", "Diagnóstico", Icons.Default.Build, { navigate(onDiagnostics) }),
+        StudioNavItem("AMBIENTE", "Acompanhamento clássico", Icons.Default.History, { navigate(onLegacyDashboard) }),
+        StudioNavItem("CONTA", "Contas e acesso", Icons.Default.AccountCircle, { navigate(onAccounts) })
     )
 
     ModalNavigationDrawer(
@@ -104,28 +104,34 @@ internal fun StudioDashboardScreen(
                             Text(item.section, color = StudioMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
                             Spacer(Modifier.height(5.dp))
                         }
-                        NavigationDrawerItem(
-                            label = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(item.title, modifier = Modifier.weight(1f), fontWeight = if (index == 0) FontWeight.SemiBold else FontWeight.Normal)
-                                    if (!item.enabled) Text("EM BREVE", color = StudioMuted, fontSize = 8.sp, fontWeight = FontWeight.Bold)
-                                }
-                            },
-                            icon = { Icon(item.icon, null) },
-                            selected = index == 0,
-                            enabled = item.enabled,
-                            onClick = item.action,
-                            modifier = Modifier.padding(vertical = 1.dp),
-                            colors = NavigationDrawerItemDefaults.colors(
-                                selectedContainerColor = Color(0xFFE8F2FC),
-                                selectedIconColor = StudioBlue,
-                                selectedTextColor = StudioBlue,
-                                unselectedIconColor = StudioMuted,
-                                unselectedTextColor = StudioNavy,
-                                disabledIconColor = Color(0xFFB7C1CC),
-                                disabledTextColor = Color(0xFF9AA7B4)
+                        if (item.enabled) {
+                            NavigationDrawerItem(
+                                label = {
+                                    Text(item.title, fontWeight = if (index == 0) FontWeight.SemiBold else FontWeight.Normal)
+                                },
+                                icon = { Icon(item.icon, null) },
+                                selected = index == 0,
+                                onClick = item.action,
+                                modifier = Modifier.padding(vertical = 1.dp),
+                                colors = NavigationDrawerItemDefaults.colors(
+                                    selectedContainerColor = Color(0xFFE8F2FC),
+                                    selectedIconColor = StudioBlue,
+                                    selectedTextColor = StudioBlue,
+                                    unselectedIconColor = StudioMuted,
+                                    unselectedTextColor = StudioNavy
+                                )
                             )
-                        )
+                        } else {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(item.icon, null, tint = Color(0xFFB7C1CC), modifier = Modifier.size(24.dp))
+                                Spacer(Modifier.width(12.dp))
+                                Text(item.title, modifier = Modifier.weight(1f), color = Color(0xFF9AA7B4), fontSize = 14.sp)
+                                Text("EM BREVE", color = StudioMuted, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
                     Spacer(Modifier.height(12.dp))
                     HorizontalDivider(color = Color(0xFFE8EDF3))

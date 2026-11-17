@@ -65,7 +65,7 @@ internal fun StudioDashboardScreen(
         StudioNavItem("WORKSPACE", "Visão geral", Icons.Default.Dashboard, {}),
         StudioNavItem("WORKSPACE", "Meus projetos", Icons.Default.FolderOpen, { navigate(onProjects) }),
         StudioNavItem("CRIAR APLICATIVOS", "Editor visual", Icons.Default.Widgets, { navigate(onEditor) }),
-        StudioNavItem("CRIAR APLICATIVOS", "Biblioteca de componentes", Icons.Default.Extension, enabled = false),
+        StudioNavItem("CRIAR APLICATIVOS", "Biblioteca de componentes", Icons.Default.Extension, { navigate(onEditor) }),
         StudioNavItem("CRIAR APLICATIVOS", "Ações e lógica", Icons.Default.AccountTree, { navigate(onEditor) }),
         StudioNavItem("DADOS E SERVIÇOS", "Firebase e dados", Icons.Default.CloudQueue, { navigate(onFirebase) }),
         StudioNavItem("DADOS E SERVIÇOS", "Integrações", Icons.Default.Extension, { navigate(onIntegrations) }),

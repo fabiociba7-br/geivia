@@ -38,6 +38,14 @@ class FirebaseDeployPlannerTest {
         )
     }
 
+    @Test
+    fun realtimeDatabaseTargetsAreScopedIndividually() {
+        val config = JSONObject().put("database", JSONArray()
+            .put(JSONObject().put("target", "primary").put("rules", "database.rules.json"))
+            .put(JSONObject().put("target", "secondary").put("rules", "database.secondary.rules.json")))
+        assertEquals(listOf("database:primary", "database:secondary"), FirebaseDeployPlanner.targets(config))
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun rejectsUnsafeDeployTargetNames() {
         FirebaseDeployPlanner.targets(

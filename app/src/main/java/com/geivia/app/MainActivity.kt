@@ -116,8 +116,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
             else if (!prefs.getBoolean("preflight_completed", false)) "preflight"
             // A completed analysis is a checkpoint, not the app's home screen.
             // Return an established workspace directly to GEIVIA Studio.
-            else if (savedCheckpoint in setOf("summary", "dashboard", "legacy_dashboard")) "dashboard"
-            else "welcome"
+            else "dashboard"
         )
     }
     var index by rememberSaveable {

@@ -101,6 +101,43 @@ class StudioLogicDocumentTest {
     }
 
     @Test
+    fun roundTripsTypedNavigationParameters() {
+        val original = StudioLogicDocument(actions = listOf(StudioActionDefinition(
+            "go-profile", "on_click", "navigate", target = "profile",
+            navigationParameters = listOf(StudioNavigationParameter("userId", "42", "number"), StudioNavigationParameter("origin", "dashboard"))
+        )))
+        val restored = StudioLogicDocument.fromJson(original.toJson())
+        assertEquals(original, restored)
+        assertTrue(restored.validate(setOf("home", "profile")).isEmpty())
+    }
+
+    @Test
+    fun rejectsInvalidNavigationParameterNamesAndTypes() {
+        val document = StudioLogicDocument(actions = listOf(StudioActionDefinition(
+            "go", "on_click", "navigate", target = "profile",
+            navigationParameters = listOf(StudioNavigationParameter("bad-name", "x"), StudioNavigationParameter("amount", "not-a-number", "number"))
+        )))
+        val errors = document.validate(setOf("profile"))
+        assertTrue(errors.any { it.contains("Nome de parâmetro inválido") })
+        assertTrue(errors.any { it.contains("Parâmetro numérico inválido") })
+    }
+
+    @Test
+    fun rejectsDuplicateNavigationParameterKeys() {
+        val document = StudioLogicDocument(actions = listOf(StudioActionDefinition(
+            "go", "on_click", "navigate", target = "profile",
+            navigationParameters = listOf(StudioNavigationParameter("id", "1"), StudioNavigationParameter("id", "2"))
+        )))
+        assertTrue(document.validate().any { it.contains("Parâmetros duplicados") })
+    }
+
+    @Test
+    fun readsLegacyActionsWithoutNavigationParameters() {
+        val legacy = """{"schemaVersion":1,"variables":[],"actions":[{"id":"old","trigger":"on_click","kind":"navigate","target":"home","enabled":true}]}"""
+        val restored = StudioLogicDocument.fromJson(legacy)
+        assertTrue(restored.actions.single().navigationParameters.isEmpty())
+    }
+    @Test
     fun rejectsOversizedDocuments() {
         val oversized = " ".repeat(StudioLogicDocument.MAX_VALUE_LENGTH * 130)
 

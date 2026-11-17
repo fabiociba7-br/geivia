@@ -105,7 +105,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
     val validWorkflowPages = setOf("device_access", "workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "accounts", "google_access", "github", "terminal", "toolchain_updates", "diagnostics", "project_operations", "project_preview", "firebase_admin", "legacy_dashboard")
     val savedCheckpoint = remember {
         prefs.getString("workflow_checkpoint", null)?.takeIf { it in validWorkflowPages }
-            ?.let { when (it) { "cloud_setup" -> "questions"; "terminal" -> "dashboard"; else -> it } }
+            ?.let { when (it) { "cloud_setup" -> "questions"; "terminal", "summary" -> "dashboard"; else -> it } }
             ?: if (prefs.getBoolean("cloud_setup_completed", false)) "questions" else "workspace_setup"
     }
     var page by rememberSaveable {

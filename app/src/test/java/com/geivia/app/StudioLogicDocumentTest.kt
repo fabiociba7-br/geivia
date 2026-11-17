@@ -14,7 +14,7 @@ class StudioLogicDocumentTest {
                 StudioVariableDefinition("counter", "Contador", "number", "0")
             ),
             actions = listOf(
-                StudioActionDefinition("action-1", "on_click", "set_variable", "counter", "${counter}")
+                StudioActionDefinition("action-1", "on_click", "set_variable", "counter", "\${counter}")
             )
         )
 

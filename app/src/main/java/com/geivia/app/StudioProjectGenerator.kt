@@ -77,8 +77,15 @@ internal object StudioProjectGenerator {
                         action.navigationParameters.forEach { parameter ->
                             appendLine("                    variables[" + quote(parameter.key) + "] = resolve(" + quote(parameter.value) + ", value)")
                         }
-                        appendLine("                    navigationCount += 1")
-                        appendLine("                    current = " + quote(action.target))
+                        val requiredKeys = screens.firstOrNull { it.id == action.target }?.inputParameters
+                            ?.filter { it.required }?.map { it.key }.orEmpty()
+                        appendLine("                    val missingRequired = listOf<String>(" + requiredKeys.joinToString(", ") { quote(it) } + ").filter { variables[it].orEmpty().isBlank() }")
+                        appendLine("                    if (missingRequired.isEmpty()) {")
+                        appendLine("                        navigationCount += 1")
+                        appendLine("                        current = " + quote(action.target))
+                        appendLine("                    } else {")
+                        appendLine("                        message = \"Informe os campos obrigatórios: \" + missingRequired.joinToString(\", \")")
+                        appendLine("                    }")
                         appendLine("                }")
                     }
                     "set_variable" -> appendLine("                variables[" + quote(action.target) + "] = resolve(" + quote(action.expression) + ", value)")

@@ -28,11 +28,17 @@ private val LogicMuted = Color(0xFF718397)
 /** Visual editor for the declarative data/action layer. Actions are stored, never executed here. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun StudioLogicPanel(context: Context, screens: List<StudioScreenDefinition> = emptyList(), components: List<StudioComponentDefinition> = emptyList()) {
+internal fun StudioLogicPanel(
+    context: Context,
+    screens: List<StudioScreenDefinition> = emptyList(),
+    components: List<StudioComponentDefinition> = emptyList(),
+    storageKeySuffix: String = ""
+) {
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE) }
+    val logicStorageKey = if (storageKeySuffix.isBlank()) STUDIO_LOGIC_PREFS_KEY else "${STUDIO_LOGIC_PREFS_KEY}_$storageKeySuffix"
     var document by remember {
         mutableStateOf(
-            runCatching { StudioLogicDocument.fromJson(prefs.getString(STUDIO_LOGIC_PREFS_KEY, null).orEmpty()) }
+            runCatching { StudioLogicDocument.fromJson(prefs.getString(logicStorageKey, null).orEmpty()) }
                 .getOrDefault(StudioLogicDocument())
         )
     }
@@ -53,7 +59,7 @@ internal fun StudioLogicPanel(context: Context, screens: List<StudioScreenDefini
 
     fun save(next: StudioLogicDocument) {
         document = next
-        prefs.edit().putString(STUDIO_LOGIC_PREFS_KEY, next.toJson()).apply()
+        prefs.edit().putString(logicStorageKey, next.toJson()).apply()
     }
 
     Card(

@@ -189,6 +189,7 @@ internal fun VisualEditorScreen(
     var previewScreenId by rememberSaveable(projectKey) { mutableStateOf(startScreenId) }
     var previewMessage by remember(projectKey) { mutableStateOf("") }
     var runtimeValues by remember(projectKey) { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var previewNavigationGuard by remember(projectKey) { mutableIntStateOf(0) }
 
     fun readLogicDocument(): StudioLogicDocument {
         val raw = prefs.getString("geivia_studio_logic_v1_$projectKey", null)
@@ -200,6 +201,7 @@ internal fun VisualEditorScreen(
         runtimeValues = logic.variables.associate { it.key to it.initialValue }
         previewScreenId = startScreenId
         previewMessage = ""
+        previewNavigationGuard = 0
         previewMode = true
         saveSchema()
     }
@@ -207,7 +209,7 @@ internal fun VisualEditorScreen(
         val logic = readLogicDocument()
         val actions = logic.actions.filter {
             it.enabled && it.trigger == trigger &&
-                (it.componentId.isBlank() || componentId.isBlank() || it.componentId == componentId)
+                (if (trigger == "on_screen_open") it.componentId.isBlank() else it.componentId.isBlank() || it.componentId == componentId)
         }
         actions.forEach { action ->
             val resolved = Regex("""\$\{([A-Za-z_][A-Za-z0-9_]*)\}""").replace(action.expression) { match ->
@@ -215,7 +217,12 @@ internal fun VisualEditorScreen(
             }
             when (action.kind) {
                 "navigate" -> if (screenRegistry.any { it.id == action.target }) {
-                    previewScreenId = action.target
+                    if (previewNavigationGuard < 25) {
+                        previewNavigationGuard += 1
+                        previewScreenId = action.target
+                    } else {
+                        previewMessage = "Limite de navegação da prévia atingido. Verifique possíveis ciclos entre telas."
+                    }
                 }
                 "set_variable" -> if (action.target.isNotBlank()) {
                     runtimeValues = runtimeValues + (action.target to resolved)
@@ -564,15 +571,21 @@ internal fun VisualEditorScreen(
                         val previewScreen = screenRegistry.firstOrNull { it.id == previewScreenId } ?: screenRegistry.first()
                         val previewElements = if (previewScreenId == activeScreenId) elements.toList()
                             else decodeElements(prefs.getString("${schemaPrefix}_${previewScreenId}", null) ?: if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_${previewScreenId}", null) else null)
+                        val displayElements = previewElements.map { item ->
+                            val resolvedText = Regex("""\$\{([A-Za-z_][A-Za-z0-9_]*)\}""").replace(item.text) { match ->
+                                runtimeValues[match.groupValues[1]].orEmpty()
+                            }
+                            item.copy(text = resolvedText)
+                        }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(previewScreen.name, color = EditorInk, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                             Spacer(Modifier.weight(1f))
                             Text("PRÉVIA", color = EditorBlue, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                         }
-                        previewElements.filter { it.parentId == null && it.visible }.forEach { element ->
+                        displayElements.filter { it.parentId == null && it.visible }.forEach { element ->
                             EditorCanvasNode(
                                 element = element,
-                                allElements = previewElements,
+                                allElements = displayElements,
                                 selectedId = null,
                                 primaryColor = editorColor(themePrimary, EditorBlue),
                                 defaultTextColor = editorColor(themeText, EditorInk),

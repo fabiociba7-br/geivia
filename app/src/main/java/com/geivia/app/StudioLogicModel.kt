@@ -5,7 +5,7 @@ import org.json.JSONObject
 
 /**
  * Serializable, Android-native model for the Studio data and interaction layer.
- * This is a definition model; the editor preview interprets only the supported declarative actions.
+ * This is the serializable definition model shared by the preview runtime and generated Android app.
  */
 internal data class StudioVariableDefinition(
     val key: String,

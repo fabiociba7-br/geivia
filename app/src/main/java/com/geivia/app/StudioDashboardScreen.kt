@@ -34,6 +34,7 @@ private data class StudioNavItem(
     val action: () -> Unit
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun StudioDashboardScreen(
     context: Context,

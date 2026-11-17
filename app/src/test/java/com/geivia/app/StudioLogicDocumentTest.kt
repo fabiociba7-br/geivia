@@ -112,6 +112,140 @@ class StudioLogicDocumentTest {
     }
 
     @Test
+    fun acceptsTypedVariableReferencesAsNavigationParameters() {
+        val document = StudioLogicDocument(
+            variables = listOf(
+                StudioVariableDefinition("amount", "Valor", "number", "12"),
+                StudioVariableDefinition("active", "Ativo", "boolean", "true")
+            ),
+            actions = listOf(StudioActionDefinition(
+                "go", "on_click", "navigate", target = "checkout",
+                navigationParameters = listOf(
+                    StudioNavigationParameter("total", "${'
+        val document = StudioLogicDocument(actions = listOf(StudioActionDefinition(
+            "go", "on_click", "navigate", target = "profile",
+            navigationParameters = listOf(StudioNavigationParameter("bad-name", "x"), StudioNavigationParameter("amount", "not-a-number", "number"))
+        )))
+        val errors = document.validate(setOf("profile"))
+        assertTrue(errors.any { it.contains("Nome de parâmetro inválido") })
+        assertTrue(errors.any { it.contains("Parâmetro numérico inválido") })
+    }
+
+    @Test
+    fun rejectsDuplicateNavigationParameterKeys() {
+        val document = StudioLogicDocument(actions = listOf(StudioActionDefinition(
+            "go", "on_click", "navigate", target = "profile",
+            navigationParameters = listOf(StudioNavigationParameter("id", "1"), StudioNavigationParameter("id", "2"))
+        )))
+        assertTrue(document.validate().any { it.contains("Parâmetros duplicados") })
+    }
+
+    @Test
+    fun readsLegacyActionsWithoutNavigationParameters() {
+        val legacy = """{"schemaVersion":1,"variables":[],"actions":[{"id":"old","trigger":"on_click","kind":"navigate","target":"home","enabled":true}]}"""
+        val restored = StudioLogicDocument.fromJson(legacy)
+        assertTrue(restored.actions.single().navigationParameters.isEmpty())
+    }
+    @Test
+    fun rejectsOversizedDocuments() {
+        val oversized = " ".repeat(StudioLogicDocument.MAX_VALUE_LENGTH * 130)
+
+        val error = runCatching { StudioLogicDocument.fromJson(oversized) }.exceptionOrNull()
+
+        assertTrue(error is IllegalArgumentException)
+    }
+}
+}{amount}", "number"),
+                    StudioNavigationParameter("enabled", "${'
+        val document = StudioLogicDocument(actions = listOf(StudioActionDefinition(
+            "go", "on_click", "navigate", target = "profile",
+            navigationParameters = listOf(StudioNavigationParameter("bad-name", "x"), StudioNavigationParameter("amount", "not-a-number", "number"))
+        )))
+        val errors = document.validate(setOf("profile"))
+        assertTrue(errors.any { it.contains("Nome de parâmetro inválido") })
+        assertTrue(errors.any { it.contains("Parâmetro numérico inválido") })
+    }
+
+    @Test
+    fun rejectsDuplicateNavigationParameterKeys() {
+        val document = StudioLogicDocument(actions = listOf(StudioActionDefinition(
+            "go", "on_click", "navigate", target = "profile",
+            navigationParameters = listOf(StudioNavigationParameter("id", "1"), StudioNavigationParameter("id", "2"))
+        )))
+        assertTrue(document.validate().any { it.contains("Parâmetros duplicados") })
+    }
+
+    @Test
+    fun readsLegacyActionsWithoutNavigationParameters() {
+        val legacy = """{"schemaVersion":1,"variables":[],"actions":[{"id":"old","trigger":"on_click","kind":"navigate","target":"home","enabled":true}]}"""
+        val restored = StudioLogicDocument.fromJson(legacy)
+        assertTrue(restored.actions.single().navigationParameters.isEmpty())
+    }
+    @Test
+    fun rejectsOversizedDocuments() {
+        val oversized = " ".repeat(StudioLogicDocument.MAX_VALUE_LENGTH * 130)
+
+        val error = runCatching { StudioLogicDocument.fromJson(oversized) }.exceptionOrNull()
+
+        assertTrue(error is IllegalArgumentException)
+    }
+}
+}{active}", "boolean")
+                )
+            ))
+        )
+        assertTrue(document.validate(setOf("checkout")).isEmpty())
+    }
+
+    @Test
+    fun rejectsNavigationParameterReferencesWithMismatchedTypes() {
+        val document = StudioLogicDocument(
+            variables = listOf(StudioVariableDefinition("amount", "Valor", "number", "12")),
+            actions = listOf(StudioActionDefinition(
+                "go", "on_click", "navigate", target = "checkout",
+                navigationParameters = listOf(StudioNavigationParameter("total", "${'
+        val document = StudioLogicDocument(actions = listOf(StudioActionDefinition(
+            "go", "on_click", "navigate", target = "profile",
+            navigationParameters = listOf(StudioNavigationParameter("bad-name", "x"), StudioNavigationParameter("amount", "not-a-number", "number"))
+        )))
+        val errors = document.validate(setOf("profile"))
+        assertTrue(errors.any { it.contains("Nome de parâmetro inválido") })
+        assertTrue(errors.any { it.contains("Parâmetro numérico inválido") })
+    }
+
+    @Test
+    fun rejectsDuplicateNavigationParameterKeys() {
+        val document = StudioLogicDocument(actions = listOf(StudioActionDefinition(
+            "go", "on_click", "navigate", target = "profile",
+            navigationParameters = listOf(StudioNavigationParameter("id", "1"), StudioNavigationParameter("id", "2"))
+        )))
+        assertTrue(document.validate().any { it.contains("Parâmetros duplicados") })
+    }
+
+    @Test
+    fun readsLegacyActionsWithoutNavigationParameters() {
+        val legacy = """{"schemaVersion":1,"variables":[],"actions":[{"id":"old","trigger":"on_click","kind":"navigate","target":"home","enabled":true}]}"""
+        val restored = StudioLogicDocument.fromJson(legacy)
+        assertTrue(restored.actions.single().navigationParameters.isEmpty())
+    }
+    @Test
+    fun rejectsOversizedDocuments() {
+        val oversized = " ".repeat(StudioLogicDocument.MAX_VALUE_LENGTH * 130)
+
+        val error = runCatching { StudioLogicDocument.fromJson(oversized) }.exceptionOrNull()
+
+        assertTrue(error is IllegalArgumentException)
+    }
+}
+}{amount}", "text"))
+            ))
+        )
+        assertTrue(document.validate(setOf("checkout")).any {
+            it.contains("Tipo incompatível na referência do parâmetro total")
+        })
+    }
+
+    @Test
     fun rejectsInvalidNavigationParameterNamesAndTypes() {
         val document = StudioLogicDocument(actions = listOf(StudioActionDefinition(
             "go", "on_click", "navigate", target = "profile",

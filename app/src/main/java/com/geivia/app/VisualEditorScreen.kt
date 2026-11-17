@@ -64,6 +64,7 @@ internal fun VisualEditorScreen(
     onProjects: () -> Unit = {}
 ) {
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE) }
+    val projectTitle = prefs.getString("selected_project_name", "Meu aplicativo").orEmpty().ifBlank { "Meu aplicativo" }
     val screenRegistry = remember {
         mutableStateListOf<StudioScreenDefinition>().apply {
             val saved = prefs.getString("geivia_studio_screens_v1", null)
@@ -198,9 +199,12 @@ internal fun VisualEditorScreen(
             }
             screens.put(JSONObject().put("id", screen.id).put("name", screen.name).put("components", items))
         }
+        project.put("name", projectTitle)
         project.put("screens", screens)
         project.put("theme", JSONObject().put("primary", themePrimary).put("background", themeBackground).put("text", themeText))
         project.put("assets", JSONArray(savedAssets))
+        val logicJson = prefs.getString("geivia_studio_logic_v1", null)
+        project.put("logic", if (logicJson.isNullOrBlank()) JSONObject() else runCatching { JSONObject(logicJson) }.getOrDefault(JSONObject()))
         return project.toString(2)
     }
 
@@ -273,7 +277,7 @@ internal fun VisualEditorScreen(
                 Column(
                     Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp)
                 ) {
-                    Text("Minha loja", color = EditorInk, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(projectTitle, color = EditorInk, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     Text("${screenRegistry.firstOrNull { it.id == activeScreenId }?.name ?: "Home"} · Android", color = EditorMuted, fontSize = 11.sp)
                     Spacer(Modifier.height(18.dp))
                     Text("PROJETO", color = EditorMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
@@ -392,7 +396,7 @@ internal fun VisualEditorScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(screenRegistry.firstOrNull { it.id == activeScreenId }?.name ?: "Meu aplicativo", color = EditorInk, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text(projectTitle, color = EditorInk, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                             Spacer(Modifier.weight(1f))
                             Text("PRÉVIA", color = EditorBlue, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                         }

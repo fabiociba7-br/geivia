@@ -466,7 +466,7 @@ internal fun VisualEditorScreen(
                         label = { Text("Voltar ao Workspace") },
                         icon = { Icon(Icons.Default.Dashboard, null) },
                         selected = false,
-                        onClick = { editorScope.launch { editorDrawerState.close() }; onBack() },
+                        onClick = { saveSchema(); editorScope.launch { editorDrawerState.close() }; onBack() },
                         modifier = Modifier.padding(vertical = 2.dp)
                     )
                     Spacer(Modifier.height(14.dp))

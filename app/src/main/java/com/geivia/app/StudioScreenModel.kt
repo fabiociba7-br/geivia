@@ -52,11 +52,13 @@ internal data class StudioScreenDocument(
                 val item = array.getJSONObject(index)
                 StudioScreenDefinition(item.optString("id"), item.optString("name"))
             }
-            return StudioScreenDocument(
+            val document = StudioScreenDocument(
                 screens = screens,
                 startScreenId = root.optString("startScreenId", screens.firstOrNull()?.id.orEmpty()),
                 schemaVersion = root.optInt("schemaVersion", CURRENT_SCHEMA_VERSION)
             )
+            require(document.validate().isEmpty()) { document.validate().joinToString("; ") }
+            return document
         }
     }
 }

@@ -329,6 +329,27 @@ internal fun VisualEditorScreen(
         message = "Componente removido"
     }
 
+    fun duplicateSelected() {
+        val root = elements.firstOrNull { it.id == selectedId } ?: return
+        checkpoint()
+        var duplicatedRootId: String? = null
+        fun cloneTree(source: StudioElement, newParentId: String?): String {
+            val newId = UUID.randomUUID().toString()
+            val copy = source.copy(
+                id = newId,
+                text = if (source.id == root.id) source.text + " (cópia)" else source.text,
+                parentId = newParentId
+            )
+            elements.add(copy)
+            if (source.id == root.id) duplicatedRootId = newId
+            elements.filter { it.parentId == source.id }.toList().forEach { child -> cloneTree(child, newId) }
+            return newId
+        }
+        cloneTree(root, root.parentId)
+        selectedId = duplicatedRootId
+        message = "Componente e seus filhos duplicados"
+    }
+
     fun updateSelected(transform: (StudioElement) -> StudioElement) {
         if (selectedIndex >= 0) elements[selectedIndex] = transform(elements[selectedIndex])
     }
@@ -569,7 +590,7 @@ internal fun VisualEditorScreen(
                             IconButton(onClick = { workspacePanel = "components" }) { Icon(Icons.Default.Add, "Adicionar componente", tint = EditorBlue) }
                             IconButton(onClick = { workspacePanel = "advanced" }) { Icon(Icons.Default.Tune, "Propriedades", tint = EditorInk) }
                             IconButton(onClick = { saveSchema(); message = "Alterações salvas" }) { Icon(Icons.Default.Save, "Salvar", tint = EditorInk) }
-                            IconButton(onClick = { selectedId?.let { id -> elements.firstOrNull { it.id == id }?.let { item -> checkpoint(); elements.add(item.copy(id = UUID.randomUUID().toString(), text = item.text + " (cópia)")); selectedId = elements.last().id } } }) { Icon(Icons.Default.ContentCopy, "Duplicar", tint = EditorInk) }
+                            IconButton(onClick = { duplicateSelected() }, enabled = selectedId != null) { Icon(Icons.Default.ContentCopy, "Duplicar", tint = EditorInk) }
                             IconButton(onClick = { undo() }, enabled = undoStack.isNotEmpty()) { Icon(Icons.Default.Undo, "Desfazer", tint = EditorInk) }
                             IconButton(onClick = { redo() }, enabled = redoStack.isNotEmpty()) { Icon(Icons.Default.Redo, "Refazer", tint = EditorInk) }
                             IconButton(onClick = { deleteSelected() }, enabled = selectedId != null) { Icon(Icons.Default.DeleteOutline, "Excluir", tint = Color(0xFFB33A3A)) }

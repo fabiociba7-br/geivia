@@ -36,7 +36,7 @@ O GEIVIA Studio é uma plataforma visual para criar aplicativos Android nativos.
 - A navegação declarativa usa a lista de telas do projeto e valida referências a destinos inexistentes.
 - Ações de navegação aceitam até 30 parâmetros nomeados por destino, com tipos texto, número, booleano e JSON; valores podem referenciar variáveis do projeto e são validados antes de salvar.
 - Parâmetros são serializados junto à ação; documentos antigos sem esse campo continuam sendo carregados como listas vazias.
-- As definições são persistidas em JSON versionado e validadas; ainda não existe motor de execução dessas ações.
+- As definições são persistidas em JSON versionado e validadas. A prévia executa ações declarativas de navegação, mensagem e alteração de variável em eventos de toque, abertura de tela e alteração de valor; isso não executa operações remotas nem ações em produção.
 - O Studio gera um projeto Android nativo inicial com Kotlin, Jetpack Compose, Manifest e arquivos Gradle, exportável em ZIP pelo seletor de arquivos do Android.
 - O pacote ZIP também contém o esquema versionado do GEIVIA, o manifesto de assets e os arquivos locais selecionados, copiados para app/src/main/assets. URLs externas são registradas, mas não baixadas automaticamente.
 - Os botões gerados ainda não executam as ações declarativas; a conexão do motor de ações e da navegação interativa segue pendente.
@@ -44,7 +44,7 @@ O GEIVIA Studio é uma plataforma visual para criar aplicativos Android nativos.
 
 ## Próximas etapas de desenvolvimento
 
-1. Implementar o motor de execução das ações declarativas em eventos de toque, abertura de tela e alteração de valor, com execução explícita e previsível.
+1. Levar o motor de ações da prévia para o projeto Android gerado, com execução explícita e previsível.
 2. Conectar os botões gerados à navegação entre telas e aos parâmetros de entrada.
 3. Incorporar assets selecionados ao pacote Android gerado, preservando referências e permissões.
 4. Completar a geração de projeto para incluir integrações e serviços selecionados pelo usuário, sem copiar credenciais ou segredos.

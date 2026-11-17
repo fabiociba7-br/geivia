@@ -1,6 +1,8 @@
 package com.geivia.app
 
 import android.content.Context
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -12,6 +14,7 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -126,6 +129,14 @@ internal fun VisualEditorScreen(
     var themeText by remember { mutableStateOf(prefs.getString("studio_theme_text", "#17354D") ?: "#17354D") }
     var assetUrl by remember { mutableStateOf("") }
     val savedAssets = remember { mutableStateListOf<String>().apply { prefs.getString("studio_assets_v1", null)?.let { raw -> runCatching { val a = JSONArray(raw); for (i in 0 until a.length()) add(a.getString(i)) } } } }
+    val assetPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching { context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            if (uri.toString() !in savedAssets) savedAssets.add(uri.toString())
+            prefs.edit().putString("studio_assets_v1", JSONArray(savedAssets).toString()).apply()
+            message = "Asset adicionado ao projeto"
+        }
+    }
     val editorDrawerState = rememberDrawerState(DrawerValue.Closed)
     val editorScope = rememberCoroutineScope()
     var parentMenuExpanded by remember { mutableStateOf(false) }
@@ -480,6 +491,7 @@ internal fun VisualEditorScreen(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            if (workspacePanel == "advanced") {
             Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(18.dp)) {
                 Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -821,7 +833,140 @@ internal fun VisualEditorScreen(
                     }
                 }
             )
-
+            } else {
+                when (workspacePanel) {
+                    "components" -> {
+                        Text("Adicione elementos à tela. Os componentes podem ser aninhados em seções, linhas, colunas e cartões.", color = EditorMuted, fontSize = 12.sp)
+                        val palette = listOf(
+                            Triple("Seção", "section", Icons.Default.FolderOpen),
+                            Triple("Texto", "text", Icons.Default.TextFields),
+                            Triple("Botão", "button", Icons.Default.SmartButton),
+                            Triple("Cartão", "card", Icons.Default.CropSquare),
+                            Triple("Campo", "input", Icons.Default.Edit),
+                            Triple("Imagem", "image", Icons.Default.Image),
+                            Triple("Espaço", "spacer", Icons.Default.SpaceBar),
+                            Triple("Divisor", "divider", Icons.Default.Add),
+                            Triple("Linha", "row", Icons.Default.Add),
+                            Triple("Coluna", "column", Icons.Default.Add)
+                        )
+                        palette.forEach { (label, type, icon) ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth().clickable {
+                                    val defaultText = when (type) {
+                                        "button" -> "Continuar"
+                                        "image" -> "Imagem do projeto"
+                                        "input" -> "Digite aqui"
+                                        "section" -> "Nova seção"
+                                        "row" -> "Nova linha"
+                                        "column" -> "Nova coluna"
+                                        "divider" -> "Divisor"
+                                        "spacer" -> "Espaço"
+                                        else -> "Novo texto"
+                                    }
+                                    addElement(type, defaultText)
+                                    workspacePanel = "canvas"
+                                },
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(icon, null, tint = EditorBlue)
+                                    Spacer(Modifier.width(12.dp))
+                                    Text(label, color = EditorInk, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                                    Icon(Icons.Default.Add, null, tint = EditorBlue)
+                                }
+                            }
+                        }
+                    }
+                    "pages" -> {
+                        Text("Gerencie as telas e escolha qual será aberta primeiro.", color = EditorMuted, fontSize = 12.sp)
+                        Button(onClick = { addScreen() }, enabled = screenRegistry.size < StudioScreenDocument.MAX_SCREENS, modifier = Modifier.fillMaxWidth()) {
+                            Icon(Icons.Default.Add, null); Spacer(Modifier.width(6.dp)); Text("Criar nova tela")
+                        }
+                        screenRegistry.forEach { screen ->
+                            Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {
+                                Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(screen.name, color = EditorInk, fontWeight = FontWeight.SemiBold)
+                                        Text(if (screen.id == startScreenId) "Tela inicial" else "Tela do aplicativo", color = EditorMuted, fontSize = 10.sp)
+                                    }
+                                    TextButton(onClick = { switchScreen(screen.id); workspacePanel = "canvas" }) { Text(if (screen.id == activeScreenId) "Aberta" else "Abrir") }
+                                    if (screen.id != startScreenId) TextButton(onClick = { setStartScreen(screen.id) }) { Text("Início") }
+                                }
+                            }
+                        }
+                        TextButton(onClick = { workspacePanel = "advanced" }) { Text("Renomear telas e editar hierarquia") }
+                    }
+                    "theme" -> {
+                        Text("Defina as cores principais do aplicativo. Use códigos hexadecimais como #1769AA.", color = EditorMuted, fontSize = 12.sp)
+                        OutlinedTextField(value = themePrimary, onValueChange = { themePrimary = it.take(9) }, label = { Text("Cor principal") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = themeBackground, onValueChange = { themeBackground = it.take(9) }, label = { Text("Fundo do aplicativo") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = themeText, onValueChange = { themeText = it.take(9) }, label = { Text("Cor do texto") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Surface(Modifier.size(36.dp), color = runCatching { Color(android.graphics.Color.parseColor(themePrimary)) }.getOrDefault(EditorBlue), shape = CircleShape) {}
+                            Surface(Modifier.size(36.dp), color = runCatching { Color(android.graphics.Color.parseColor(themeBackground)) }.getOrDefault(Color.White), shape = CircleShape, border = BorderStroke(1.dp, Color.LightGray)) {}
+                            Surface(Modifier.size(36.dp), color = runCatching { Color(android.graphics.Color.parseColor(themeText)) }.getOrDefault(EditorInk), shape = CircleShape) {}
+                        }
+                        Button(onClick = {
+                            val valid = listOf(themePrimary, themeBackground, themeText).all { runCatching { android.graphics.Color.parseColor(it) }.isSuccess }
+                            if (valid) {
+                                prefs.edit().putString("studio_theme_primary", themePrimary).putString("studio_theme_background", themeBackground).putString("studio_theme_text", themeText).apply()
+                                message = "Tema salvo"
+                            } else message = "Use cores hexadecimais válidas, por exemplo #1769AA"
+                        }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Save, null); Spacer(Modifier.width(6.dp)); Text("Salvar tema") }
+                    }
+                    "assets" -> {
+                        Text("Arquivos vinculados ao projeto. Os arquivos são mantidos no armazenamento original do Android.", color = EditorMuted, fontSize = 12.sp)
+                        Button(onClick = { assetPicker.launch(arrayOf("*/*")) }, modifier = Modifier.fillMaxWidth()) {
+                            Icon(Icons.Default.AttachFile, null); Spacer(Modifier.width(6.dp)); Text("Selecionar arquivo do dispositivo")
+                        }
+                        OutlinedTextField(value = assetUrl, onValueChange = { assetUrl = it.take(2048) }, label = { Text("Ou adicionar URL https://") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                        OutlinedButton(onClick = {
+                            if (assetUrl.startsWith("https://") || assetUrl.startsWith("http://")) {
+                                if (assetUrl !in savedAssets) savedAssets.add(assetUrl)
+                                prefs.edit().putString("studio_assets_v1", JSONArray(savedAssets).toString()).apply()
+                                assetUrl = ""; message = "URL adicionada aos assets"
+                            } else message = "Informe uma URL http ou https válida"
+                        }, modifier = Modifier.fillMaxWidth()) { Text("Adicionar URL") }
+                        if (savedAssets.isEmpty()) Text("Nenhum asset adicionado ainda.", color = EditorMuted, fontSize = 12.sp)
+                        savedAssets.forEach { asset ->
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Description, null, tint = EditorBlue)
+                                Spacer(Modifier.width(8.dp))
+                                Text(asset, color = EditorInk, fontSize = 10.sp, modifier = Modifier.weight(1f), maxLines = 2)
+                                IconButton(onClick = { savedAssets.remove(asset); prefs.edit().putString("studio_assets_v1", JSONArray(savedAssets).toString()).apply() }) { Icon(Icons.Default.DeleteOutline, "Remover asset", tint = Color(0xFFB33A3A)) }
+                            }
+                        }
+                    }
+                    "logic" -> StudioLogicPanel(
+                        context = context,
+                        screens = screenRegistry.toList(),
+                        components = screenRegistry.flatMap { screen ->
+                            val screenElements = if (screen.id == activeScreenId) elements.toList() else decodeElements(prefs.getString("\${EDITOR_SCHEMA_KEY}_\${screen.id}", null))
+                            screenElements.map { StudioComponentDefinition(it.id, "\${screen.name} · \${it.type}: \${it.text.ifBlank { "Sem texto" }}") }
+                        }
+                    )
+                    "code" -> {
+                        val projectJson = buildProjectJson()
+                        Text("Estrutura versionada do projeto GEIVIA. Este arquivo preserva telas, componentes, hierarquia, tema e assets; ainda não é o código Kotlin/Gradle final.", color = EditorMuted, fontSize = 12.sp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("GEIVIA project JSON", projectJson))
+                                message = "Estrutura copiada"
+                            }, modifier = Modifier.weight(1f)) { Icon(Icons.Default.ContentCopy, null); Spacer(Modifier.width(5.dp)); Text("Copiar JSON") }
+                            OutlinedButton(onClick = {
+                                val send = android.content.Intent(android.content.Intent.ACTION_SEND).setType("application/json").putExtra(android.content.Intent.EXTRA_TEXT, projectJson)
+                                context.startActivity(android.content.Intent.createChooser(send, "Exportar projeto GEIVIA"))
+                            }, modifier = Modifier.weight(1f)) { Icon(Icons.Default.Share, null); Spacer(Modifier.width(5.dp)); Text("Exportar") }
+                        }
+                        Surface(color = Color(0xFF132536), shape = RoundedCornerShape(12.dp)) {
+                            Text(projectJson, color = Color(0xFFE5EDF5), fontSize = 9.sp, modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp).verticalScroll(rememberScrollState()).padding(12.dp))
+                        }
+                    }
+                    else -> Text("Selecione uma ferramenta no menu do Studio.", color = EditorMuted)
+                }
+            }
             Text(message, color = EditorMuted, fontSize = 11.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
         }
         }

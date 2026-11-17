@@ -421,6 +421,10 @@ internal fun VisualEditorScreen(
         saveSchema()
     }
 
+    LaunchedEffect(previewMode, previewScreenId) {
+        if (previewMode) executePreviewActions("", "on_screen_open")
+    }
+
     ModalNavigationDrawer(
         drawerState = editorDrawerState,
         drawerContent = {
@@ -532,7 +536,7 @@ internal fun VisualEditorScreen(
                         Spacer(Modifier.width(4.dp))
                         Text("Salvar")
                     }
-                    TextButton(onClick = { previewMode = !previewMode }) {
+                    TextButton(onClick = { if (previewMode) previewMode = false else startPreview() }) {
                         Icon(Icons.Default.Visibility, null, modifier = Modifier.size(17.dp))
                         Spacer(Modifier.width(4.dp))
                         Text(if (previewMode) "Editar" else "Prévia")
@@ -557,13 +561,29 @@ internal fun VisualEditorScreen(
                         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
+                        val previewScreen = screenRegistry.firstOrNull { it.id == previewScreenId } ?: screenRegistry.first()
+                        val previewElements = if (previewScreenId == activeScreenId) elements.toList()
+                            else decodeElements(prefs.getString("${schemaPrefix}_${previewScreenId}", null) ?: if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_${previewScreenId}", null) else null)
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(projectTitle, color = EditorInk, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text(previewScreen.name, color = EditorInk, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                             Spacer(Modifier.weight(1f))
                             Text("PRÉVIA", color = EditorBlue, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                         }
-                        elements.filter { it.parentId == null }.forEach { element ->
-                            EditorCanvasNode(element, elements, null, editorColor(themePrimary, EditorBlue), editorColor(themeText, EditorInk)) {}
+                        previewElements.filter { it.parentId == null && it.visible }.forEach { element ->
+                            EditorCanvasNode(
+                                element = element,
+                                allElements = previewElements,
+                                selectedId = null,
+                                primaryColor = editorColor(themePrimary, EditorBlue),
+                                defaultTextColor = editorColor(themeText, EditorInk),
+                                onActivate = { id -> executePreviewActions(id, "on_click") },
+                                onSelect = {}
+                            )
+                        }
+                        if (previewMessage.isNotBlank()) {
+                            Surface(color = Color(0xFFEAF3FB), shape = RoundedCornerShape(10.dp)) {
+                                Text(previewMessage, color = EditorInk, modifier = Modifier.fillMaxWidth().padding(12.dp), fontSize = 12.sp)
+                            }
                         }
                     }
                 }
@@ -642,7 +662,7 @@ internal fun VisualEditorScreen(
                     }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedButton(onClick = { previewMode = true; saveSchema() }, modifier = Modifier.weight(1f)) {
+                    OutlinedButton(onClick = { startPreview() }, modifier = Modifier.weight(1f)) {
                         Icon(Icons.Default.PlayArrow, null)
                         Spacer(Modifier.width(5.dp))
                         Text("Testar")

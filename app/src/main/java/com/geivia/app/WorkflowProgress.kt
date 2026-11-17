@@ -27,7 +27,8 @@ data class WorkflowStepRecord(
     val updatedAt: Long,
     val operationId: String,
     val message: String,
-    val evidence: String
+    val evidence: String,
+    val preparedAt: Long = 0L
 )
 
 data class WorkflowBackupValidationResult(val valid: Boolean, val message: String)
@@ -128,7 +129,7 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
         require(stepId.isNotBlank()) { "Identificador da etapa obrigatório." }
         val record = readRecords().optJSONObject(recordKey(projectId, stepId))
         return record?.toRecord(projectId, stepId) ?: WorkflowStepRecord(
-            projectId, stepId, WorkflowStepState.NOT_STARTED, 0L, "", "", ""
+            projectId, stepId, WorkflowStepState.NOT_STARTED, 0L, "", "", "", 0L
         )
     }
 
@@ -142,9 +143,11 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
         check(current.state != WorkflowStepState.COMPLETED) {
             "Esta etapa já foi confirmada como concluída."
         }
+        val now = System.currentTimeMillis()
         return save(current.copy(
             state = WorkflowStepState.WAITING_CONFIRMATION,
-            updatedAt = System.currentTimeMillis(),
+            updatedAt = now,
+            preparedAt = now,
             message = message,
             evidence = ""
         ))
@@ -161,9 +164,11 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
         check(operationId != current.operationId) {
             "Cada tentativa precisa de um identificador de operação novo."
         }
+        val now = System.currentTimeMillis()
         return save(current.copy(
             state = WorkflowStepState.IN_PROGRESS,
-            updatedAt = System.currentTimeMillis(),
+            updatedAt = now,
+            preparedAt = now,
             operationId = operationId,
             message = message,
             evidence = ""
@@ -395,6 +400,7 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
         put("operationId", operationId)
         put("message", message)
         put("evidence", evidence)
+        put("preparedAt", preparedAt)
     }
 
     private fun JSONObject.toRecord(projectId: String, stepId: String) = WorkflowStepRecord(
@@ -404,6 +410,7 @@ class WorkflowProgressStore(private val prefs: SharedPreferences) {
         updatedAt = optLong("updatedAt"),
         operationId = optString("operationId"),
         message = optString("message"),
-        evidence = optString("evidence")
+        evidence = optString("evidence"),
+        preparedAt = optLong("preparedAt", optLong("updatedAt"))
     )
 }

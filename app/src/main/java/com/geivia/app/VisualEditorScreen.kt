@@ -152,19 +152,26 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                         Spacer(Modifier.width(8.dp))
                         Column {
                             Text("Árvore de componentes", fontWeight = FontWeight.Bold, color = EditorInk)
-                            Text("${elements.size} elemento(s) nesta tela", color = EditorMuted, fontSize = 11.sp)
+                            Text("${elements.size} elemento(s) nesta tela · hierarquia aninhada", color = EditorMuted, fontSize = 11.sp)
                         }
                     }
                     if (elements.isEmpty()) {
                         Text("A tela ainda não possui componentes.", color = EditorMuted, fontSize = 12.sp)
                     } else {
                         elements.forEachIndexed { index, element ->
+                            var depth = 0
+                            var ancestorId = element.parentId
+                            val visited = mutableSetOf(element.id)
+                            while (ancestorId != null && visited.add(ancestorId)) {
+                                depth++
+                                ancestorId = elements.firstOrNull { it.id == ancestorId }?.parentId
+                            }
                             val active = element.id == selectedId
                             Row(
                                 Modifier.fillMaxWidth()
                                     .background(if (active) Color(0xFFEAF3FB) else Color(0xFFF8FAFC), RoundedCornerShape(10.dp))
                                     .clickable { selectedId = element.id }
-                                    .padding(horizontal = 10.dp, vertical = 9.dp),
+                                    .padding(start = (10 + depth * 16).dp, end = 10.dp, top = 9.dp, bottom = 9.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
@@ -181,7 +188,7 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                                 )
                                 Spacer(Modifier.width(9.dp))
                                 Column(Modifier.weight(1f)) {
-                                    Text((if (element.parentId != null) "↳ " else "") + element.text.ifBlank { "Sem texto" }, color = EditorInk, fontSize = 13.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
+                                    Text((if (depth > 0) "↳ ".repeat(depth.coerceAtMost(4)) else "") + element.text.ifBlank { "Sem texto" }, color = EditorInk, fontSize = 13.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
                                     Text("${index + 1}. ${element.type}", color = EditorMuted, fontSize = 10.sp)
                                 }
                                 if (active) Text("SELECIONADO", color = EditorBlue, fontSize = 8.sp, fontWeight = FontWeight.Bold)
@@ -215,7 +222,7 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                                 Icon(Icons.Default.MoreHoriz, null, tint = EditorMuted)
                             }
                             elements.filter { it.parentId == null }.forEach { element ->
-                                EditorCanvasNode(element = element, children = elements.filter { it.parentId == element.id }, selectedId = selectedId, onSelect = { selectedId = it })
+                                EditorCanvasNode(element = element, allElements = elements, selectedId = selectedId, onSelect = { selectedId = it })
                             }
                         }
                     }
@@ -289,7 +296,15 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                             OutlinedButton(
                                 onClick = {
                                     if (selectedIndex >= 0) {
-                                        elements.removeAt(selectedIndex)
+                                        val removedIds = mutableSetOf(selected!!.id)
+                                        var changed: Boolean
+                                        do {
+                                            changed = false
+                                            elements.filter { it.parentId in removedIds }.forEach {
+                                                if (removedIds.add(it.id)) changed = true
+                                            }
+                                        } while (changed)
+                                        elements.removeAll { it.id in removedIds }
                                         selectedId = elements.getOrNull((selectedIndex - 1).coerceAtLeast(0))?.id
                                     }
                                 },
@@ -309,10 +324,11 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
 @Composable
 private fun EditorCanvasNode(
     element: StudioElement,
-    children: List<StudioElement>,
+    allElements: List<StudioElement>,
     selectedId: String?,
     onSelect: (String) -> Unit
 ) {
+    val children = allElements.filter { it.parentId == element.id }
     val selected = element.id == selectedId
     Surface(
         modifier = Modifier.fillMaxWidth().clickable { onSelect(element.id) },
@@ -328,7 +344,7 @@ private fun EditorCanvasNode(
                 }
                 if (children.isEmpty()) Text("Adicione componentes selecionando esta seção", color = EditorMuted, fontSize = 10.sp)
                 children.forEach { child ->
-                    EditorCanvasNode(child, emptyList(), selectedId, onSelect)
+                    EditorCanvasNode(child, allElements, selectedId, onSelect)
                 }
             } else {
                 val align = when (element.alignment) {

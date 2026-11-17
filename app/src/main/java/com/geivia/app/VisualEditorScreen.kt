@@ -34,6 +34,7 @@ private data class StudioElement(
     val fontSize: Float = 16f,
     val padding: Float = 12f,
     val alignment: String = "start",
+    val stylePreset: String = "body",
     val parentId: String? = null
 )
 
@@ -62,6 +63,7 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                         alignment = item.optString("alignment", "start").let {
                             if (it in listOf("start", "center", "end")) it else "start"
                         },
+                        stylePreset = item.optString("stylePreset", "body").takeIf { it in listOf("body", "title", "subtitle", "emphasis", "muted") } ?: "body",
                         parentId = item.optString("parentId").takeIf { it.isNotBlank() }
                     ))
                 }
@@ -72,6 +74,7 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
     var selectedId by remember { mutableStateOf(elements.firstOrNull()?.id) }
     var message by remember { mutableStateOf("Rascunho local") }
     var parentMenuExpanded by remember { mutableStateOf(false) }
+    var styleMenuExpanded by remember { mutableStateOf(false) }
     var draggedElementId by remember { mutableStateOf<String?>(null) }
     var dragDistance by remember { mutableFloatStateOf(0f) }
     val dragStepPx = with(androidx.compose.ui.platform.LocalDensity.current) { 52.dp.toPx() }
@@ -95,6 +98,7 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                 .put("fontSize", element.fontSize.toDouble())
                 .put("padding", element.padding.toDouble())
                 .put("alignment", element.alignment)
+                .put("stylePreset", element.stylePreset)
                 .put("parentId", element.parentId ?: ""))
         }
         prefs.edit().putString(EDITOR_SCHEMA_KEY, array.toString()).apply()
@@ -322,6 +326,29 @@ internal fun VisualEditorScreen(context: Context, onBack: () -> Unit) {
                             }
                         }
                         HorizontalDivider(color = Color(0xFFE7EDF3))
+                        Text("Estilo reutilizável", color = EditorInk, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        Box {
+                            OutlinedButton(onClick = { styleMenuExpanded = true }) {
+                                Text(when (selected.stylePreset) {
+                                    "title" -> "Título"
+                                    "subtitle" -> "Subtítulo"
+                                    "emphasis" -> "Destaque"
+                                    "muted" -> "Texto secundário"
+                                    else -> "Corpo"
+                                })
+                                Icon(Icons.Default.ArrowDropDown, null)
+                            }
+                            DropdownMenu(expanded = styleMenuExpanded, onDismissRequest = { styleMenuExpanded = false }) {
+                                listOf("body" to "Corpo", "title" to "Título", "subtitle" to "Subtítulo", "emphasis" to "Destaque", "muted" to "Texto secundário").forEach { (key, label) ->
+                                    DropdownMenuItem(text = { Text(label) }, onClick = {
+                                        updateSelected { it.copy(stylePreset = key) }
+                                        styleMenuExpanded = false
+                                        message = "Estilo reutilizável aplicado"
+                                    })
+                                }
+                            }
+                        }
+                        HorizontalDivider(color = Color(0xFFE7EDF3))
                         Text("Posição na hierarquia", color = EditorInk, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                         val descendantIds = remember(selectedId, elements.size) {
                             val found = mutableSetOf<String>()
@@ -420,6 +447,9 @@ private fun EditorCanvasNode(
 ) {
     val children = allElements.filter { it.parentId == element.id }
     val selected = element.id == selectedId
+    val styleFontSize = when (element.stylePreset) { "title" -> maxOf(element.fontSize, 26f); "subtitle" -> maxOf(element.fontSize, 19f); else -> element.fontSize }
+    val styleColor = when (element.stylePreset) { "emphasis" -> Color(0xFF1769AA); "muted" -> Color(0xFF718397); else -> EditorInk }
+    val styleWeight = when (element.stylePreset) { "title", "emphasis" -> FontWeight.Bold; "subtitle" -> FontWeight.SemiBold; else -> FontWeight.Normal }
     Surface(
         modifier = Modifier.fillMaxWidth().clickable { onSelect(element.id) },
         color = if (selected) Color(0xFFEAF3FB) else Color.White,
@@ -430,7 +460,7 @@ private fun EditorCanvasNode(
             if (element.type == "section") {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.FolderOpen, null, tint = EditorBlue, modifier = Modifier.size(16.dp))
-                    Text(element.text, color = EditorInk, fontWeight = FontWeight.SemiBold, fontSize = element.fontSize.sp)
+                    Text(element.text, color = styleColor, fontWeight = styleWeight, fontSize = styleFontSize.sp)
                 }
                 if (children.isEmpty()) Text("Adicione componentes selecionando esta seção", color = EditorMuted, fontSize = 10.sp)
                 children.forEach { child ->
@@ -449,14 +479,14 @@ private fun EditorCanvasNode(
                         else -> Alignment.CenterStart
                     }) {
                         Surface(color = EditorBlue, shape = RoundedCornerShape(9.dp)) {
-                            Text(element.text, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = element.fontSize.sp, modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp))
+                            Text(element.text, color = Color.White, fontWeight = styleWeight, fontSize = styleFontSize.sp, modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp))
                         }
                     }
                     "card" -> Surface(color = Color.White, shape = RoundedCornerShape(10.dp), border = BorderStroke(1.dp, Color(0xFFDCE5EE))) {
-                        Text(element.text, color = EditorInk, modifier = Modifier.fillMaxWidth().padding(12.dp), fontWeight = FontWeight.Medium, fontSize = element.fontSize.sp, textAlign = align)
+                        Text(element.text, color = styleColor, modifier = Modifier.fillMaxWidth().padding(12.dp), fontWeight = styleWeight, fontSize = styleFontSize.sp, textAlign = align)
                     }
                     "spacer" -> Text("Espaçamento", color = EditorMuted, fontSize = 11.sp, modifier = Modifier.padding(vertical = 8.dp))
-                    else -> Text(element.text, color = EditorInk, fontSize = element.fontSize.sp, textAlign = align, modifier = Modifier.fillMaxWidth())
+                    else -> Text(element.text, color = styleColor, fontSize = styleFontSize.sp, fontWeight = styleWeight, textAlign = align, modifier = Modifier.fillMaxWidth())
                 }
             }
         }

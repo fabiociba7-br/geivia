@@ -71,6 +71,17 @@ class StudioLogicDocumentTest {
     }
 
     @Test
+    fun disabledActionsMayKeepReferencesToDeletedComponents() {
+        val document = StudioLogicDocument(actions = listOf(
+            StudioActionDefinition(
+                "old-action", "on_click", "show_message",
+                expression = "Ação antiga", enabled = false, componentId = "deletedButton"
+            )
+        ))
+        assertTrue(document.validate(availableComponentIds = setOf("currentButton")).isEmpty())
+    }
+
+    @Test
     fun rejectsActionsLinkedToMissingComponents() {
         val document = StudioLogicDocument(actions = listOf(
             StudioActionDefinition("tap", "on_click", "show_message", expression = "Oi", componentId = "oldButton")

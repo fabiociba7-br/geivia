@@ -363,6 +363,82 @@ internal fun VisualEditorScreen(
                     }
                 }
             }
+        } else if (workspacePanel == "canvas") {
+            Column(
+                Modifier.fillMaxSize().padding(padding).padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(screenRegistry.firstOrNull { it.id == activeScreenId }?.name ?: "Início", color = EditorInk, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("Editor de aplicativo · Android", color = EditorMuted, fontSize = 10.sp)
+                    }
+                    Surface(color = Color(0xFFEAF3FB), shape = RoundedCornerShape(18.dp)) {
+                        Text("SALVO LOCALMENTE", modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp), color = EditorBlue, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize().padding(end = 48.dp),
+                        color = Color.White,
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(1.dp, Color(0xFFDCE5EE)),
+                        shadowElevation = 2.dp
+                    ) {
+                        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("9:41", color = EditorInk, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                                Spacer(Modifier.weight(1f))
+                                Text("● ● ●", color = EditorMuted, fontSize = 8.sp)
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(screenRegistry.firstOrNull { it.id == activeScreenId }?.name ?: "Meu aplicativo", color = EditorInk, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.weight(1f))
+                                Icon(Icons.Default.MoreHoriz, null, tint = EditorMuted)
+                            }
+                            if (elements.none { it.parentId == null && it.visible }) {
+                                Column(Modifier.fillMaxWidth().padding(vertical = 48.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Icon(Icons.Default.AddBox, null, tint = EditorBlue, modifier = Modifier.size(34.dp))
+                                    Text("Sua tela começa aqui", color = EditorInk, fontWeight = FontWeight.SemiBold)
+                                    Text("Toque em + para adicionar componentes", color = EditorMuted, fontSize = 11.sp, textAlign = TextAlign.Center)
+                                }
+                            } else {
+                                elements.filter { it.parentId == null && it.visible }.forEach { element ->
+                                    EditorCanvasNode(element, elements, selectedId) { selectedId = it }
+                                }
+                            }
+                        }
+                    }
+                    Surface(
+                        modifier = Modifier.align(Alignment.CenterEnd),
+                        color = Color.White,
+                        shape = RoundedCornerShape(18.dp),
+                        shadowElevation = 6.dp,
+                        border = BorderStroke(1.dp, Color(0xFFE2E9F0))
+                    ) {
+                        Column(Modifier.padding(vertical = 5.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            IconButton(onClick = { workspacePanel = "advanced" }) { Icon(Icons.Default.Layers, "Hierarquia", tint = EditorInk) }
+                            IconButton(onClick = { workspacePanel = "components" }) { Icon(Icons.Default.Add, "Adicionar componente", tint = EditorBlue) }
+                            IconButton(onClick = { workspacePanel = "advanced" }) { Icon(Icons.Default.Tune, "Propriedades", tint = EditorInk) }
+                            IconButton(onClick = { saveSchema(); message = "Alterações salvas" }) { Icon(Icons.Default.Save, "Salvar", tint = EditorInk) }
+                            IconButton(onClick = { selectedId?.let { id -> elements.firstOrNull { it.id == id }?.let { item -> elements.add(item.copy(id = UUID.randomUUID().toString(), text = item.text + " (cópia)")); selectedId = elements.last().id } } }) { Icon(Icons.Default.ContentCopy, "Duplicar", tint = EditorInk) }
+                        }
+                    }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(onClick = { previewMode = true; saveSchema() }, modifier = Modifier.weight(1f)) {
+                        Icon(Icons.Default.PlayArrow, null)
+                        Spacer(Modifier.width(5.dp))
+                        Text("Testar")
+                    }
+                    Button(onClick = { saveSchema(); onProjects() }, modifier = Modifier.weight(1f)) {
+                        Icon(Icons.Default.CloudUpload, null)
+                        Spacer(Modifier.width(5.dp))
+                        Text("Deploy")
+                    }
+                }
+                Text(message, color = EditorMuted, fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
+            }
         } else {
         Column(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),

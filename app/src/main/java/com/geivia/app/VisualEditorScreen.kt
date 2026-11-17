@@ -218,6 +218,12 @@ internal fun VisualEditorScreen(
             when (action.kind) {
                 "navigate" -> if (screenRegistry.any { it.id == action.target }) {
                     if (previewNavigationGuard < 25) {
+                        action.navigationParameters.forEach { parameter ->
+                            val parameterValue = Regex("""\$\{([A-Za-z_][A-Za-z0-9_]*)\}""").replace(parameter.value) { match ->
+                                if (match.groupValues[1] == "value") inputValue else runtimeValues[match.groupValues[1]].orEmpty()
+                            }
+                            runtimeValues = runtimeValues + (parameter.key to parameterValue)
+                        }
                         previewNavigationGuard += 1
                         previewScreenId = action.target
                     } else {

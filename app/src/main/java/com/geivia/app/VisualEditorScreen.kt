@@ -81,6 +81,14 @@ internal fun VisualEditorScreen(
         importedProjectPath.takeIf { it.isNotBlank() }
             ?.let { runCatching { ProjectWorkspaceInfo.scan(java.io.File(it)) }.getOrNull() }
     }
+    val importedScreensState = produceState<List<ImportedScreen>>(emptyList(), importedProjectPath) {
+        value = withContext(Dispatchers.IO) {
+            importedProjectPath.takeIf { it.isNotBlank() }?.let { path ->
+                runCatching { ImportedScreenDiscovery.scan(java.io.File(path)) }.getOrDefault(emptyList())
+            } ?: emptyList()
+        }
+    }
+    val importedScreens = importedScreensState.value
     val projectIdForStorage = importedProjectPath.takeIf { it.isNotBlank() }
         ?.let { "local_" + it.hashCode().toUInt().toString(16) }
         ?: cloudProjectId.ifBlank { "local" }
@@ -165,7 +173,9 @@ internal fun VisualEditorScreen(
     val redoStack = remember(projectKey) { mutableStateListOf<List<StudioElement>>() }
     var message by remember(projectKey) { mutableStateOf("Rascunho local") }
     var previewMode by rememberSaveable(projectKey) { mutableStateOf(false) }
-    var workspacePanel by rememberSaveable(projectKey) { mutableStateOf("canvas") }
+    var workspacePanel by rememberSaveable(projectKey) {
+        mutableStateOf(if (activeWorkspace != null) "imported" else "canvas")
+    }
     var themePrimary by remember(projectKey) { mutableStateOf(prefs.getString(themePrimaryPrefKey, if (allowLegacyProjectData) prefs.getString("studio_theme_primary", "#1769AA") else "#1769AA") ?: "#1769AA") }
     var themeBackground by remember(projectKey) { mutableStateOf(prefs.getString(themeBackgroundPrefKey, if (allowLegacyProjectData) prefs.getString("studio_theme_background", "#F3F6FA") else "#F3F6FA") ?: "#F3F6FA") }
     var themeText by remember(projectKey) { mutableStateOf(prefs.getString(themeTextPrefKey, if (allowLegacyProjectData) prefs.getString("studio_theme_text", "#17354D") else "#17354D") ?: "#17354D") }
@@ -614,7 +624,7 @@ internal fun VisualEditorScreen(
                     )
                     Spacer(Modifier.height(14.dp))
                     Text("PROJETO", color = EditorMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    val projectItems = listOf("Páginas", "Componentes", "Tema e estilo", "Firestore", "Autenticação", "APIs", "Ações e lógica", "Variáveis", "Assets", "Integrações", "Configurações")
+                    val projectItems = listOf("Telas do código importado", "Páginas", "Componentes", "Tema e estilo", "Firestore", "Autenticação", "APIs", "Ações e lógica", "Variáveis", "Assets", "Integrações", "Configurações")
                     projectItems.forEach { item ->
                         NavigationDrawerItem(
                             label = { Text(item, fontSize = 13.sp) },
@@ -627,6 +637,7 @@ internal fun VisualEditorScreen(
                                     "APIs" -> onGoogle()
                                     "Integrações" -> onAccounts()
                                     "Configurações" -> onDiagnostics()
+                                    "Telas do código importado" -> workspacePanel = "imported"
                                     "Páginas" -> workspacePanel = "pages"
                                     "Componentes" -> workspacePanel = "components"
                                     "Tema e estilo" -> workspacePanel = "theme"
@@ -670,6 +681,7 @@ internal fun VisualEditorScreen(
                     Column {
                         Text(if (previewMode) "Prévia do aplicativo" else when (workspacePanel) {
                             "canvas" -> "Editor visual"
+                            "imported" -> "Telas do projeto importado"
                             "components" -> "Biblioteca de componentes"
                             "pages" -> "Páginas do aplicativo"
                             "theme" -> "Tema e estilo"
@@ -1211,6 +1223,59 @@ internal fun VisualEditorScreen(
             )
             } else {
                 when (workspacePanel) {
+                    "imported" -> {
+                        Text(
+                            "Estas telas foram identificadas diretamente nos arquivos do projeto. A leitura é vinculada ao código original; nesta etapa, a edição visual ainda não grava alterações de volta no Kotlin/XML.",
+                            color = EditorMuted, fontSize = 12.sp, lineHeight = 18.sp
+                        )
+                        if (importedScreensState.value.isEmpty()) {
+                            Card(colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text("Nenhuma tela reconhecida ainda", color = EditorInk, fontWeight = FontWeight.Bold)
+                                    Text("O GEIVIA procura layouts em res/layout*/ e funções @Composable em arquivos Kotlin dentro de src/main/. Confira se o projeto Android foi importado pela pasta raiz correta.", color = EditorMuted, fontSize = 12.sp)
+                                    OutlinedButton(onClick = onProjectFiles, modifier = Modifier.fillMaxWidth()) { Text("Abrir arquivos e código") }
+                                }
+                            }
+                        } else {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("${importedScreens.size} tela(s) encontradas", color = EditorInk, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.weight(1f))
+                                TextButton(onClick = onProjectFiles) { Text("Abrir código") }
+                            }
+                            importedScreens.forEach { screen ->
+                                Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {
+                                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                if (screen.format == ImportedScreen.Format.ANDROID_XML) Icons.Default.Code else Icons.Default.PhoneAndroid,
+                                                null, tint = EditorBlue
+                                            )
+                                            Spacer(Modifier.width(8.dp))
+                                            Column(Modifier.weight(1f)) {
+                                                Text(screen.name, color = EditorInk, fontWeight = FontWeight.Bold)
+                                                Text(if (screen.format == ImportedScreen.Format.ANDROID_XML) "Layout Android XML" else "Jetpack Compose", color = EditorBlue, fontSize = 10.sp)
+                                            }
+                                            Text("${screen.components.size} itens", color = EditorMuted, fontSize = 10.sp)
+                                        }
+                                        Text(screen.sourcePath, color = EditorMuted, fontSize = 10.sp)
+                                        if (screen.components.isEmpty()) {
+                                            Text("Nenhum componente reconhecido nesta tela.", color = EditorMuted, fontSize = 11.sp)
+                                        } else {
+                                            screen.components.forEach { component ->
+                                                Row(Modifier.fillMaxWidth().background(Color(0xFFF5F8FB), RoundedCornerShape(8.dp)).padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                                    Text(component.type, color = EditorInk, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                                                    component.id?.let { Text("@id/$it", color = EditorMuted, fontSize = 9.sp) }
+                                                    component.text?.let { Text(it, color = EditorMuted, fontSize = 9.sp, modifier = Modifier.padding(start = 6.dp)) }
+                                                }
+                                            }
+                                        }
+                                        OutlinedButton(onClick = onProjectFiles, modifier = Modifier.fillMaxWidth()) { Text("Editar arquivo-fonte") }
+                                    }
+                                }
+                            }
+                        }
+                        Text("Importante: nenhuma alteração foi aplicada ao código original por esta leitura. A gravação visual sincronizada será habilitada por formato, com validação antes de salvar.", color = Color(0xFF8A5715), fontSize = 11.sp, lineHeight = 16.sp)
+                    }
                     "components" -> {
                         Text("Adicione elementos à tela. Os componentes podem ser aninhados em seções, linhas, colunas e cartões.", color = EditorMuted, fontSize = 12.sp)
                         val palette = listOf(

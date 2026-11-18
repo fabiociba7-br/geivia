@@ -42,7 +42,7 @@ import java.util.UUID
 
 private fun prefsImportedProjectDir(context: android.content.Context): String =
     context.getSharedPreferences("geivia_onboarding", android.content.Context.MODE_PRIVATE)
-        .getString("imported_project_dir", "").orEmpty()
+        .getString("active_project_dir", "").orEmpty().ifBlank { getString("imported_project_dir", "").orEmpty() }
         .takeIf { it.isNotBlank() && File(it).isDirectory }.orEmpty()
 
 @Composable
@@ -73,7 +73,7 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                 }
             }.onSuccess {
                 projectDir = it.absolutePath
-                prefs.edit().putString("imported_project_dir", it.absolutePath).putString("imported_project_name", it.name).apply()
+                prefs.edit().putString("active_project_dir", it.absolutePath).putString("active_project_name", it.name).putString("imported_project_dir", it.absolutePath).putString("imported_project_name", it.name).apply()
                 output = "Projeto importado em: " + it.absolutePath + "\nArquivos: " + it.walkTopDown().count { f -> f.isFile } +
                     "\nfirebase.json: " + if (File(it, "firebase.json").isFile) "encontrado" else "não encontrado"
             }.onFailure { output = "Falha na importação: " + (it.message ?: "erro desconhecido") }
@@ -91,7 +91,7 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                 }
             }.onSuccess { importedRoot ->
                 projectDir = importedRoot.absolutePath
-                prefs.edit().putString("imported_project_dir", importedRoot.absolutePath).putString("imported_project_name", importedRoot.name).apply()
+                prefs.edit().putString("active_project_dir", importedRoot.absolutePath).putString("active_project_name", importedRoot.name).putString("imported_project_dir", importedRoot.absolutePath).putString("imported_project_name", importedRoot.name).apply()
                 output = "Projeto importado da pasta selecionada em: ${importedRoot.absolutePath}" +
                     "\nArquivos: " + importedRoot.walkTopDown().count { it.isFile } +
                     "\nEstrutura de diretórios preservada." +
@@ -110,7 +110,7 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Voltar ao painel") }
         Button(onClick = { folderPicker.launch(null) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Selecionar pasta raiz do projeto") }
         OutlinedButton(onClick = { zipPicker.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Importar por arquivo ZIP") }
-        if (projectDir.isNotBlank()) Text("Pasta importada: $projectDir", color = Color(0xFF18794E), fontSize = 11.sp)
+        if (projectDir.isNotBlank()) {\n            val workspace = remember(projectDir) { runCatching { ProjectWorkspaceInfo.scan(File(projectDir)) }.getOrNull() }\n            Text("PROJETO ATIVO: ${workspace?.name ?: File(projectDir).name}", color = Color(0xFF18794E), fontSize = 12.sp)\n            Text("Tipo: ${workspace?.kind?.name ?: "Não identificado"} · Arquivos: ${workspace?.files?.size ?: 0}", color = Color(0xFF587083), fontSize = 11.sp)\n            Text(projectDir, color = Color(0xFF587083), fontSize = 10.sp)\n        }
         OutlinedTextField(value = projectId, onValueChange = { projectId = it.trim() }, modifier = Modifier.fillMaxWidth(), label = { Text("Firebase Project ID") }, singleLine = true)
         val deployRecord = remember(projectId, workflowRefresh) { if (projectId.isBlank()) null else workflowStore.get(projectId, "firebase_deploy") }
         if (deployRecord?.state == WorkflowStepState.WAITING_CONFIRMATION) {

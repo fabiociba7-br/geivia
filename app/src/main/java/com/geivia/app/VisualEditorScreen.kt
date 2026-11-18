@@ -182,8 +182,11 @@ internal fun VisualEditorScreen(
     // O parser é best-effort: ele não reescreve nem altera os arquivos Kotlin originais.
     LaunchedEffect(importedProjectPath, projectKey) {
         if (importedProjectPath.isBlank()) return@LaunchedEffect
+        // A presença de telas salvas não significa que o projeto importado já foi
+        // convertido corretamente. Mantém a visão do código importado como padrão,
+        // sem substituir telas personalizadas do usuário.
         if (!prefs.getString(screenRegistryPrefKey, null).isNullOrBlank()) {
-            workspacePanel = "canvas"
+            workspacePanel = "imported"
             return@LaunchedEffect
         }
         val parsed = withContext(Dispatchers.IO) {
@@ -196,7 +199,7 @@ internal fun VisualEditorScreen(
         elements.clear()
         elements.addAll(parsed.elementsByScreen[parsed.startScreenId].orEmpty())
         selectedId = elements.firstOrNull()?.id
-        workspacePanel = "canvas"
+        workspacePanel = "imported"
         ProjectAccountStore.applyActiveToGlobals(context)
     }
     var themePrimary by remember(projectKey) { mutableStateOf(prefs.getString(themePrimaryPrefKey, if (allowLegacyProjectData) prefs.getString("studio_theme_primary", "#1769AA") else "#1769AA") ?: "#1769AA") }

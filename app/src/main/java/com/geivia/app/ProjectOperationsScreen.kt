@@ -48,7 +48,7 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
     val workflowStore = remember { WorkflowProgressStore(context.getSharedPreferences("geivia_onboarding", android.content.Context.MODE_PRIVATE)) }
     var projectDir by rememberSaveable { mutableStateOf("") }
     var projectId by rememberSaveable { mutableStateOf(context.getSharedPreferences("geivia_onboarding", 0).getString("selected_project_id", "").orEmpty()) }
-    var output by rememberSaveable { mutableStateOf("Importe um ZIP do seu projeto para começar. O GEIVIA extrairá os arquivos no Debian privado e executará os comandos no próprio aparelho.") }
+    var output by rememberSaveable { mutableStateOf("Importe um ZIP ou selecione diretamente a pasta raiz do projeto. O GEIVIA copiará a estrutura completa para o Debian privado sem alterar os arquivos originais.") }
     var githubRepo by rememberSaveable { mutableStateOf("") }
     var githubBranch by rememberSaveable { mutableStateOf("main") }
     var busy by rememberSaveable { mutableStateOf(false) }
@@ -75,13 +75,36 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
             busy = false
         }
     }
+    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) scope.launch {
+            busy = true
+            output = "Importando a pasta e preservando a estrutura do projeto…"
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    controller.prepareEngine()
+                    ProjectFolderImporter.import(context, uri, controller.homeDir)
+                }
+            }.onSuccess { importedRoot ->
+                projectDir = importedRoot.absolutePath
+                prefs.edit().putString("imported_project_dir", importedRoot.absolutePath).apply()
+                output = "Projeto importado da pasta selecionada em: ${importedRoot.absolutePath}" +
+                    "\nArquivos: " + importedRoot.walkTopDown().count { it.isFile } +
+                    "\nEstrutura de diretórios preservada." +
+                    "\nfirebase.json: " + if (File(importedRoot, "firebase.json").isFile) "encontrado" else "não encontrado"
+            }.onFailure { error ->
+                output = "Falha na importação da pasta: " + (error.message ?: "erro desconhecido")
+            }
+            busy = false
+        }
+    }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("CENTRAL DE PROJETOS", color = Color(0xFF087DB5), fontSize = 11.sp)
         Text("Importar, enviar e publicar", color = Color(0xFF102B43), fontSize = 25.sp)
-        Text("O ZIP é extraído no Debian/PRoot. O envio ao GitHub ocorre pelo aplicativo; deploy Firebase é preparado para revisão e execução manual no Google Cloud Shell.", color = Color(0xFF587083), fontSize = 13.sp)
+        Text("Importe um projeto Android diretamente de uma pasta do celular ou por arquivo ZIP. O GEIVIA preserva os diretórios e copia os arquivos para o Debian/PRoot, sem modificar a origem. O envio ao GitHub ocorre pelo aplicativo; deploy Firebase é preparado para revisão e execução manual no Google Cloud Shell.", color = Color(0xFF587083), fontSize = 13.sp)
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Voltar ao painel") }
-        Button(onClick = { zipPicker.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Selecionar ZIP do projeto") }
+        Button(onClick = { folderPicker.launch(null) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Selecionar pasta raiz do projeto") }
+        OutlinedButton(onClick = { zipPicker.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Importar por arquivo ZIP") }
         if (projectDir.isNotBlank()) Text("Pasta importada: $projectDir", color = Color(0xFF18794E), fontSize = 11.sp)
         OutlinedTextField(value = projectId, onValueChange = { projectId = it.trim() }, modifier = Modifier.fillMaxWidth(), label = { Text("Firebase Project ID") }, singleLine = true)
         val deployRecord = remember(projectId, workflowRefresh) { if (projectId.isBlank()) null else workflowStore.get(projectId, "firebase_deploy") }
@@ -179,7 +202,7 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                     Text("Projeto: $projectId\nPasta importada no aparelho: $projectDir")
                     Text("Alvos detectados no firebase.json: ${deployTargets.joinToString(", ")}. Hosting/Storage usam destinos individuais quando o arquivo define target; sem isso, o seletor pode abranger todos os destinos configurados. Firestore usa o seletor oficial único, que publica regras e índices juntos. Nenhum comando será executado pelo GEIVIA.")
                     Text("ANTES DE EXECUTAR", style = androidx.compose.material3.MaterialTheme.typography.labelMedium)
-                    Text("1. Envie o mesmo ZIP para o ambiente Google Cloud Shell.\n2. Entre na pasta que contém firebase.json.\n3. Confira os alvos e as regras.\n4. Execute o comando abaixo somente depois da revisão.")
+                    Text("1. Envie a mesma pasta do projeto (ou um ZIP dela) para o ambiente Google Cloud Shell.\n2. Entre na pasta que contém firebase.json.\n3. Confira os alvos e as regras.\n4. Execute o comando abaixo somente depois da revisão.")
                     SelectionContainer { Text(deployCommand, fontSize = 12.sp, color = Color(0xFF1565C0)) }
                     if ("functions" in deployTargets) Text("ATENÇÃO: Functions podem exigir plano Blaze e faturamento ativo; não execute se a exigência de custo zero continuar valendo.", fontSize = 12.sp, color = Color(0xFF9A3D22))
                     Text("O deploy pode gerar cobrança e afetar usuários. A confirmação nesta tela apenas prepara e copia o comando; não publica o projeto.", fontSize = 12.sp)
@@ -204,7 +227,7 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                             )
                             val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                             clipboard.setPrimaryClip(android.content.ClipData.newPlainText("GEIVIA • Deploy Firebase", deployCommand))
-                            output = "DEPLOY PREPARADO\nProject ID: $projectId\n\nComando copiado para a área de transferência:\n$deployCommand\n\nO GEIVIA não executou o deploy. Envie o mesmo ZIP ao Google Cloud Shell, entre na pasta do projeto, revise firebase.json e as regras, então execute o comando manualmente. Depois retorne ao GEIVIA e rode um novo diagnóstico. O histórico permanece aguardando confirmação até haver evidência atualizada."
+                            output = "DEPLOY PREPARADO\nProject ID: $projectId\n\nComando copiado para a área de transferência:\n$deployCommand\n\nO GEIVIA não executou o deploy. Envie a mesma pasta do projeto (ou um ZIP dela) ao Google Cloud Shell, entre na pasta do projeto, revise firebase.json e as regras, então execute o comando manualmente. Depois retorne ao GEIVIA e rode um novo diagnóstico. O histórico permanece aguardando confirmação até haver evidência atualizada."
                         }.onFailure { output = "Não foi possível preparar o deploy: ${it.message}" }
                     }
                     showDeployConfirm = false

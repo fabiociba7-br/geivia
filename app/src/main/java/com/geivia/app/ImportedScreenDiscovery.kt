@@ -44,7 +44,7 @@ internal object ImportedScreenDiscovery {
             .filter { file ->
                 val path = file.relativeTo(root).invariantSeparatorsPath
                 (file.extension.equals("xml", true) && Regex("""(^|/)res/layout[^/]*/""").containsMatchIn(path)) ||
-                    (file.extension.equals("kt", true) && path.contains("/src/main/"))
+                    (file.extension.equals("kt", true) && (path.startsWith("src/main/") || path.contains("/src/main/")) )
             }
             .take(maxFiles.coerceIn(1, 10000))
             .toList()

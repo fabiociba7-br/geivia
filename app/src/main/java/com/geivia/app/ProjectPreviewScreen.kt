@@ -26,16 +26,22 @@ internal fun ProjectPreviewScreen(
 ) {
     // Project indexing can involve thousands of files. Never walk the project tree on
     // the UI thread: doing so was capable of freezing or terminating the app on large projects.
-    val workspaceState = produceState<ProjectWorkspaceInfo?>(null, projectDir) {
+    var retryScan by remember(projectDir) { mutableIntStateOf(0) }
+    val workspaceState = produceState<Pair<ProjectWorkspaceInfo?, String?>?>(null, projectDir, retryScan) {
         value = withContext(Dispatchers.IO) {
             runCatching {
+                require(projectDir.isNotBlank()) { "Nenhum projeto foi selecionado." }
                 val selected = File(projectDir).canonicalFile
                 require(selected.isDirectory) { "A pasta do projeto ativo não existe mais." }
                 ProjectWorkspaceInfo.scan(selected)
-            }.getOrNull()
+            }.fold(
+                onSuccess = { it to null },
+                onFailure = { null to (it.message ?: "Não foi possível analisar o projeto.") }
+            )
         }
     }
-    val workspace = workspaceState.value
+    val workspace = workspaceState.value?.first
+    val scanError = workspaceState.value?.second
     val screensState = produceState<List<ImportedScreen>>(emptyList(), projectDir, workspace?.root?.absolutePath) {
         value = withContext(Dispatchers.IO) {
             workspace?.takeIf { it.kind == ProjectWorkspaceInfo.Kind.ANDROID }
@@ -57,12 +63,21 @@ internal fun ProjectPreviewScreen(
             TextButton(onClick = onBack) { Text("Voltar") }
         }
 
-        if (workspaceState.value == null) {
-            if (projectDir.isBlank()) {
-                Text("Nenhum projeto ativo. Importe ou selecione um projeto para continuar.", Modifier.padding(16.dp))
-            } else {
+        if (workspaceState.value == null || workspace == null) {
+            if (workspaceState.value == null) {
                 LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 16.dp))
                 Text("Lendo os arquivos do projeto em segundo plano…", Modifier.padding(16.dp))
+            } else {
+                Card(Modifier.fillMaxWidth().padding(16.dp)) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Não foi possível abrir a prévia", style = MaterialTheme.typography.titleMedium)
+                        Text(scanError ?: "O projeto não pôde ser analisado.", style = MaterialTheme.typography.bodyMedium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = onBack) { Text("Voltar") }
+                            Button(onClick = { retryScan++ }) { Text("Tentar novamente") }
+                        }
+                    }
+                }
             }
             return@Column
         }

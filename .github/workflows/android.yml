@@ -1,0 +1,65 @@
+name: GEIVIA Validation
+
+# CI validates source and tests only. APK generation is intentionally disabled
+# until the project owner explicitly requests an APK build.
+on:
+  push:
+    branches: [main, "feat/full-project-import-and-deploy"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: geivia-android-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate GEIVIA (no APK)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install Android SDK packages required for tests
+        run: |
+          set -euo pipefail
+          sdkmanager --install "platforms;android-35"
+          sdkmanager --install "build-tools;35.0.0"
+          sdkmanager --install "ndk;27.2.12479018"
+          sdkmanager --install "cmake;3.22.1"
+
+      - name: Validate Android permission policy
+        run: node scripts/validate-android-permissions.mjs
+
+      - name: Validate Linux toolchain manifest
+        run: node scripts/validate-linux-toolchain.mjs
+
+      - name: Validate GitHub OAuth Worker syntax and tests
+        run: |
+          node --check github-auth-worker/src/index.js
+          npm test --prefix github-auth-worker
+
+      - name: Run unit tests
+        run: gradle --no-daemon testDebugUnitTest

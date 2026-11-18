@@ -422,7 +422,9 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onAccounts = { page = "accounts" },
                     onLegacyDashboard = { page = "legacy_dashboard" },
                     onTerminal = { returnToEditorAfterTool = false; page = "terminal" },
-                    onCodeEditor = { pendingProjectFilePath = null; codeEditorReturnPage = "dashboard"; page = "project_code_editor" }
+                    onCodeEditor = { pendingProjectFilePath = null; codeEditorReturnPage = "dashboard"; page = "project_code_editor" },
+                    onGitHub = { page = "github" },
+                    onDeploy = { page = "project_operations" }
                     )
                 }
             }

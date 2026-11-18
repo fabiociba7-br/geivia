@@ -40,7 +40,7 @@ internal fun ProjectPreviewScreen(
     }
     var selectedPath by remember(projectDir) { mutableStateOf<String?>(null) }
     var tab by remember(projectDir) { mutableStateOf(ProjectContentTab.FILES) }
-    val sourceExtensions = setOf("kt", "kts", "java", "xml", "json", "gradle", "properties", "yaml", "yml", "html", "htm", "css", "js", "ts", "tsx", "jsx", "dart", "md", "txt", "toml", "sh", "sql", " rules")
+    val sourceExtensions = setOf("kt", "kts", "java", "xml", "json", "gradle", "properties", "yaml", "yml", "html", "htm", "css", "js", "ts", "tsx", "jsx", "dart", "md", "txt", "toml", "sh", "sql", "rules")
     val visibleFiles = workspace?.files.orEmpty().filter { file ->
         val ext = file.extension.lowercase()
         ext in sourceExtensions || file.name in setOf("gradlew", "Dockerfile", "Makefile", ".firebaserc", "firebase.json")

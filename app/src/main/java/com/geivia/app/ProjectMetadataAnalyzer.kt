@@ -123,27 +123,26 @@ internal data class ProjectMetadata(
             }
             val databaseRules = databaseEntries.mapNotNull { it.optString("rules").takeIf(String::isNotBlank) }
             val publicDirs = hostingEntries.mapNotNull { it.optString("public").takeIf(String::isNotBlank) }
-            val configNames = setOf("firebase.json", ".firebaserc", "google-services.json", "package.json", "app.json",
-                "app.config.json", "pubspec.yaml", "AndroidManifest.xml", "vite.config.js", "vite.config.ts",
-                "next.config.js", "next.config.ts", "angular.json")
+            val configNames = setOf("firebase.json", ".firebaserc", "google-services.json", "package.json", "metadata.json",
+                "app.json", "app.config.json", "capacitor.config.json", "pubspec.yaml", "AndroidManifest.xml",
+                "vite.config.js", "vite.config.ts", "next.config.js", "next.config.ts", "angular.json")
             val configs = files.filter { it.name in configNames }.map(::rel).distinct().sorted()
 
             val roles = linkedMapOf<String, String>()
             files.forEach { f ->
                 val path = rel(f)
-                val firstSegment = path.substringBefore('/')
+                val segments = path.split('/')
                 val folder = path.substringBeforeLast('/', "")
                 val role = when {
-                    path.startsWith("functions/") || firstSegment == "functions" -> "Firebase Cloud Functions"
-                    path.contains("/functions/") -> "Cloud Functions / backend"
-                    path.contains("firestore", true) -> "Firestore rules / indexes"
+                    "functions" in segments -> "Firebase Cloud Functions"
+                    "firestore" in segments || f.name.contains("firestore", true) -> "Firestore rules / indexes"
                     f.name == "storage.rules" -> "Firebase Storage rules"
-                    firstSegment == "hosting" || firstSegment == "public" -> "Hosting / arquivos publicados"
-                    firstSegment == "src" -> "Código-fonte"
-                    firstSegment == "lib" -> "Bibliotecas / código principal"
-                    firstSegment in setOf("tests", "test", "__tests__") -> "Testes"
-                    firstSegment == "android" -> "Subprojeto Android"
-                    firstSegment == "ios" -> "Subprojeto iOS"
+                    "hosting" in segments || "public" in segments -> "Hosting / arquivos publicados"
+                    "src" in segments -> "Código-fonte"
+                    "lib" in segments -> "Bibliotecas / código principal"
+                    segments.any { it in setOf("tests", "test", "__tests__") } -> "Testes"
+                    "android" in segments -> "Subprojeto Android"
+                    "ios" in segments -> "Subprojeto iOS"
                     else -> null
                 }
                 if (role != null && folder.isNotBlank()) roles.putIfAbsent(folder, role)

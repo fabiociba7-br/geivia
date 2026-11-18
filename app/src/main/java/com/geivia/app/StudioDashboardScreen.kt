@@ -54,6 +54,10 @@ internal fun StudioDashboardScreen(
     val prefs = context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE)
     val projectId = prefs.getString("selected_project_id", "").orEmpty()
     val projectName = prefs.getString("selected_project_name", "").orEmpty().ifBlank { projectId }
+    val importedProjectPath = prefs.getString("imported_project_dir", "").orEmpty()
+    val importedProjectExists = importedProjectPath.isNotBlank() && java.io.File(importedProjectPath).isDirectory
+    val importedProjectName = prefs.getString("imported_project_name", "").orEmpty()
+        .ifBlank { java.io.File(importedProjectPath).name }
     val drawerState = androidx.compose.material3.rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -224,8 +228,8 @@ internal fun StudioDashboardScreen(
                     StudioMetricCard(
                         modifier = Modifier.weight(1f),
                         icon = Icons.Default.FolderOpen,
-                        value = if (projectId.isBlank()) "0" else "1",
-                        label = "Projeto conectado"
+                        value = if (importedProjectExists || projectId.isNotBlank()) "1" else "0",
+                        label = "Projeto ativo"
                     )
                     StudioMetricCard(
                         modifier = Modifier.weight(1f),
@@ -249,8 +253,8 @@ internal fun StudioDashboardScreen(
                         }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(if (projectId.isBlank()) "Nenhum projeto selecionado" else projectName, color = StudioNavy, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text(if (projectId.isBlank()) "Crie um projeto ou importe um existente para começar." else "Project ID: $projectId", color = StudioMuted, fontSize = 11.sp, maxLines = 2)
+                            Text(if (importedProjectExists) importedProjectName else if (projectId.isBlank()) "Nenhum projeto selecionado" else projectName, color = StudioNavy, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(if (importedProjectExists) "Projeto local importado • toque para abrir e gerenciar os arquivos" else if (projectId.isBlank()) "Crie um projeto ou importe um existente para começar." else "Project ID: $projectId", color = StudioMuted, fontSize = 11.sp, maxLines = 2)
                         }
                         Icon(Icons.Default.ChevronRight, null, tint = StudioMuted)
                     }

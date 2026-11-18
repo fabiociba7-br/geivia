@@ -30,6 +30,7 @@ internal object ComposeToStudioParser {
         ktFiles.forEach { file ->
             val source = runCatching { file.readText() }.getOrNull() ?: return@forEach
             extractComposableFunctions(source).forEach functionLoop@{ (name, body) ->
+                if (screens.size >= StudioScreenDocument.MAX_SCREENS) return@functionLoop
                 val screenId = nameToId(name)
                 if (screens.any { it.id == screenId }) return@functionLoop
                 val components = extractComponents(body)
@@ -129,9 +130,9 @@ internal object ComposeToStudioParser {
 
     private fun nameToId(name: String): String =
         name.removePrefix("Screen_").replace(Regex("[^A-Za-z0-9]"), "_").lowercase()
-            .ifBlank { "screen_" + UUID.randomUUID().toString().take(6) }
+            .take(64).ifBlank { "screen_" + UUID.randomUUID().toString().take(6) }
 
     private fun nameToTitle(name: String): String =
         name.removePrefix("Screen_").replace(Regex("([a-z])([A-Z])"), "$1 $2").replace('_', ' ')
-            .trim().ifBlank { "Tela" }
+            .trim().take(StudioScreenDocument.MAX_NAME_LENGTH).ifBlank { "Tela" }
 }

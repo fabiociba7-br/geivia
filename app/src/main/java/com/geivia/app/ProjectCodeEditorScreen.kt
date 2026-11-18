@@ -16,7 +16,7 @@ import kotlinx.coroutines.withContext
 
 /** Real source browser/editor for the imported project, with path containment checks. */
 @Composable
-internal fun ProjectCodeEditorScreen(projectDir: String, onBack: () -> Unit) {
+internal fun ProjectCodeEditorScreen(projectDir: String, initialFilePath: String? = null, onBack: () -> Unit) {
     // Same resolved root used by the preview and terminal, so every screen sees the same project.
     val root = remember(projectDir) {
         runCatching {
@@ -74,6 +74,14 @@ internal fun ProjectCodeEditorScreen(projectDir: String, onBack: () -> Unit) {
 
     fun openFile(file: File) {
         if (dirty && selectedPath != null) pendingOpen = file else loadFile(file)
+    }
+
+    LaunchedEffect(initialFilePath, filesState.value != null) {
+        val requested = initialFilePath?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
+        if (filesState.value != null && selectedPath == null) {
+            safeFile(requested)?.let { loadFile(it) }
+                ?: run { status = "A tela foi localizada no índice, mas o arquivo não está disponível no projeto." }
+        }
     }
 
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {

@@ -21,6 +21,26 @@ internal data class ProjectWorkspaceInfo(
         get() = files.map { it.relativeTo(root).invariantSeparatorsPath }
 
     companion object {
+        fun resolveRoot(rootDir: File): File {
+            val root = rootDir.canonicalFile
+            fun isProjectDirectory(dir: File): Boolean {
+                val markers = listOf(
+                    "settings.gradle", "settings.gradle.kts", "build.gradle", "build.gradle.kts",
+                    "gradlew", "pubspec.yaml", "package.json", "index.html"
+                )
+                return markers.any { File(dir, it).isFile } ||
+                    File(dir, "src/main/AndroidManifest.xml").isFile ||
+                    File(dir, "app/src/main/AndroidManifest.xml").isFile
+            }
+            if (isProjectDirectory(root)) return root
+            val candidates = root.walkTopDown()
+                .onEnter { it == root || it.name !in setOf(".git", ".gradle", "build", "node_modules", ".idea", ".dart_tool") }
+                .maxDepth(3)
+                .filter { it.isDirectory && it != root && isProjectDirectory(it) }
+                .toList()
+            return candidates.singleOrNull() ?: root
+        }
+
         fun load(context: Context): ProjectWorkspaceInfo? {
             val prefs = context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE)
             val path = prefs.getString("active_project_dir", null)

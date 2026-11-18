@@ -2,6 +2,9 @@ name: GEIVIA manual verification
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feature/project-metadata-intelligence
 
 permissions:
   contents: read
@@ -10,10 +13,10 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout main
+      - name: Checkout commit being validated
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.sha }}
           submodules: recursive
 
       - name: Set up JDK 17

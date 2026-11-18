@@ -75,11 +75,15 @@ internal fun VisualEditorScreen(
 ) {
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE) }
     val cloudProjectId = prefs.getString("selected_project_id", null).orEmpty()
-    val importedProjectPath = prefs.getString("imported_project_dir", "").orEmpty()
-    val projectIdForStorage = cloudProjectId.ifBlank {
+    val importedProjectPath = prefs.getString("active_project_dir", "").orEmpty()
+        .ifBlank { prefs.getString("imported_project_dir", "").orEmpty() }
+    val activeWorkspace = remember(importedProjectPath) {
         importedProjectPath.takeIf { it.isNotBlank() && java.io.File(it).isDirectory }
-            ?.let { "local_" + it.hashCode().toUInt().toString(16) } ?: "local"
+            ?.let { runCatching { ProjectWorkspaceInfo.scan(java.io.File(it)) }.getOrNull() }
     }
+    val projectIdForStorage = importedProjectPath.takeIf { it.isNotBlank() && java.io.File(it).isDirectory }
+        ?.let { "local_" + it.hashCode().toUInt().toString(16) }
+        ?: cloudProjectId.ifBlank { "local" }
     val projectKey = projectIdForStorage.replace(Regex("[^A-Za-z0-9_-]"), "_")
     val allowLegacyProjectData = !prefs.getBoolean("studio_legacy_data_migrated", false) && !prefs.getBoolean("studio_project_migrated_$projectKey", false)
     val screenRegistryPrefKey = "geivia_studio_screens_v1_$projectKey"
@@ -91,7 +95,7 @@ internal fun VisualEditorScreen(
     val generatedPackagePrefKey = "studio_generated_package_$projectKey"
     val savedScreenDocument = prefs.getString(screenRegistryPrefKey, null)
         ?: if (allowLegacyProjectData) prefs.getString("geivia_studio_screens_v1", null) else null
-    val projectTitle = prefs.getString("selected_project_name", "Meu aplicativo").orEmpty().ifBlank { "Meu aplicativo" }
+    val projectTitle = activeWorkspace?.name ?: prefs.getString("selected_project_name", "Meu aplicativo").orEmpty().ifBlank { "Meu aplicativo" }
     val screenRegistry = remember(projectKey) {
         mutableStateListOf<StudioScreenDefinition>().apply {
             if (!savedScreenDocument.isNullOrBlank()) runCatching {
@@ -674,7 +678,7 @@ internal fun VisualEditorScreen(
                             "code" -> "Estrutura e código"
                             else -> "Editor avançado"
                         }, fontWeight = FontWeight.Bold, color = EditorInk, fontSize = 18.sp)
-                        Text("GEIVIA Studio · Android", color = EditorMuted, fontSize = 11.sp)
+                        Text(if (activeWorkspace != null) "Projeto ativo: $projectTitle · " + activeWorkspace.kind.name else "GEIVIA Studio · Novo projeto", color = EditorMuted, fontSize = 11.sp)
                     }
                 },
                 navigationIcon = {

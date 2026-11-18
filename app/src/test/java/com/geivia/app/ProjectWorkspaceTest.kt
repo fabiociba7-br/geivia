@@ -64,4 +64,45 @@ class ProjectWorkspaceTest {
 
         assertEquals(nested.canonicalFile, ProjectWorkspaceInfo.resolveRoot(selected))
     }
+
+    @Test fun resolvesProjectInsideWrapperEvenWhenItHasModules() {
+        val selected = temp.newFolder("wrapper")
+        val project = File(selected, "geivia")
+        File(project, "app/src/main/AndroidManifest.xml").apply { parentFile!!.mkdirs(); writeText("<manifest />") }
+        File(project, "build.gradle.kts").writeText("plugins {}")
+        File(project, "app/build.gradle.kts").writeText("plugins {}")
+        File(project, "worker/package.json").apply { parentFile!!.mkdirs(); writeText("{}") }
+
+        assertEquals(project.canonicalFile, ProjectWorkspaceInfo.resolveRoot(selected))
+    }
+
+    @Test fun resolveRootIgnoresMacZipMetadata() {
+        val selected = temp.newFolder("zip")
+        File(selected, "__MACOSX/project/build.gradle").apply { parentFile!!.mkdirs(); writeText("") }
+        val project = File(selected, "project")
+        File(project, "settings.gradle").apply { parentFile!!.mkdirs(); writeText("") }
+
+        assertEquals(project.canonicalFile, ProjectWorkspaceInfo.resolveRoot(selected))
+    }
+
+    @Test fun keepsSelectedFolderWhenSeveralProjectsAreAmbiguous() {
+        val selected = temp.newFolder("many")
+        File(selected, "a/build.gradle").apply { parentFile!!.mkdirs(); writeText("") }
+        File(selected, "b/build.gradle").apply { parentFile!!.mkdirs(); writeText("") }
+
+        assertEquals(selected.canonicalFile, ProjectWorkspaceInfo.resolveRoot(selected))
+    }
+
+    @Test fun scanResolvesWrapperRoot() {
+        val selected = temp.newFolder("outer")
+        val project = File(selected, "inner")
+        File(project, "settings.gradle.kts").apply { parentFile!!.mkdirs(); writeText("") }
+        File(project, "app/build.gradle.kts").apply { parentFile!!.mkdirs(); writeText("") }
+
+        val info = ProjectWorkspaceInfo.scan(selected)
+
+        assertEquals(project.canonicalFile, info.root)
+        assertEquals(ProjectWorkspaceInfo.Kind.ANDROID, info.kind)
+        assertTrue(info.relativeFiles.contains("settings.gradle.kts"))
+    }
 }

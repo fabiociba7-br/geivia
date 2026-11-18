@@ -2523,8 +2523,7 @@ private fun GitHubScreen(
 private fun TerminalPanel() {
     val context = LocalContext.current
     val workspacePrefs = remember { context.getSharedPreferences("geivia_onboarding", android.content.Context.MODE_PRIVATE) }
-    val activeProjectPath = workspacePrefs.getString("active_project_dir", "").orEmpty()
-        .ifBlank { workspacePrefs.getString("imported_project_dir", "").orEmpty() }
+    val activeProjectPath = ProjectWorkspaceInfo.activeRoot(context)?.absolutePath.orEmpty()
     val activeProjectRoot = remember(activeProjectPath) {
         activeProjectPath.takeIf { it.isNotBlank() }?.let { runCatching { File(it).canonicalFile }.getOrNull() }
             ?.takeIf { it.isDirectory }

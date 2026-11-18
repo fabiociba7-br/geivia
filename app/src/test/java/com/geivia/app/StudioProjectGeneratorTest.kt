@@ -38,7 +38,7 @@ class StudioProjectGeneratorTest {
         assertTrue(source.contains("class MainActivity"))
         assertTrue(source.contains("Screen_Home"))
         assertTrue(source.contains("Screen_Profile"))
-        assertTrue(source.contains("Text(\"Olá\""))
+        assertTrue(source.contains("Text(resolve(\"Olá\""))
         assertTrue(source.contains("Button(onClick = { runActions("))
         assertEquals(true, files["gradle.properties"]?.contains("android.useAndroidX=true") == true)
     }

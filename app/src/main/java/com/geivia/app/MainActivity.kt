@@ -123,6 +123,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
         )
     }
     var returnToEditorAfterTool by rememberSaveable { mutableStateOf(false) }
+    var codeEditorReturnPage by rememberSaveable { mutableStateOf("project_preview") }
     var index by rememberSaveable {
         mutableIntStateOf(prefs.getInt("workflow_question_index", 0).coerceAtLeast(0))
     }
@@ -301,7 +302,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onDiagnostics = { returnToEditorAfterTool = true; page = "diagnostics" },
                     onTerminal = { returnToEditorAfterTool = true; page = "terminal" },
                     onProjects = { returnToEditorAfterTool = true; page = "project_operations" },
-                    onProjectFiles = { page = "project_code_editor" }
+                    onProjectFiles = { codeEditorReturnPage = "visual_editor"; page = "project_code_editor" }
                 )
                 "accounts" -> AccountsConnectionsScreen(
                     googleReady = prefs.getBoolean("google_cloud_cli_ready", false),
@@ -354,14 +355,14 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                         .ifBlank { prefs.getString("imported_project_dir", "").orEmpty() },
                     onBack = { page = "dashboard" },
                     onEditor = { page = "visual_editor" },
-                    onCodeEditor = { page = "project_code_editor" },
+                    onCodeEditor = { codeEditorReturnPage = "project_preview"; page = "project_code_editor" },
                     onTerminal = { page = "terminal" },
                     onOperations = { page = "project_operations" }
                 )
                 "project_code_editor" -> ProjectCodeEditorScreen(
                     projectDir = prefs.getString("active_project_dir", "").orEmpty()
                         .ifBlank { prefs.getString("imported_project_dir", "").orEmpty() },
-                    onBack = { page = "project_preview" }
+                    onBack = { page = codeEditorReturnPage }
                 )
                 "firebase_admin" -> FirebaseAdminScreen(prefs.getString("active_firebase_project_id", "").orEmpty().ifBlank { prefs.getString("selected_project_id", preflightProjectId).orEmpty() }) { page = if (returnToEditorAfterTool) "visual_editor" else "project_operations"; returnToEditorAfterTool = false }
                 "legacy_dashboard" -> DashboardScreen(answers.toMap(), costMode,

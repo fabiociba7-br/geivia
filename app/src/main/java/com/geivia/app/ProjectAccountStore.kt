@@ -11,8 +11,14 @@ import java.io.File
 internal object ProjectAccountStore {
     private const val PREFS = "geivia_onboarding"
 
+    private fun normalizedPath(projectPath: String): String {
+        val candidate = File(projectPath)
+        return runCatching { ProjectWorkspaceInfo.resolveRoot(candidate).absolutePath }
+            .getOrDefault(candidate.absolutePath)
+    }
+
     private fun key(projectPath: String, suffix: String): String {
-        val hash = projectPath.hashCode().toUInt().toString(16)
+        val hash = normalizedPath(projectPath).hashCode().toUInt().toString(16)
         return "proj_${hash}_$suffix"
     }
 
@@ -25,6 +31,7 @@ internal object ProjectAccountStore {
             p.getString("active_project_dir", null),
             p.getString("imported_project_dir", null)
         ).filterNotNull().firstOrNull { it.isNotBlank() && File(it).isDirectory }
+            ?.let(::normalizedPath)
     }
 
     fun saveFirebase(context: Context, projectPath: String, firebaseProjectId: String?) {
@@ -62,14 +69,12 @@ internal object ProjectAccountStore {
         val p = prefs(context)
         val editor = p.edit()
         val fb = firebaseId(context, path)
-        if (fb.isNotBlank()) {
-            editor.putString("active_firebase_project_id", fb)
-                .putString("selected_project_id", fb)
-        }
         val gh = githubRepo(context, path)
-        if (gh.isNotBlank()) editor.putString("preflight_github_repo", gh)
         val g = googleProject(context, path)
-        if (g.isNotBlank()) editor.putString("selected_google_project_id", g)
+        editor.putString("active_firebase_project_id", fb)
+            .putString("selected_project_id", fb)
+            .putString("preflight_github_repo", gh)
+            .putString("selected_google_project_id", g)
         editor.apply()
     }
 

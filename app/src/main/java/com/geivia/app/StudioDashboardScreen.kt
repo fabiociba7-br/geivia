@@ -48,8 +48,11 @@ internal fun StudioDashboardScreen(
     onIntegrations: () -> Unit,
     onTools: () -> Unit,
     onDiagnostics: () -> Unit,
+    onEnvironmentSetup: () -> Unit = {},
     onAccounts: () -> Unit,
-    onLegacyDashboard: () -> Unit
+    onLegacyDashboard: () -> Unit,
+    onTerminal: () -> Unit = {},
+    onCodeEditor: () -> Unit = {}
 ) {
     val prefs = context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE)
     val projectId = prefs.getString("selected_project_id", "").orEmpty()
@@ -76,6 +79,15 @@ internal fun StudioDashboardScreen(
         StudioNavItem("TESTAR E PUBLICAR", "Pré-visualização", Icons.Default.Visibility, { navigate(onPreview) }),
         StudioNavItem("TESTAR E PUBLICAR", "Operações do projeto", Icons.Default.Publish, { navigate(onProjects) }),
         StudioNavItem("AMBIENTE", "Ferramentas e atualizações", Icons.Default.Terminal, { navigate(onTools) }),
+        StudioNavItem("DESENVOLVIMENTO", "Terminal", Icons.Default.Terminal, { navigate(onTerminal) }),
+        StudioNavItem("DESENVOLVIMENTO", "Editor de código", Icons.Default.Code, { navigate(onCodeEditor) }),
+        StudioNavItem("DESENVOLVIMENTO", "Compilar (Code on the Go)", Icons.Default.Build, {
+            navigate {
+                val root = ProjectWorkspaceInfo.activeRoot(context)
+                CodeOnTheGoBridge.openProject(context, root)
+            }
+        }),
+        StudioNavItem("AMBIENTE", "Configurar ambiente Linux", Icons.Default.Build, { navigate(onEnvironmentSetup) }),
         StudioNavItem("AMBIENTE", "Diagnóstico", Icons.Default.Build, { navigate(onDiagnostics) }),
         StudioNavItem("AMBIENTE", "Acompanhamento clássico", Icons.Default.History, { navigate(onLegacyDashboard) }),
         StudioNavItem("CONTA", "Contas e acesso", Icons.Default.AccountCircle, { navigate(onAccounts) })
@@ -243,20 +255,35 @@ internal fun StudioDashboardScreen(
                 Text("CONTINUE DE ONDE PAROU", color = StudioMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
                 Spacer(Modifier.height(9.dp))
                 Card(
-                    modifier = Modifier.fillMaxWidth().clickable(onClick = onProjects),
+                    modifier = Modifier.fillMaxWidth().clickable(onClick = if (importedProjectExists) onEditor else onProjects),
                     shape = RoundedCornerShape(17.dp),
                     colors = CardDefaults.cardColors(containerColor = Color.White)
                 ) {
-                    Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(44.dp).background(Color(0xFFEAF3FC), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.FolderOpen, null, tint = StudioBlue)
+                    Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(44.dp).background(Color(0xFFEAF3FC), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.FolderOpen, null, tint = StudioBlue)
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(if (importedProjectExists) importedProjectName else if (projectId.isBlank()) "Nenhum projeto selecionado" else projectName, color = StudioNavy, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Text(if (importedProjectExists) "Projeto carregado • pronto para editar, ver código e usar o terminal" else if (projectId.isBlank()) "Crie um projeto ou importe um existente para começar." else "Project ID: $projectId", color = StudioMuted, fontSize = 11.sp, maxLines = 2)
+                            }
+                            Icon(Icons.Default.ChevronRight, null, tint = StudioMuted)
                         }
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(if (importedProjectExists) importedProjectName else if (projectId.isBlank()) "Nenhum projeto selecionado" else projectName, color = StudioNavy, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text(if (importedProjectExists) "Projeto local importado • toque para abrir e gerenciar os arquivos" else if (projectId.isBlank()) "Crie um projeto ou importe um existente para começar." else "Project ID: $projectId", color = StudioMuted, fontSize = 11.sp, maxLines = 2)
+                        if (importedProjectExists) {
+                            Spacer(Modifier.height(12.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(onClick = onEditor, modifier = Modifier.weight(1f)) { Text("Editor", fontSize = 12.sp) }
+                                OutlinedButton(onClick = onCodeEditor, modifier = Modifier.weight(1f)) { Text("Código", fontSize = 12.sp) }
+                                OutlinedButton(onClick = onTerminal, modifier = Modifier.weight(1f)) { Text("Terminal", fontSize = 12.sp) }
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(onClick = onPreview, modifier = Modifier.weight(1f)) { Text("Prévia", fontSize = 12.sp) }
+                                OutlinedButton(onClick = onProjects, modifier = Modifier.weight(1f)) { Text("Gerenciar", fontSize = 12.sp) }
+                            }
                         }
-                        Icon(Icons.Default.ChevronRight, null, tint = StudioMuted)
                     }
                 }
 
@@ -264,6 +291,11 @@ internal fun StudioDashboardScreen(
                 Text("FERRAMENTAS DO STUDIO", color = StudioMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
                 Spacer(Modifier.height(9.dp))
                 StudioActionCard(Icons.Default.Widgets, "Editor visual", "Monte telas com componentes e edite suas propriedades", true, onEditor)
+                Spacer(Modifier.height(8.dp))
+                StudioActionCard(Icons.Default.Build, "Compilar (Code on the Go)", "Abre o projeto no Code on the Go para gerar o APK no celular", true, {
+                    val root = ProjectWorkspaceInfo.activeRoot(context)
+                    CodeOnTheGoBridge.openProject(context, root)
+                })
                 Spacer(Modifier.height(8.dp))
                 StudioActionCard(Icons.Default.Preview, "Pré-visualizar projeto", "Confira os arquivos e a estrutura importada", true, onPreview)
                 Spacer(Modifier.height(8.dp))

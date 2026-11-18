@@ -128,7 +128,7 @@ internal object ProjectFolderImporter {
     private fun safeSegment(name: String): String {
         val cleaned = name.trim()
             .replace('/', '_')
-            .replace('\\\\', '_')
+            .replace(92.toChar(), '_')
             .replace(Regex("[\\p{Cntrl}]"), "_")
         require(cleaned.isNotBlank() && cleaned != "." && cleaned != "..") {
             "A pasta selecionada contém um nome de arquivo inválido."

@@ -23,24 +23,41 @@ internal data class ProjectWorkspaceInfo(
         get() = files.map { it.relativeTo(root).invariantSeparatorsPath }
 
     companion object {
+        /** Directories that never belong to the user's sources (build output, VCS, ZIP metadata). */
+        internal val IGNORED_DIRS = setOf(
+            ".git", ".gradle", "build", "node_modules", ".idea", ".dart_tool", "__MACOSX"
+        )
+
+        private val PROJECT_MARKERS = listOf(
+            "settings.gradle", "settings.gradle.kts", "build.gradle", "build.gradle.kts",
+            "gradlew", "pubspec.yaml", "package.json", "index.html"
+        )
+
+        private fun isProjectDirectory(dir: File): Boolean =
+            PROJECT_MARKERS.any { File(dir, it).isFile } ||
+                File(dir, "src/main/AndroidManifest.xml").isFile ||
+                File(dir, "app/src/main/AndroidManifest.xml").isFile
+
+        /**
+         * Finds the real project root. If [rootDir] is already a project, it is returned. Otherwise
+         * the nearest (topmost) project directories below it are collected; only when there is exactly
+         * one is it chosen. Nested modules (e.g. wrapper/project/app) must not count as separate
+         * candidates, otherwise a project inside a wrapper folder is never resolved.
+         */
         fun resolveRoot(rootDir: File): File {
             val root = rootDir.canonicalFile
-            fun isProjectDirectory(dir: File): Boolean {
-                val markers = listOf(
-                    "settings.gradle", "settings.gradle.kts", "build.gradle", "build.gradle.kts",
-                    "gradlew", "pubspec.yaml", "package.json", "index.html"
-                )
-                return markers.any { File(dir, it).isFile } ||
-                    File(dir, "src/main/AndroidManifest.xml").isFile ||
-                    File(dir, "app/src/main/AndroidManifest.xml").isFile
-            }
             if (isProjectDirectory(root)) return root
-            val candidates = root.walkTopDown()
-                .onEnter { it == root || it.name !in setOf(".git", ".gradle", "build", "node_modules", ".idea", ".dart_tool") }
-                .maxDepth(3)
-                .filter { it.isDirectory && it != root && isProjectDirectory(it) }
-                .toList()
-            return candidates.singleOrNull() ?: root
+            val found = mutableListOf<File>()
+            fun visit(dir: File, depth: Int) {
+                if (depth > 3) return
+                val children = dir.listFiles { f -> f.isDirectory && f.name !in IGNORED_DIRS }
+                    ?.sortedBy { it.name } ?: return
+                for (child in children) {
+                    if (isProjectDirectory(child)) found += child.canonicalFile else visit(child, depth + 1)
+                }
+            }
+            visit(root, 1)
+            return found.singleOrNull() ?: root
         }
 
         fun activeRoot(context: Context): File? {
@@ -51,6 +68,7 @@ internal data class ProjectWorkspaceInfo(
             ).filterNotNull().filter { it.isNotBlank() }
                 .mapNotNull { path -> runCatching { File(path).canonicalFile }.getOrNull() }
                 .firstOrNull { it.isDirectory }
+                ?.let { runCatching { resolveRoot(it) }.getOrDefault(it) }
         }
 
         fun load(context: Context): ProjectWorkspaceInfo? {
@@ -59,11 +77,9 @@ internal data class ProjectWorkspaceInfo(
         }
 
         fun scan(rootDir: File): ProjectWorkspaceInfo {
-            val root = rootDir.canonicalFile
+            val root = resolveRoot(rootDir)
             val all = root.walkTopDown()
-                .onEnter { dir ->
-                    dir == root || dir.name !in setOf(".git", ".gradle", "build", "node_modules", ".idea", ".dart_tool")
-                }
+                .onEnter { dir -> dir == root || dir.name !in IGNORED_DIRS }
                 .filter { it.isFile }
                 .take(20_001)
                 .toList()

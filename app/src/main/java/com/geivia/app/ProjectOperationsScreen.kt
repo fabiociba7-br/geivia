@@ -204,6 +204,7 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                         if (meta.storageRules.isNotEmpty()) Text("Storage rules: ${meta.storageRules.joinToString()}", fontSize = 12.sp)
                         if (meta.databaseRules.isNotEmpty()) Text("Realtime Database rules: ${meta.databaseRules.joinToString()}", fontSize = 12.sp)
                         if (meta.hostingPublicDirs.isNotEmpty()) Text("Hosting public: ${meta.hostingPublicDirs.joinToString()}", fontSize = 12.sp)
+                        if (meta.configFiles.isNotEmpty()) Text("Arquivos de configuração: ${meta.configFiles.take(8).joinToString()}", fontSize = 11.sp)
                         if (meta.structure.isNotEmpty()) {
                             Text("Pastas interpretadas:", fontSize = 12.sp)
                             meta.structure.take(12).forEach { Text("• ${it.path}: ${it.role}", fontSize = 11.sp) }

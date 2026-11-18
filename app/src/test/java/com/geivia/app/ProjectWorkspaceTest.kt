@@ -56,6 +56,40 @@ class ProjectWorkspaceTest {
         assertFalse(info.relativeFiles.any { it.startsWith("build/") })
     }
 
+    @Test fun ignoresAiStudioAndCodeEditorMetadataButKeepsProjectConfig() {
+        val root = temp.newFolder("android-with-editor-metadata")
+        File(root, "settings.gradle.kts").writeText("include(\":app\")")
+        File(root, ".aistudio/artifacts/brain/session.json").apply {
+            parentFile!!.mkdirs()
+            writeText("{}")
+        }
+        File(root, ".cg.editor/openedFiles.json.bak").apply {
+            parentFile!!.mkdirs()
+            writeText("{}")
+        }
+        File(root, ".cg.gradle-sync/sync.pb").apply {
+            parentFile!!.mkdirs()
+            writeText("binary")
+        }
+        File(root, ".github/workflows/build.yml").apply {
+            parentFile!!.mkdirs()
+            writeText("name: build")
+        }
+        File(root, "app/src/main/AndroidManifest.xml").apply {
+            parentFile!!.mkdirs()
+            writeText("<manifest />")
+        }
+
+        val info = ProjectWorkspaceInfo.scan(root)
+
+        assertTrue(info.relativeFiles.contains("settings.gradle.kts"))
+        assertTrue(info.relativeFiles.contains(".github/workflows/build.yml"))
+        assertTrue(info.relativeFiles.contains("app/src/main/AndroidManifest.xml"))
+        assertFalse(info.relativeFiles.any { it.startsWith(".aistudio/") })
+        assertFalse(info.relativeFiles.any { it.startsWith(".cg.editor/") })
+        assertFalse(info.relativeFiles.any { it.startsWith(".cg.gradle-sync/") })
+    }
+
     @Test fun resolvesSingleNestedProjectRoot() {
         val selected = temp.newFolder("selected")
         val nested = File(selected, "source/project")

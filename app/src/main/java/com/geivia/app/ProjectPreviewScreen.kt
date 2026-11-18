@@ -18,6 +18,7 @@ internal fun ProjectPreviewScreen(
     projectDir: String,
     onBack: () -> Unit,
     onEditor: () -> Unit,
+    onCodeEditor: () -> Unit,
     onTerminal: () -> Unit,
     onOperations: () -> Unit
 ) {
@@ -67,7 +68,10 @@ internal fun ProjectPreviewScreen(
                     Text("O projeto foi reconhecido e sua estrutura está disponível. Não foi encontrada uma entrada Web para renderização em WebView.")
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = onEditor, modifier = Modifier.weight(1f)) { Text("Editor") }
+                    OutlinedButton(onClick = onEditor, modifier = Modifier.weight(1f)) { Text("Editor visual") }
+                    OutlinedButton(onClick = onCodeEditor, modifier = Modifier.weight(1f)) { Text("Arquivos e código") }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = onTerminal, modifier = Modifier.weight(1f)) { Text("Terminal") }
                     Button(onClick = onOperations, modifier = Modifier.weight(1f)) { Text("Ferramentas") }
                 }

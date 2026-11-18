@@ -9,6 +9,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import java.util.UUID
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
@@ -606,11 +607,9 @@ internal fun VisualEditorScreen(
                     Text("PROJETO", color = EditorMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     val projectItems = listOf("Páginas", "Componentes", "Tema e estilo", "Firestore", "Autenticação", "APIs", "Ações e lógica", "Variáveis", "Assets", "Integrações", "Configurações")
                     projectItems.forEach { item ->
-                        val available = true
                         NavigationDrawerItem(
                             label = { Text(item, fontSize = 13.sp) },
                             selected = false,
-                            enabled = available,
                             onClick = {
                                 editorScope.launch { editorDrawerState.close() }
                                 saveSchema()
@@ -634,11 +633,9 @@ internal fun VisualEditorScreen(
                     Text("FERRAMENTAS", color = EditorMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     val toolItems = listOf("Testar", "Deploy", "Terminal", "Versões", "Código gerado")
                     toolItems.forEach { item ->
-                        val available = true
                         NavigationDrawerItem(
                             label = { Text(item, fontSize = 13.sp) },
                             selected = false,
-                            enabled = available,
                             onClick = {
                                 editorScope.launch { editorDrawerState.close() }
                                 when (item) {

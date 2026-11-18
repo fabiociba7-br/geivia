@@ -23,7 +23,7 @@ internal data class ImportedScreen(
 
 internal object ImportedScreenDiscovery {
     private val composeAnnotation = Regex(
-        """@Composable(?:\\s*\\([^)]*\\))?\\s+(?:(?:private|internal|public|protected|inline|tailrec|operator|suspend|override)\\s+)*fun\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*\\("""
+        """@Composable(?:\s*\([^)]*\))?\s+(?:(?:private|internal|public|protected|inline|tailrec|operator|suspend|override)\s+)*fun\s+([A-Za-z_][A-Za-z0-9_]*)\s*\("""
     )
     private val composeCalls = listOf(
         "Column", "Row", "Box", "LazyColumn", "LazyRow", "Text", "Button",
@@ -31,9 +31,9 @@ internal object ImportedScreenDiscovery {
         "Image", "Card", "Surface", "Scaffold", "TopAppBar", "NavigationBar",
         "Checkbox", "RadioButton", "Switch", "Slider", "Spacer", "HorizontalDivider"
     )
-    private val xmlTag = Regex("""<([A-Za-z_][A-Za-z0-9_.]*)\\b([^<>]*?)(?:/?>)""")
-    private val xmlId = Regex("""(?:android:)?id\\s*=\\s*["']@\\+?id/([^"']+)["']""")
-    private val xmlText = Regex("""(?:android:)?text\\s*=\\s*["']([^"']*)["']""")
+    private val xmlTag = Regex("""<([A-Za-z_][A-Za-z0-9_.]*)\b([^<>]*?)(?:/?>)""")
+    private val xmlId = Regex("""(?:android:)?id\s*=\s*["']@\+?id/([^"']+)["']""")
+    private val xmlText = Regex("""(?:android:)?text\s*=\s*["']([^"']*)["']""")
 
     fun scan(projectRoot: File, maxFiles: Int = 5000): List<ImportedScreen> {
         val root = projectRoot.canonicalFile
@@ -53,7 +53,7 @@ internal object ImportedScreenDiscovery {
             val relative = file.relativeTo(root).invariantSeparatorsPath
             if (file.length() > MAX_SOURCE_BYTES) return@flatMap emptyList()
             val source = runCatching { file.readText(Charsets.UTF_8) }.getOrNull()
-                ?.takeIf { !it.contains('\\u0000') } ?: return@flatMap emptyList()
+                ?.takeIf { !it.contains('\u0000') } ?: return@flatMap emptyList()
             when {
                 file.extension.equals("xml", true) -> parseXml(relative, source)
                 file.extension.equals("kt", true) -> parseCompose(relative, source)
@@ -88,7 +88,7 @@ internal object ImportedScreenDiscovery {
             val nextStart = matches.getOrNull(index + 1)?.range?.first ?: source.length
             val block = source.substring(match.range.first, nextStart)
             val componentList = composeCalls.mapNotNull { type ->
-                val count = Regex("""\\b${Regex.escape(type)}\\s*\\(""").findAll(block).count()
+                val count = Regex("""\b${Regex.escape(type)}\s*\(""").findAll(block).count()
                 if (count == 0) null else ImportedScreenComponent(type = type).copy(text = "×$count")
             }
             ImportedScreen(

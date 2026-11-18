@@ -102,10 +102,10 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
         }
     }
     var workspaceName by rememberSaveable { mutableStateOf(prefs.getString("workspace_name", "GEIVIA-" + workspaceId.removePrefix("GEIVIA-")) ?: ("GEIVIA-" + workspaceId.removePrefix("GEIVIA-"))) }
-    val validWorkflowPages = setOf("device_access", "workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "accounts", "google_access", "github", "terminal", "toolchain_updates", "diagnostics", "project_operations", "project_preview", "firebase_admin")
+    val validWorkflowPages = setOf("device_access", "workspace_setup", "cloud_setup", "questions", "cost", "summary", "dashboard", "accounts", "google_access", "github", "terminal", "toolchain_updates", "diagnostics", "project_operations", "project_preview", "firebase_admin", "legacy_dashboard")
     val savedCheckpoint = remember {
         prefs.getString("workflow_checkpoint", null)?.takeIf { it in validWorkflowPages }
-            ?.let { when (it) { "cloud_setup" -> "questions"; "terminal" -> "dashboard"; else -> it } }
+            ?.let { when (it) { "cloud_setup" -> "questions"; "terminal", "summary" -> "dashboard"; else -> it } }
             ?: if (prefs.getBoolean("cloud_setup_completed", false)) "questions" else "workspace_setup"
     }
     var page by rememberSaveable {
@@ -114,9 +114,12 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
             else if (!prefs.getBoolean("device_access_completed", false)) "device_access"
             else if (!prefs.getBoolean("environment_setup_completed", false)) "environment_setup"
             else if (!prefs.getBoolean("preflight_completed", false)) "preflight"
-            else "welcome"
+            // A completed analysis is a checkpoint, not the app's home screen.
+            // Return an established workspace directly to GEIVIA Studio.
+            else "dashboard"
         )
     }
+    var returnToEditorAfterTool by rememberSaveable { mutableStateOf(false) }
     var index by rememberSaveable {
         mutableIntStateOf(prefs.getInt("workflow_question_index", 0).coerceAtLeast(0))
     }
@@ -285,17 +288,28 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onContinue = { page = "summary" })
                 "summary" -> SummaryScreen(answers.toMap(), costMode,
                     onBack = { page = "cost" }, onEdit = { page = "questions"; index = 0 }, onFinish = { page = "dashboard" })
+                "visual_editor" -> VisualEditorScreen(
+                    context = context,
+                    onBack = { page = "dashboard" },
+                    onFirebase = { returnToEditorAfterTool = true; page = "firebase_admin" },
+                    onGoogle = { returnToEditorAfterTool = true; page = "google_access" },
+                    onAccounts = { returnToEditorAfterTool = true; page = "accounts" },
+                    onTools = { returnToEditorAfterTool = true; page = "toolchain_updates" },
+                    onDiagnostics = { returnToEditorAfterTool = true; page = "diagnostics" },
+                    onTerminal = { returnToEditorAfterTool = true; page = "terminal" },
+                    onProjects = { returnToEditorAfterTool = true; page = "project_operations" }
+                )
                 "accounts" -> AccountsConnectionsScreen(
                     googleReady = prefs.getBoolean("google_cloud_cli_ready", false),
                     githubConnected = githubConnected,
                     onGoogle = { page = "google_access" },
                     onGitHub = { page = "github" },
-                    onBack = { page = "dashboard" }
+                    onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false }
                 )
                 "github" -> GitHubScreen(
                     connected = githubConnected,
                     callbackMessage = githubCallbackMessage,
-                    onBack = { page = "dashboard" },
+                    onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false },
                     onConnectedChanged = { githubConnected = it }
                 )
                 "google_access" -> GoogleCloudAccessScreen(
@@ -304,31 +318,82 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     autoStartLogin = prefs.getBoolean("preflight_auto_cloud_login", false),
                     onAutoStartConsumed = { prefs.edit().putBoolean("preflight_auto_cloud_login", false).apply() },
                     onBack = {
-                        page = if (prefs.getBoolean("preflight_return_to_workspace", false)) {
+                        page = if (returnToEditorAfterTool) {
+                            returnToEditorAfterTool = false
+                            "visual_editor"
+                        } else if (prefs.getBoolean("preflight_return_to_workspace", false)) {
                             prefs.edit().putBoolean("preflight_return_to_workspace", false).apply()
                             "workspace_setup"
                         } else "dashboard"
                     }
                 )
-                "toolchain_updates" -> GeiviaToolchainUpdatesScreen(onBack = { page = "dashboard" })
-                "diagnostics" -> GeiviaDiagnosticsScreen(onBack = { page = "dashboard" })
-                "project_operations" -> ProjectOperationsScreen(onBack = { page = "dashboard" })
-                "project_preview" -> ProjectPreviewScreen(prefs.getString("imported_project_dir", "").orEmpty()) { page = "project_operations" }
-                "firebase_admin" -> FirebaseAdminScreen(prefs.getString("selected_project_id", preflightProjectId).orEmpty()) { page = "project_operations" }
-                else -> DashboardScreen(answers.toMap(), costMode, onOperations = { page = "project_operations" }, onPreview = { page = "project_preview" }, onFirebaseAdmin = { page = "firebase_admin" }, onAccounts = { page = "accounts" }, onToolchainUpdates = { page = "toolchain_updates" }, onDiagnostics = { page = "diagnostics" }) {
-                    answers.clear()
-                    val editor = prefs.edit()
-                    answerKeys.forEach { editor.remove(it) }
-                    editor.remove("cost_mode")
-                        .remove("workflow_checkpoint")
-                        .remove("workflow_question_index")
-                        .remove("workflow_checkpoint_updated_at")
-                        .putBoolean("cloud_setup_completed", false)
-                        .apply()
-                    costMode = ""
-                    index = 0
-                    page = "workspace_setup"
+                "terminal" -> Column(
+                    Modifier.fillMaxSize().padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { page = "visual_editor"; returnToEditorAfterTool = false }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Voltar ao editor")
+                        }
+                        Column {
+                            Text("Terminal GEIVIA", fontWeight = FontWeight.Bold)
+                            Text("Terminal local e ambiente Debian/PRoot", fontSize = 11.sp, color = Muted)
+                        }
+                    }
+                    TerminalPanel()
                 }
+                "toolchain_updates" -> GeiviaToolchainUpdatesScreen(onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false })
+                "diagnostics" -> GeiviaDiagnosticsScreen(onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false })
+                "project_operations" -> ProjectOperationsScreen(onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false })
+                "project_preview" -> ProjectPreviewScreen(prefs.getString("imported_project_dir", "").orEmpty()) { page = "project_operations" }
+                "firebase_admin" -> FirebaseAdminScreen(prefs.getString("selected_project_id", preflightProjectId).orEmpty()) { page = if (returnToEditorAfterTool) "visual_editor" else "project_operations"; returnToEditorAfterTool = false }
+                "legacy_dashboard" -> DashboardScreen(answers.toMap(), costMode,
+                    onOperations = { page = "project_operations" },
+                    onPreview = { page = "project_preview" },
+                    onFirebaseAdmin = { page = "firebase_admin" },
+                    onAccounts = { page = "accounts" },
+                    onToolchainUpdates = { page = "toolchain_updates" },
+                    onDiagnostics = { page = "diagnostics" },
+                    onRestart = {
+                        answers.clear()
+                        val editor = prefs.edit()
+                        answerKeys.forEach { editor.remove(it) }
+                        editor.remove("cost_mode")
+                            .remove("workflow_checkpoint")
+                            .remove("workflow_question_index")
+                            .remove("workflow_checkpoint_updated_at")
+                            .putBoolean("cloud_setup_completed", false)
+                            .apply()
+                        costMode = ""
+                        index = 0
+                        page = "workspace_setup"
+                    })
+                else -> StudioDashboardScreen(
+                    context = context,
+                    onNewProject = {
+                        answers.clear()
+                        val editor = prefs.edit()
+                        answerKeys.forEach { editor.remove(it) }
+                        editor.remove("cost_mode")
+                            .remove("workflow_checkpoint")
+                            .remove("workflow_question_index")
+                            .remove("workflow_checkpoint_updated_at")
+                            .putBoolean("cloud_setup_completed", false)
+                            .apply()
+                        costMode = ""
+                        index = 0
+                        page = "workspace_setup"
+                    },
+                    onProjects = { page = "project_operations" },
+                    onEditor = { page = "visual_editor" },
+                    onPreview = { page = "project_preview" },
+                    onFirebase = { page = "firebase_admin" },
+                    onIntegrations = { page = "accounts" },
+                    onTools = { page = "toolchain_updates" },
+                    onDiagnostics = { page = "diagnostics" },
+                    onAccounts = { page = "accounts" },
+                    onLegacyDashboard = { page = "legacy_dashboard" }
+                )
             }
         }
     }

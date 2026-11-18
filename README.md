@@ -2,13 +2,22 @@
 
 **Create · Connect · Deploy**
 
-Aplicativo Android para ajudar pessoas sem conhecimento técnico a criar, configurar e publicar projetos Firebase.
+Ambiente Android de desenvolvimento visual, inspirado no FlutterFlow, para montar telas nativas, organizar dados e lógica, integrar serviços, preparar projetos e publicar aplicativos. O fluxo de Google Cloud/Firebase continua disponível como parte do ambiente.
 
 ## Objetivo
 
 O GEIVIA será um produto independente do Zupi Gestão. Nesta primeira fase, o desenvolvimento é exclusivo para Android e todo o código, testes e builds serão mantidos neste repositório privado.
 
-## Escopo planejado
+## Escopo do produto
+
+- Editor visual mobile-first com canvas, menu lateral, árvore de componentes, propriedades e prévia.
+- Componentes reutilizáveis, páginas, tema, assets, variáveis e ações declarativas.
+- Geração de projeto Android nativo em Kotlin/Jetpack Compose e exportação ZIP.
+- Terminal local restrito e ambiente Debian ARM64/PRoot.
+- Integrações com Google Cloud, Firebase e GitHub.
+- Importação de projetos, preparação de deploy, diagnóstico e recuperação.
+
+## Fluxos de serviços e infraestrutura
 
 - Preparar um ambiente local exclusivo por usuário e acessar o Google Cloud pelo navegador e Cloud Shell da própria conta.
 - Importar inventários de projetos e diagnósticos gerados no Cloud Shell, sem transferir tokens ou senhas.
@@ -23,7 +32,7 @@ O GEIVIA será um produto independente do Zupi Gestão. Nesta primeira fase, o d
 
 O aplicativo está em desenvolvimento. O fluxo atual usa o navegador e o Cloud Shell autenticados pelo próprio usuário: o GEIVIA prepara comandos, registra o progresso local e importa diagnósticos JSON. **O aplicativo ainda não executa operações de escrita diretamente no Google Cloud.** Cada alteração remota depende da revisão e execução manual do comando pelo usuário, seguida de novo diagnóstico quando aplicável.
 
-A geração de APK e os testes automatizados são realizados pelo GitHub Actions. A validação real de serviços Firebase depende de um projeto Google Cloud/Firebase e da conta do usuário; não é simulada pelos testes locais.
+Por decisão do proprietário, os workflows de GitHub Actions para builds e validações automáticas foram removidos. O projeto não dispara builds, testes ou APKs automaticamente. A compilação e a revisão serão feitas manualmente, em conjunto, quando o proprietário considerar o aplicativo pronto.
 
 ## Terminal integrado
 
@@ -44,7 +53,7 @@ O proprietário ainda precisa registrar a própria GitHub App e publicar/configu
 
 ## Desenvolvimento
 
-O projeto usa Kotlin, Jetpack Compose e Gradle. Os builds Android são executados pelo GitHub Actions.
+O projeto usa Kotlin, Jetpack Compose e Gradle. Não há builds nem validações automáticas.
 
 ### Build local (opcional)
 Com JDK 17 e Android SDK configurados:
@@ -53,4 +62,4 @@ Com JDK 17 e Android SDK configurados:
 gradle assembleDebug
 ```
 
-O usuário final não precisa instalar Android Studio: os APKs de teste serão gerados pelo GitHub Actions.
+A compilação final será realizada manualmente somente depois da revisão conjunta do projeto.

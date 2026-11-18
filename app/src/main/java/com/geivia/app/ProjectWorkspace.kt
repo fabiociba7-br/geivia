@@ -87,10 +87,12 @@ internal data class ProjectWorkspaceInfo(
             val webEntry = listOf("index.html", "public/index.html", "dist/index.html", "build/index.html")
                 .map { File(root, it) }.firstOrNull { it.isFile }
                 ?: relevant.firstOrNull { it.name == "index.html" && it.parentFile?.name !in setOf("node_modules", "build") }
+            val hasAppGradleModule = rel.any { it == "app/build.gradle" || it == "app/build.gradle.kts" }
             val kind = when {
                 flutter -> Kind.FLUTTER
                 manifest && gradle -> Kind.ANDROID
                 manifest -> Kind.ANDROID
+                gradle && hasAppGradleModule -> Kind.ANDROID
                 has("package.json") -> Kind.NODE
                 gradle -> Kind.UNKNOWN
                 webEntry != null -> Kind.WEB

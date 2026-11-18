@@ -76,13 +76,12 @@ internal fun VisualEditorScreen(
 ) {
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE) }
     val cloudProjectId = prefs.getString("selected_project_id", null).orEmpty()
-    val importedProjectPath = prefs.getString("active_project_dir", "").orEmpty()
-        .ifBlank { prefs.getString("imported_project_dir", "").orEmpty() }
+    val importedProjectPath = ProjectWorkspaceInfo.activeRoot(context)?.absolutePath.orEmpty()
     val activeWorkspace = remember(importedProjectPath) {
-        importedProjectPath.takeIf { it.isNotBlank() && java.io.File(it).isDirectory }
+        importedProjectPath.takeIf { it.isNotBlank() }
             ?.let { runCatching { ProjectWorkspaceInfo.scan(java.io.File(it)) }.getOrNull() }
     }
-    val projectIdForStorage = importedProjectPath.takeIf { it.isNotBlank() && java.io.File(it).isDirectory }
+    val projectIdForStorage = importedProjectPath.takeIf { it.isNotBlank() }
         ?.let { "local_" + it.hashCode().toUInt().toString(16) }
         ?: cloudProjectId.ifBlank { "local" }
     val projectKey = projectIdForStorage.replace(Regex("[^A-Za-z0-9_-]"), "_")

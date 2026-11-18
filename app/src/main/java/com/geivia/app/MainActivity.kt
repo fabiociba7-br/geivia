@@ -300,7 +300,8 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onTools = { returnToEditorAfterTool = true; page = "toolchain_updates" },
                     onDiagnostics = { returnToEditorAfterTool = true; page = "diagnostics" },
                     onTerminal = { returnToEditorAfterTool = true; page = "terminal" },
-                    onProjects = { returnToEditorAfterTool = true; page = "project_operations" }
+                    onProjects = { returnToEditorAfterTool = true; page = "project_operations" },
+                    onProjectFiles = { page = "project_code_editor" }
                 )
                 "accounts" -> AccountsConnectionsScreen(
                     googleReady = prefs.getBoolean("google_cloud_cli_ready", false),

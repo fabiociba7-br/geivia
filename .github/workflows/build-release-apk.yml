@@ -2,9 +2,6 @@ name: GEIVIA Signed Release APK
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - integrate-terminal-fullscreen-parser
 
 permissions:
   contents: read
@@ -17,7 +14,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: integrate-terminal-fullscreen-parser
+          ref: main
           submodules: recursive
 
       - name: Require signing secrets

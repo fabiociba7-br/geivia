@@ -72,7 +72,7 @@ internal fun VisualEditorScreen(
     onDiagnostics: () -> Unit = {},
     onTerminal: () -> Unit = {},
     onProjects: () -> Unit = {},
-    onProjectFiles: () -> Unit = {}
+    onProjectFiles: (String?) -> Unit = {}
 ) {
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE) }
     val cloudProjectId = prefs.getString("selected_project_id", null).orEmpty()
@@ -708,7 +708,7 @@ internal fun VisualEditorScreen(
                 },
                 actions = {
                     if (activeWorkspace != null) {
-                        TextButton(onClick = { saveSchema(); onProjectFiles() }) {
+                        TextButton(onClick = { saveSchema(); onProjectFiles(null) }) {
                             Text("Arquivos")
                         }
                     }
@@ -1233,7 +1233,7 @@ internal fun VisualEditorScreen(
                                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text("Nenhuma tela reconhecida ainda", color = EditorInk, fontWeight = FontWeight.Bold)
                                     Text("O GEIVIA procura layouts em res/layout*/ e funções @Composable em arquivos Kotlin dentro de src/main/. Confira se o projeto Android foi importado pela pasta raiz correta.", color = EditorMuted, fontSize = 12.sp)
-                                    OutlinedButton(onClick = onProjectFiles, modifier = Modifier.fillMaxWidth()) { Text("Abrir arquivos e código") }
+                                    OutlinedButton(onClick = { onProjectFiles(null) }, modifier = Modifier.fillMaxWidth()) { Text("Abrir arquivos e código") }
                                 }
                             }
                         } else {
@@ -1269,7 +1269,7 @@ internal fun VisualEditorScreen(
                                                 }
                                             }
                                         }
-                                        OutlinedButton(onClick = onProjectFiles, modifier = Modifier.fillMaxWidth()) { Text("Editar arquivo-fonte") }
+                                        OutlinedButton(onClick = { onProjectFiles(screen.sourcePath) }, modifier = Modifier.fillMaxWidth()) { Text("Editar arquivo-fonte") }
                                     }
                                 }
                             }

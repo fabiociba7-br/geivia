@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/geivia-build-once.yml"
+      - "app/src/main/**"
+      - "app/src/test/**"
+      - "app/build.gradle.kts"
 
 permissions:
   contents: read

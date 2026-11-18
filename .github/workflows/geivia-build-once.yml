@@ -38,6 +38,9 @@ jobs:
           set -euo pipefail
           SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
           test -x "$SDKMANAGER" || { echo "::error::Android sdkmanager not found under $ANDROID_HOME"; exit 1; }
+          set +o pipefail
+          yes | "$SDKMANAGER" --licenses
+          set -o pipefail
           "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
 
       - name: Run unit tests and compile release

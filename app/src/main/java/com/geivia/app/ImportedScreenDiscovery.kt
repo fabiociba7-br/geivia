@@ -123,7 +123,7 @@ internal object ImportedScreenDiscovery {
     }
 
     private fun unescape(value: String): String =
-        value.replace("\n", " ").replace("\\"", "\"").replace("\\", "\")
+        value.replace("\\n", " ").replace("\\\"", "\"").replace("\\\\", "\\")
 
     private const val MAX_SOURCE_BYTES = 2L * 1024L * 1024L
 }

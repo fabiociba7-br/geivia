@@ -2,6 +2,9 @@ name: GEIVIA manual verification
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - integrate-terminal-fullscreen-parser
 
 permissions:
   contents: read
@@ -13,7 +16,7 @@ jobs:
       - name: Checkout main
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: integrate-terminal-fullscreen-parser
           submodules: recursive
 
       - name: Set up JDK 17

@@ -32,7 +32,7 @@ internal object GeiviaAndroidBuild {
         fi
         export ANDROID_HOME ANDROID_SDK_ROOT="${'$'}ANDROID_HOME"
         yes | "${'$'}ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="${'$'}ANDROID_HOME" \
-          "platform-tools" "platforms;android-34" "platforms;android-35" "build-tools;34.0.0" "build-tools;35.0.0" || true
+          "platform-tools" "platforms;android-34" "platforms;android-35" "build-tools;34.0.0" "build-tools;35.0.0"
         printf 'GEIVIA_ANDROID_TOOLCHAIN_OK\n'
         java -version
         gradle --version | head -5

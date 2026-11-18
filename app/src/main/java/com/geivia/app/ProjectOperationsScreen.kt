@@ -121,7 +121,12 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Voltar ao painel") }
         Button(onClick = { folderPicker.launch(null) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Selecionar pasta raiz do projeto") }
         OutlinedButton(onClick = { zipPicker.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Importar por arquivo ZIP") }
-        if (projectDir.isNotBlank()) {\n            val workspace = remember(projectDir) { runCatching { ProjectWorkspaceInfo.scan(File(projectDir)) }.getOrNull() }\n            Text("PROJETO ATIVO: ${workspace?.name ?: File(projectDir).name}", color = Color(0xFF18794E), fontSize = 12.sp)\n            Text("Tipo: ${workspace?.kind?.name ?: "Não identificado"} · Arquivos: ${workspace?.files?.size ?: 0}", color = Color(0xFF587083), fontSize = 11.sp)\n            Text(projectDir, color = Color(0xFF587083), fontSize = 10.sp)\n        }
+        if (projectDir.isNotBlank()) {
+            val workspace = remember(projectDir) { runCatching { ProjectWorkspaceInfo.scan(File(projectDir)) }.getOrNull() }
+            Text("PROJETO ATIVO: ${workspace?.name ?: File(projectDir).name}", color = Color(0xFF18794E), fontSize = 12.sp)
+            Text("Tipo: ${workspace?.kind?.name ?: "Não identificado"} · Arquivos: ${workspace?.files?.size ?: 0}", color = Color(0xFF587083), fontSize = 11.sp)
+            Text(projectDir, color = Color(0xFF587083), fontSize = 10.sp)
+        }
         OutlinedTextField(value = projectId, onValueChange = { projectId = it.trim() }, modifier = Modifier.fillMaxWidth(), label = { Text("Firebase Project ID") }, singleLine = true)
         val deployRecord = remember(projectId, workflowRefresh) { if (projectId.isBlank()) null else workflowStore.get(projectId, "firebase_deploy") }
         if (deployRecord?.state == WorkflowStepState.WAITING_CONFIRMATION) {

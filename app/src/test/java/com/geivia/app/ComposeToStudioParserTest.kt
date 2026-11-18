@@ -37,6 +37,36 @@ class ComposeToStudioParserTest {
     }
 
     @Test
+    fun ignoresAiStudioAndEditorMetadataWhenImportingScreens() {
+        val root = createTempDir(prefix = "geivia-compose-metadata-")
+        try {
+            val metadata = File(root, ".aistudio/artifacts/brain/RulesScreen.kt")
+            metadata.parentFile?.mkdirs()
+            metadata.writeText(
+                """
+                @Composable
+                fun RulesScreen() { Text("Metadata que não deve ser importado") }
+                """.trimIndent()
+            )
+            val real = File(root, "app/src/main/java/RealScreen.kt")
+            real.parentFile?.mkdirs()
+            real.writeText(
+                """
+                @Composable
+                fun RealHomeScreen() { Text("Tela real") }
+                """.trimIndent()
+            )
+
+            val parsed = ComposeToStudioParser.parse(root)
+            assertNotNull(parsed)
+            assertTrue(parsed!!.screens.any { it.name == "Real Home Screen" })
+            assertTrue(parsed.screens.none { it.name == "Rules Screen" })
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
     fun ignoresBuildAndDependencyDirectories() {
         val root = createTempDir(prefix = "geivia-compose-ignore-")
         try {

@@ -351,31 +351,12 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                         } else "dashboard"
                     }
                 )
-                "terminal" -> Box(Modifier.fillMaxSize().background(Color(0xFF0F1720))) {
-                    Column(Modifier.fillMaxSize()) {
-                        Row(
-                            Modifier.fillMaxWidth().background(Color(0xFF1A2332)).padding(horizontal = 4.dp, vertical = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            IconButton(onClick = {
-                                page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"
-                                returnToEditorAfterTool = false
-                            }) {
-                                Icon(Icons.Default.ArrowBack, contentDescription = "Voltar ao app", tint = Color.White)
-                            }
-                            Text("Terminal GEIVIA", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                            TextButton(onClick = {
-                                page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"
-                                returnToEditorAfterTool = false
-                            }) {
-                                Text("Voltar ao app", color = Color(0xFF8AB4F8), fontSize = 12.sp)
-                            }
-                        }
-                        Box(Modifier.weight(1f).fillMaxWidth()) {
-                            TerminalPanel()
-                        }
+                "terminal" -> GeiviaTerminalPage(
+                    onBack = {
+                        page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"
+                        returnToEditorAfterTool = false
                     }
-                }
+                )
                 "toolchain_updates" -> GeiviaToolchainUpdatesScreen(onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false })
                 "diagnostics" -> GeiviaDiagnosticsScreen(onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false })
                 "project_operations" -> ProjectOperationsScreen(onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false })

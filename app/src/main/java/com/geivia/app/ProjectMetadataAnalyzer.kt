@@ -19,7 +19,11 @@ internal data class ProjectMetadata(
             fun read(f: File?) = f?.takeIf { it.isFile && it.length() <= 2L * 1024 * 1024 }?.let { runCatching { it.readText(Charsets.UTF_8) }.getOrNull() }
             fun json(f: File?) = read(f)?.let { runCatching { JSONObject(it) }.getOrNull() }
             val grouped = files.groupBy { it.name }
-            fun first(name: String) = grouped[name]?.sortedBy { rel(it).count { c -> c == '/' } }?.firstOrNull()
+            fun first(name: String): File? {
+                val rootLevel = File(base, name)
+                if (rootLevel.isFile) return rootLevel
+                return grouped[name]?.sortedBy { rel(it).count { c -> c == '/' } }?.firstOrNull()
+            }
             val packageFile = files.firstOrNull { it.name == "package.json" && it.parentFile?.canonicalFile == base } ?: first("package.json")
             val pkg = json(packageFile)
             val packageName = pkg?.optString("name")?.takeIf { it.isNotBlank() && it != "null" }

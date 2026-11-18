@@ -353,8 +353,14 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                         .ifBlank { prefs.getString("imported_project_dir", "").orEmpty() },
                     onBack = { page = "dashboard" },
                     onEditor = { page = "visual_editor" },
+                    onCodeEditor = { page = "project_code_editor" },
                     onTerminal = { page = "terminal" },
                     onOperations = { page = "project_operations" }
+                )
+                "project_code_editor" -> ProjectCodeEditorScreen(
+                    projectDir = prefs.getString("active_project_dir", "").orEmpty()
+                        .ifBlank { prefs.getString("imported_project_dir", "").orEmpty() },
+                    onBack = { page = "project_preview" }
                 )
                 "firebase_admin" -> FirebaseAdminScreen(prefs.getString("active_firebase_project_id", "").orEmpty().ifBlank { prefs.getString("selected_project_id", preflightProjectId).orEmpty() }) { page = if (returnToEditorAfterTool) "visual_editor" else "project_operations"; returnToEditorAfterTool = false }
                 "legacy_dashboard" -> DashboardScreen(answers.toMap(), costMode,

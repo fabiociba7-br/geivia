@@ -39,7 +39,7 @@ internal fun ProjectCodeEditorScreen(projectDir: String, initialFilePath: String
                 .onEnter { dir -> dir == base || dir.name !in ProjectWorkspaceInfo.IGNORED_DIRS }
                 .filter { it.isFile }
                 .take(10001)
-                .sortedBy { it.relativeTo(base).invariantSeparatorsPath }
+                .sortedWith(compareBy<File>({ editorFilePriority(it) }, { it.relativeTo(base).invariantSeparatorsPath }))
                 .toList()
         }
     }
@@ -77,10 +77,16 @@ internal fun ProjectCodeEditorScreen(projectDir: String, initialFilePath: String
     }
 
     LaunchedEffect(initialFilePath, filesState.value != null) {
-        val requested = initialFilePath?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
-        if (filesState.value != null && selectedPath == null) {
-            safeFile(requested)?.let { loadFile(it) }
-                ?: run { status = "A tela foi localizada no índice, mas o arquivo não está disponível no projeto." }
+        if (filesState.value == null || selectedPath != null) return@LaunchedEffect
+        val requested = initialFilePath?.takeIf { it.isNotBlank() }
+        val firstUsefulFile = files.firstOrNull { editorFilePriority(it) == 0 }
+        val target = requested?.let(::safeFile) ?: firstUsefulFile
+        if (target != null) {
+            loadFile(target)
+        } else if (requested != null) {
+            status = "A tela foi localizada no índice, mas o arquivo não está disponível no projeto."
+        } else {
+            status = "Nenhum arquivo de código reconhecido. Use a busca para localizar um arquivo."
         }
     }
 
@@ -181,6 +187,14 @@ internal fun ProjectCodeEditorScreen(projectDir: String, initialFilePath: String
         )
     }
 
+}
+
+/** Código-fonte primeiro; configurações e recursos continuam acessíveis na lista. */
+private fun editorFilePriority(file: File): Int = when (file.extension.lowercase()) {
+    "kt", "java", "dart", "js", "jsx", "ts", "tsx", "html", "htm", "xml", "css", "scss", "vue", "svelte" -> 0
+    "gradle", "kts", "json", "yaml", "yml", "toml", "properties", "md", "txt", "sh", "rules" -> 1
+    "png", "jpg", "jpeg", "webp", "svg", "gif", "ico", "ttf", "otf", "woff", "woff2" -> 2
+    else -> 3
 }
 
 private const val MAX_EDIT_BYTES = 1024L * 1024L

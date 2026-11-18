@@ -46,6 +46,9 @@ jobs:
           gradle-version: "8.9"
 
       - name: Install Android SDK packages
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
         run: |
           SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
           test -x "$SDKMANAGER" || { echo "::error::Android sdkmanager not found under $ANDROID_HOME"; exit 1; }
@@ -64,6 +67,8 @@ jobs:
 
       - name: Verify package, version and signing certificate
         shell: bash
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
         run: |
           set -euo pipefail
           APK="app/build/outputs/apk/release/app-release.apk"

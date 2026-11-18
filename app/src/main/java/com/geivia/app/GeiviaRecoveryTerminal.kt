@@ -164,7 +164,7 @@ internal fun GeiviaRecoveryTerminal(
                     if (session == null) startTerminal()
                 },
                 enabled = !starting
-            ) { Text(if (starting) "Iniciando…" else if (session == null) "Abrir terminal" else "Voltar ao terminal") }
+            ) { Text(if (starting) "Iniciando…" else if (session == null) "Abrir terminal em tela cheia" else "Voltar ao terminal em tela cheia") }
             OutlinedButton(
                 onClick = { fullScreen = true },
                 enabled = session != null

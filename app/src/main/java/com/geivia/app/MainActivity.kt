@@ -13,6 +13,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -115,7 +116,6 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
         mutableStateOf(
             if (githubCallbackUri != null) "github"
             else if (!prefs.getBoolean("device_access_completed", false)) "device_access"
-            else if (!prefs.getBoolean("environment_setup_completed", false)) "environment_setup"
             else if (!prefs.getBoolean("preflight_completed", false)) "preflight"
             // A completed analysis is a checkpoint, not the app's home screen.
             // Return an established workspace directly to GEIVIA Studio.
@@ -123,6 +123,21 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
         )
     }
     var returnToEditorAfterTool by rememberSaveable { mutableStateOf(false) }
+    val navHistory = remember { mutableStateListOf<String>() }
+    var lastTrackedPage by remember { mutableStateOf(page) }
+    LaunchedEffect(page) {
+        if (page != lastTrackedPage) {
+            navHistory.add(lastTrackedPage)
+            if (navHistory.size > 40) navHistory.removeAt(0)
+            lastTrackedPage = page
+        }
+    }
+    BackHandler(enabled = navHistory.isNotEmpty()) {
+        val previous = navHistory.removeLastOrNull() ?: "dashboard"
+        lastTrackedPage = previous
+        page = previous
+        returnToEditorAfterTool = false
+    }
     var codeEditorReturnPage by rememberSaveable { mutableStateOf("project_preview") }
     var pendingProjectFilePath by rememberSaveable { mutableStateOf<String?>(null) }
     var index by rememberSaveable {
@@ -207,7 +222,6 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                 })
                 "welcome" -> WelcomeScreen(hasCheckpoint = prefs.contains("workflow_checkpoint")) {
                     page = if (!prefs.getBoolean("device_access_completed", false)) "device_access"
-                        else if (!prefs.getBoolean("environment_setup_completed", false)) "environment_setup"
                         else if (prefs.getBoolean("preflight_completed", false)) savedCheckpoint else "preflight"
                     if (page == "questions") index = prefs.getInt("workflow_question_index", 0).coerceAtLeast(0)
                 }
@@ -337,20 +351,30 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                         } else "dashboard"
                     }
                 )
-                "terminal" -> Column(
-                    Modifier.fillMaxSize().padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { page = "visual_editor"; returnToEditorAfterTool = false }) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Voltar ao editor")
+                "terminal" -> Box(Modifier.fillMaxSize().background(Color(0xFF0F1720))) {
+                    Column(Modifier.fillMaxSize()) {
+                        Row(
+                            Modifier.fillMaxWidth().background(Color(0xFF1A2332)).padding(horizontal = 4.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(onClick = {
+                                page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"
+                                returnToEditorAfterTool = false
+                            }) {
+                                Icon(Icons.Default.ArrowBack, contentDescription = "Voltar ao app", tint = Color.White)
+                            }
+                            Text("Terminal GEIVIA", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                            TextButton(onClick = {
+                                page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"
+                                returnToEditorAfterTool = false
+                            }) {
+                                Text("Voltar ao app", color = Color(0xFF8AB4F8), fontSize = 12.sp)
+                            }
                         }
-                        Column {
-                            Text("Terminal GEIVIA", fontWeight = FontWeight.Bold)
-                            Text("Terminal local e ambiente Debian/PRoot", fontSize = 11.sp, color = Muted)
+                        Box(Modifier.weight(1f).fillMaxWidth()) {
+                            TerminalPanel()
                         }
                     }
-                    TerminalPanel()
                 }
                 "toolchain_updates" -> GeiviaToolchainUpdatesScreen(onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false })
                 "diagnostics" -> GeiviaDiagnosticsScreen(onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false })
@@ -390,7 +414,9 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                         index = 0
                         page = "workspace_setup"
                     })
-                else -> StudioDashboardScreen(
+                else -> {
+                    ProjectAccountStore.applyActiveToGlobals(context)
+                    StudioDashboardScreen(
                     context = context,
                     onNewProject = {
                         answers.clear()
@@ -413,9 +439,13 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onIntegrations = { page = "accounts" },
                     onTools = { page = "toolchain_updates" },
                     onDiagnostics = { page = "diagnostics" },
+                    onEnvironmentSetup = { page = "environment_setup" },
                     onAccounts = { page = "accounts" },
-                    onLegacyDashboard = { page = "legacy_dashboard" }
-                )
+                    onLegacyDashboard = { page = "legacy_dashboard" },
+                    onTerminal = { returnToEditorAfterTool = false; page = "terminal" },
+                    onCodeEditor = { pendingProjectFilePath = null; codeEditorReturnPage = "dashboard"; page = "project_code_editor" }
+                    )
+                }
             }
         }
     }

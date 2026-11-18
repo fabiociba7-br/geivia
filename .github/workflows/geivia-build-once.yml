@@ -2,6 +2,9 @@ name: GEIVIA manual verification
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feature/project-metadata-intelligence
 
 permissions:
   contents: read

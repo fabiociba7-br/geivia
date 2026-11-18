@@ -32,6 +32,24 @@ class ProjectWorkspaceTest {
         assertTrue(info.relativeFiles.contains("app/src/main/java/example/Main.kt"))
     }
 
+    @Test fun detectsFlutterBeforeItsNestedAndroidGradleProject() {
+        val root = temp.newFolder("flutter-project")
+        File(root, "pubspec.yaml").writeText("name: sample")
+        File(root, "lib/main.dart").apply {
+            parentFile!!.mkdirs()
+            writeText("void main() {}")
+        }
+        File(root, "android/app/src/main/AndroidManifest.xml").apply {
+            parentFile!!.mkdirs()
+            writeText("<manifest />")
+        }
+        File(root, "android/settings.gradle").writeText("include ':app'")
+
+        val info = ProjectWorkspaceInfo.scan(root)
+
+        assertEquals(ProjectWorkspaceInfo.Kind.FLUTTER, info.kind)
+    }
+
     @Test fun ignoresGeneratedDirectoriesButKeepsProjectSources() {
         val root = temp.newFolder("web-project")
         File(root, "index.html").writeText("<html />")

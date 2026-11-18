@@ -112,15 +112,11 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
             ?.let { when (it) { "cloud_setup" -> "questions"; "terminal", "summary" -> "dashboard"; else -> it } }
             ?: if (prefs.getBoolean("cloud_setup_completed", false)) "questions" else "workspace_setup"
     }
+    // GEIVIA always opens on the workspace dashboard. Setup and planning
+    // questionnaires are entered only from the explicit "Novo projeto" flow.
+    // Importing or reopening an existing project must never trigger onboarding.
     var page by rememberSaveable {
-        mutableStateOf(
-            if (githubCallbackUri != null) "github"
-            else if (!prefs.getBoolean("device_access_completed", false)) "device_access"
-            else if (!prefs.getBoolean("preflight_completed", false)) "preflight"
-            // A completed analysis is a checkpoint, not the app's home screen.
-            // Return an established workspace directly to GEIVIA Studio.
-            else "dashboard"
-        )
+        mutableStateOf(if (githubCallbackUri != null) "github" else "dashboard")
     }
     var returnToEditorAfterTool by rememberSaveable { mutableStateOf(false) }
     val navHistory = remember { mutableStateListOf<String>() }

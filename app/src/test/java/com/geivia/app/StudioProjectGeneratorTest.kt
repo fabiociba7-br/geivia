@@ -106,7 +106,7 @@ class StudioProjectGeneratorTest {
         val source = files.values.first { it.contains("class MainActivity") }
         assertTrue(source.contains("missingRequired"))
         assertTrue(source.contains("Informe os campos obrigatórios"))
-        assertTrue(source.contains("listOf<String>(\\"email\\")"))
+        assertTrue(source.contains("""listOf<String>("email")"""))
     }
 
     @Test

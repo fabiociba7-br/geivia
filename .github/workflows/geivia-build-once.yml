@@ -1,4 +1,4 @@
-name: GEIVIA 1.1.2 one-time verification
+name: GEIVIA 1.1.2 one-time verification (retry)
 
 on:
   push:

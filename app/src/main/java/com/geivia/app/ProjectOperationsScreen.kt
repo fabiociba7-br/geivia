@@ -129,15 +129,15 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
         Button(onClick = {
             scope.launch {
                 busy = true
-                output = "Instalando toolchain Android no Debian (JDK, Gradle, SDK)…\\n"
+                output = "Instalando toolchain Android no Debian (JDK, Gradle, SDK)…\n"
                 runCatching {
                     withContext(Dispatchers.IO) { controller.prepareEngine() }
                     controller.execute(GeiviaAndroidBuild.installToolchain(), 20 * 60 * 1000L) { line ->
                         output += line
                     }
                 }.onSuccess { code ->
-                    output += if (code == 0) "\\nToolchain instalada com sucesso.\\n" else "\\nInstalação da toolchain falhou (código $code).\\n"
-                }.onFailure { output += "\\nFalha na toolchain: ${it.message}\\n" }
+                    output += if (code == 0) "\nToolchain instalada com sucesso.\n" else "\nInstalação da toolchain falhou (código $code).\n"
+                }.onFailure { output += "\nFalha na toolchain: ${it.message}\n" }
                 busy = false
             }
         }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Instalar ferramentas de build") }
@@ -150,7 +150,7 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
             }
             scope.launch {
                 busy = true
-                output = "Compilando ${root.name} (assembleDebug)…\\n"
+                output = "Compilando ${root.name} (assembleDebug)…\n"
                 runCatching {
                     withContext(Dispatchers.IO) { controller.prepareEngine() }
                     val code = controller.execute(GeiviaAndroidBuild.buildCommand(root.absolutePath), 30 * 60 * 1000L) { line ->
@@ -159,9 +159,9 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                     val apk = withContext(Dispatchers.IO) { GeiviaAndroidBuild.findApk(root) }
                     code to apk
                 }.onSuccess { (code, apk) ->
-                    output += if (code == 0) "\\nBuild finalizado com sucesso.\\n" else "\\nBuild falhou (código $code).\\n"
-                    output += if (apk != null) "APK gerado: ${apk.absolutePath}\\n" else "Nenhum APK encontrado em outputs/apk.\\n"
-                }.onFailure { output += "\\nFalha no build: ${it.message}\\n" }
+                    output += if (code == 0) "\nBuild finalizado com sucesso.\n" else "\nBuild falhou (código $code).\n"
+                    output += if (apk != null) "APK gerado: ${apk.absolutePath}\n" else "Nenhum APK encontrado em outputs/apk.\n"
+                }.onFailure { output += "\nFalha no build: ${it.message}\n" }
                 busy = false
             }
         }, enabled = !busy && (projectDir.isNotBlank() || ProjectWorkspaceInfo.activeRoot(context) != null), modifier = Modifier.fillMaxWidth()) { Text("Compilar e gerar APK") }

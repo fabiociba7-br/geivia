@@ -1,6 +1,12 @@
 name: GEIVIA Signed Release APK
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "app/src/main/**"
+      - "app/src/test/**"
+      - "app/build.gradle.kts"
   workflow_dispatch:
 
 permissions:

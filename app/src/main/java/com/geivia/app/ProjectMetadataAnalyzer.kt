@@ -37,6 +37,13 @@ internal data class ProjectMetadata(
             ).firstOrNull { !it.isNullOrBlank() }
             val manifestText = read(first("AndroidManifest.xml")).orEmpty()
             val manifestLabel = Regex("""android:label\s*=\s*["']([^"']+)["']""").find(manifestText)?.groupValues?.getOrNull(1)
+            val manifestResource = manifestLabel?.takeIf { it.startsWith("@string/") }?.removePrefix("@string/")
+            val resolvedManifestLabel = manifestResource?.let { resource ->
+                files.filter { it.name == "strings.xml" }.mapNotNull(::read).firstNotNullOfOrNull { xml ->
+                    Regex("""<string\s+name=["']$resource["'][^>]*>(.*?)</string>""", setOf(RegexOption.DOT_MATCHES_ALL))
+                        .find(xml)?.groupValues?.getOrNull(1)?.trim()?.takeIf(String::isNotBlank)
+                }
+            } ?: manifestLabel?.takeUnless { it.startsWith("@") }
             val gradleText = files.filter { it.name == "build.gradle" || it.name == "build.gradle.kts" }
                 .sortedBy(::rel).mapNotNull(::read).joinToString("\n")
             val appId = sequenceOf(
@@ -152,14 +159,14 @@ internal data class ProjectMetadata(
             if (firebaseFile == null) warnings += "firebase.json não encontrado; não há configuração de deploy Firebase identificada."
             if (firebaseFile != null && projectIds.isEmpty()) warnings += "firebase.json encontrado, mas o Firebase Project ID não foi identificado."
             if (firebase != null && targets.isEmpty()) warnings += "firebase.json não declarou serviços de deploy reconhecidos."
-            if (manifestLabel?.startsWith("@string/") == true) warnings += "O nome Android aponta para recurso ${manifestLabel}; resolva-o em strings.xml."
+            if (manifestResource != null && resolvedManifestLabel == null) warnings += "O nome Android aponta para recurso ${manifestLabel}, mas o valor não foi encontrado em strings.xml."
             val dependencies = pkg?.optJSONObject("dependencies")
             val devDependencies = pkg?.optJSONObject("devDependencies")
             val aiStudio = files.any { it.name == ".aistudio" || rel(it).contains("/.aistudio/") } ||
                 (pkg?.optString("description")?.contains("Google AI Studio", true) == true) ||
                 (dependencies?.has("@google/genai") == true) || (dependencies?.has("@google/generative-ai") == true) ||
                 (devDependencies?.has("@google/genai") == true) || (devDependencies?.has("@google/generative-ai") == true)
-            val appName = packageDisplay ?: appConfigName ?: htmlTitle ?: packageName ?: manifestLabel?.takeUnless { it.startsWith("@") }
+            val appName = packageDisplay ?: appConfigName ?: htmlTitle ?: resolvedManifestLabel ?: packageName
             return ProjectMetadata(appName, appId ?: packageName, htmlTitle, projectIds.firstOrNull(), sites.toList(),
                 targets.toList(), functionSources.distinct(), firestoreRules.distinct(), storageRules.distinct(), databaseRules.distinct(),
                 publicDirs.distinct(), configs, roles.map { ProjectFolderRole(it.key, it.value) }.sortedBy { it.path },

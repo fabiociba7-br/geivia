@@ -28,7 +28,7 @@ internal object GeiviaAndroidBuild {
           wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdtools.zip
           unzip -q cmdtools.zip -d /tmp/cmdtools
           mkdir -p "${'$'}ANDROID_HOME/cmdline-tools/latest"
-          mv /tmp/cmdtools/cmdline-tools/* "${'$'}ANDROID_HOME/cmdline-tools/latest/" || true
+          mv /tmp/cmdtools/cmdline-tools/* "${'$'}ANDROID_HOME/cmdline-tools/latest/"
         fi
         export ANDROID_HOME ANDROID_SDK_ROOT="${'$'}ANDROID_HOME"
         yes | "${'$'}ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="${'$'}ANDROID_HOME" \

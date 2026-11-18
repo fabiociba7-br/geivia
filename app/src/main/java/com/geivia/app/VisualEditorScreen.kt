@@ -41,7 +41,7 @@ import kotlin.math.roundToInt
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private data class StudioElement(
+internal data class StudioElement(
     val id: String = UUID.randomUUID().toString(),
     val type: String,
     val text: String,
@@ -169,12 +169,35 @@ internal fun VisualEditorScreen(
         }
     }
     var selectedId by remember(projectKey) { mutableStateOf(elements.firstOrNull()?.id) }
+
     val undoStack = remember(projectKey) { mutableStateListOf<List<StudioElement>>() }
     val redoStack = remember(projectKey) { mutableStateListOf<List<StudioElement>>() }
     var message by remember(projectKey) { mutableStateOf("Rascunho local") }
     var previewMode by rememberSaveable(projectKey) { mutableStateOf(false) }
     var workspacePanel by rememberSaveable(projectKey) {
         mutableStateOf(if (activeWorkspace != null) "imported" else "canvas")
+    }
+
+    // Importa uma primeira representação visual das telas Compose já existentes.
+    // O parser é best-effort: ele não reescreve nem altera os arquivos Kotlin originais.
+    LaunchedEffect(importedProjectPath, projectKey) {
+        if (importedProjectPath.isBlank()) return@LaunchedEffect
+        if (!prefs.getString(screenRegistryPrefKey, null).isNullOrBlank()) {
+            workspacePanel = "canvas"
+            return@LaunchedEffect
+        }
+        val parsed = withContext(Dispatchers.IO) {
+            ComposeToStudioParser.persistToStudio(context, java.io.File(importedProjectPath))
+        } ?: return@LaunchedEffect
+        screenRegistry.clear()
+        screenRegistry.addAll(parsed.screens)
+        activeScreenId = parsed.startScreenId
+        startScreenId = parsed.startScreenId
+        elements.clear()
+        elements.addAll(parsed.elementsByScreen[parsed.startScreenId].orEmpty())
+        selectedId = elements.firstOrNull()?.id
+        workspacePanel = "canvas"
+        ProjectAccountStore.applyActiveToGlobals(context)
     }
     var themePrimary by remember(projectKey) { mutableStateOf(prefs.getString(themePrimaryPrefKey, if (allowLegacyProjectData) prefs.getString("studio_theme_primary", "#1769AA") else "#1769AA") ?: "#1769AA") }
     var themeBackground by remember(projectKey) { mutableStateOf(prefs.getString(themeBackgroundPrefKey, if (allowLegacyProjectData) prefs.getString("studio_theme_background", "#F3F6FA") else "#F3F6FA") ?: "#F3F6FA") }
@@ -707,6 +730,9 @@ internal fun VisualEditorScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onTerminal) {
+                        Icon(Icons.Default.Terminal, contentDescription = "Terminal", tint = EditorInk)
+                    }
                     if (activeWorkspace != null) {
                         TextButton(onClick = { saveSchema(); onProjectFiles(null) }) {
                             Text("Arquivos")

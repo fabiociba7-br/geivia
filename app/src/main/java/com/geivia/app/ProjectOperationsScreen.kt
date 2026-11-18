@@ -60,7 +60,11 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
     var firebaseConfigDir by rememberSaveable { mutableStateOf("") }
     var workflowRefresh by rememberSaveable { mutableStateOf(0) }
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", android.content.Context.MODE_PRIVATE) }
-    LaunchedEffect(projectId) { prefs.edit().putString("selected_project_id", projectId).apply() }
+    LaunchedEffect(projectId) {
+        prefs.edit().putString("selected_project_id", projectId).apply()
+        val path = projectDir.takeIf { it.isNotBlank() } ?: ProjectAccountStore.activePath(context)
+        if (!path.isNullOrBlank()) ProjectAccountStore.saveFirebase(context, path, projectId)
+    }
     val zipPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
             busy = true
@@ -77,7 +81,10 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                     .putString("imported_project_dir", it.absolutePath).putString("imported_project_name", it.name)
                     .putString("active_firebase_project_id", detectedFirebaseId.orEmpty()).apply()
                 if (!detectedFirebaseId.isNullOrBlank()) projectId = detectedFirebaseId
-                output = "Projeto importado em: " + it.absolutePath + "\nArquivos: " + it.walkTopDown().count { f -> f.isFile } +
+                ProjectAccountStore.saveFirebase(context, it.absolutePath, detectedFirebaseId)
+                ProjectAccountStore.captureGlobalsToActive(context)
+                withContext(Dispatchers.IO) { ComposeToStudioParser.persistToStudio(context, it) }
+                output = "Projeto importado e carregado: " + it.name + "\n" + it.absolutePath + "\nArquivos: " + it.walkTopDown().count { f -> f.isFile } +
                     "\nfirebase.json: " + if (File(it, "firebase.json").isFile) "encontrado" else "não encontrado"
             }.onFailure { output = "Falha na importação: " + (it.message ?: "erro desconhecido") }
             busy = false
@@ -99,10 +106,14 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                     .putString("imported_project_dir", importedRoot.absolutePath).putString("imported_project_name", importedRoot.name)
                     .putString("active_firebase_project_id", detectedFirebaseId.orEmpty()).apply()
                 if (!detectedFirebaseId.isNullOrBlank()) projectId = detectedFirebaseId
-                output = "Projeto importado da pasta selecionada em: ${importedRoot.absolutePath}" +
-                    "\nArquivos: " + importedRoot.walkTopDown().count { it.isFile } +
-                    "\nEstrutura de diretórios preservada." +
-                    "\nfirebase.json: " + if (File(importedRoot, "firebase.json").isFile) "encontrado" else "não encontrado"
+                ProjectAccountStore.saveFirebase(context, importedRoot.absolutePath, detectedFirebaseId)
+                ProjectAccountStore.captureGlobalsToActive(context)
+                withContext(Dispatchers.IO) { ComposeToStudioParser.persistToStudio(context, importedRoot) }
+                output = "Projeto carregado com sucesso: ${importedRoot.name}\n" +
+                    "Local: ${importedRoot.absolutePath}\n" +
+                    "Arquivos: " + importedRoot.walkTopDown().count { it.isFile } +
+                    "\nEstrutura preservada. Volte ao painel para editar, ver código e usar o terminal.\n" +
+                    "firebase.json: " + if (File(importedRoot, "firebase.json").isFile) "encontrado" else "não encontrado"
             }.onFailure { error ->
                 output = "Falha na importação da pasta: " + (error.message ?: "erro desconhecido")
             }
@@ -115,11 +126,63 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
         Text("Importar, enviar e publicar", color = Color(0xFF102B43), fontSize = 25.sp)
         Text("Importe um projeto Android diretamente de uma pasta do celular ou por arquivo ZIP. O GEIVIA preserva os diretórios e copia os arquivos para o Debian/PRoot, sem modificar a origem. O envio ao GitHub ocorre pelo aplicativo; deploy Firebase é preparado para revisão e execução manual no Google Cloud Shell.", color = Color(0xFF587083), fontSize = 13.sp)
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Voltar ao painel") }
-        Button(onClick = { folderPicker.launch(null) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Selecionar pasta raiz do projeto") }
+        Button(onClick = {
+            scope.launch {
+                busy = true
+                output = "Instalando toolchain Android no Debian (JDK, Gradle, SDK)…\n"
+                runCatching {
+                    withContext(Dispatchers.IO) { controller.prepareEngine() }
+                    controller.execute(GeiviaAndroidBuild.installToolchain(), 20 * 60 * 1000L) { line ->
+                        output += line
+                    }
+                }.onSuccess { code ->
+                    output += if (code == 0) "\nToolchain instalada com sucesso.\n" else "\nInstalação da toolchain falhou (código $code).\n"
+                }.onFailure { output += "\nFalha na toolchain: ${it.message}\n" }
+                busy = false
+            }
+        }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Instalar ferramentas de build") }
+
+        Button(onClick = {
+            val root = projectDir.takeIf { it.isNotBlank() }?.let { File(it) } ?: ProjectWorkspaceInfo.activeRoot(context)
+            if (root == null || !root.isDirectory) {
+                output = "Nenhum projeto ativo para compilar."
+                return@Button
+            }
+            scope.launch {
+                busy = true
+                output = "Compilando ${root.name} (assembleDebug)…\n"
+                runCatching {
+                    withContext(Dispatchers.IO) { controller.prepareEngine() }
+                    val code = controller.execute(GeiviaAndroidBuild.buildCommand(root.absolutePath), 30 * 60 * 1000L) { line ->
+                        output += line
+                    }
+                    val apk = withContext(Dispatchers.IO) { GeiviaAndroidBuild.findApk(root) }
+                    code to apk
+                }.onSuccess { (code, apk) ->
+                    output += if (code == 0) "\nBuild finalizado com sucesso.\n" else "\nBuild falhou (código $code).\n"
+                    output += if (apk != null) "APK gerado: ${apk.absolutePath}\n" else "Nenhum APK encontrado em outputs/apk.\n"
+                }.onFailure { output += "\nFalha no build: ${it.message}\n" }
+                busy = false
+            }
+        }, enabled = !busy && (projectDir.isNotBlank() || ProjectWorkspaceInfo.activeRoot(context) != null), modifier = Modifier.fillMaxWidth()) { Text("Compilar e gerar APK") }
+
+        Button(onClick = { folderPicker.launch(null) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Importar pasta do projeto") }
         OutlinedButton(onClick = { zipPicker.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Importar por arquivo ZIP") }
+        OutlinedButton(onClick = {
+            prefs.edit()
+                .remove("active_project_dir")
+                .remove("active_project_name")
+                .remove("imported_project_dir")
+                .remove("imported_project_name")
+                .remove("active_firebase_project_id")
+                .apply()
+            projectDir = ""
+            output = "Projeto desvinculado. Os arquivos continuam preservados no armazenamento do GEIVIA."
+        }, enabled = !busy && projectDir.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Desvincular projeto ativo") }
         if (projectDir.isNotBlank()) {
             val workspace = remember(projectDir) { runCatching { ProjectWorkspaceInfo.scan(File(projectDir)) }.getOrNull() }
-            Text("PROJETO ATIVO: ${workspace?.name ?: File(projectDir).name}", color = Color(0xFF18794E), fontSize = 12.sp)
+            Text("PROJETO CARREGADO: ${workspace?.name ?: File(projectDir).name}", color = Color(0xFF18794E), fontSize = 12.sp)
+            Text("O projeto está ativo. Volte ao painel para editar telas, ver código ou abrir o terminal.", color = Color(0xFF18794E), fontSize = 11.sp)
             Text("Tipo: ${workspace?.kind?.name ?: "Não identificado"} · Arquivos: ${workspace?.files?.size ?: 0}", color = Color(0xFF587083), fontSize = 11.sp)
             Text(projectDir, color = Color(0xFF587083), fontSize = 10.sp)
         }

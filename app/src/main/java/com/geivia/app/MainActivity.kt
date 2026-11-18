@@ -2752,7 +2752,7 @@ private fun TerminalPanel() {
                                         }
                                         if (projectRelative != null) {
                                             val shellPath = "/root/" + projectRelative.replace("'", "'\\''")
-                                            linuxController!!.send(session, "cd '$shellPath'\\n")
+                                            linuxController!!.send(session, "cd '$shellPath'\n")
                                             linuxTranscript += "\n[Terminal posicionado no projeto: $projectRelative]\n"
                                         }
                                         linuxTranscript += "\n[Shell Debian iniciado]\n"

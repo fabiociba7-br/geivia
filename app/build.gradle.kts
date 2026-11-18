@@ -17,6 +17,7 @@ val releaseSigningConfigured = listOf(
     releaseKeyPassword
 ).all { !it.isNullOrBlank() }
 
+// GEIVIA 1.1.3 workspace-root and import regression verification.
 android {
     namespace = "com.geivia.app"
     compileSdk = 35

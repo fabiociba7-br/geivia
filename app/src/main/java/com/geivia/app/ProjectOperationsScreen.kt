@@ -202,6 +202,7 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                         if (meta.functionsSources.isNotEmpty()) Text("Functions: ${meta.functionsSources.joinToString()}", fontSize = 12.sp)
                         if (meta.firestoreRules.isNotEmpty()) Text("Firestore rules: ${meta.firestoreRules.joinToString()}", fontSize = 12.sp)
                         if (meta.storageRules.isNotEmpty()) Text("Storage rules: ${meta.storageRules.joinToString()}", fontSize = 12.sp)
+                        if (meta.databaseRules.isNotEmpty()) Text("Realtime Database rules: ${meta.databaseRules.joinToString()}", fontSize = 12.sp)
                         if (meta.hostingPublicDirs.isNotEmpty()) Text("Hosting public: ${meta.hostingPublicDirs.joinToString()}", fontSize = 12.sp)
                         if (meta.structure.isNotEmpty()) {
                             Text("Pastas interpretadas:", fontSize = 12.sp)

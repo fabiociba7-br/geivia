@@ -54,7 +54,7 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
     val controller = remember { LinuxRuntimeController(context) }
     val workflowStore = remember { WorkflowProgressStore(context.getSharedPreferences("geivia_onboarding", android.content.Context.MODE_PRIVATE)) }
     var projectDir by rememberSaveable { mutableStateOf(prefsImportedProjectDir(context)) }
-    var projectId by rememberSaveable { mutableStateOf(context.getSharedPreferences("geivia_onboarding", 0).getString("selected_project_id", "").orEmpty()) }
+    var projectId by rememberSaveable { mutableStateOf(context.getSharedPreferences("geivia_onboarding", 0).getString("active_firebase_project_id", "").orEmpty().ifBlank { context.getSharedPreferences("geivia_onboarding", 0).getString("selected_project_id", "").orEmpty() }) }
     var output by rememberSaveable { mutableStateOf("Importe um ZIP ou selecione diretamente a pasta raiz do projeto. O GEIVIA copiará a estrutura completa para o Debian privado sem alterar os arquivos originais.") }
     var githubRepo by rememberSaveable { mutableStateOf("") }
     var githubBranch by rememberSaveable { mutableStateOf("main") }
@@ -76,7 +76,11 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                 }
             }.onSuccess {
                 projectDir = it.absolutePath
-                prefs.edit().putString("active_project_dir", it.absolutePath).putString("active_project_name", it.name).putString("imported_project_dir", it.absolutePath).putString("imported_project_name", it.name).apply()
+                val detectedFirebaseId = ProjectWorkspaceInfo.scan(it).firebaseProjectId
+                prefs.edit().putString("active_project_dir", it.absolutePath).putString("active_project_name", it.name)
+                    .putString("imported_project_dir", it.absolutePath).putString("imported_project_name", it.name)
+                    .putString("active_firebase_project_id", detectedFirebaseId.orEmpty()).apply()
+                if (!detectedFirebaseId.isNullOrBlank()) projectId = detectedFirebaseId
                 output = "Projeto importado em: " + it.absolutePath + "\nArquivos: " + it.walkTopDown().count { f -> f.isFile } +
                     "\nfirebase.json: " + if (File(it, "firebase.json").isFile) "encontrado" else "não encontrado"
             }.onFailure { output = "Falha na importação: " + (it.message ?: "erro desconhecido") }
@@ -94,7 +98,11 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                 }
             }.onSuccess { importedRoot ->
                 projectDir = importedRoot.absolutePath
-                prefs.edit().putString("active_project_dir", importedRoot.absolutePath).putString("active_project_name", importedRoot.name).putString("imported_project_dir", importedRoot.absolutePath).putString("imported_project_name", importedRoot.name).apply()
+                val detectedFirebaseId = ProjectWorkspaceInfo.scan(importedRoot).firebaseProjectId
+                prefs.edit().putString("active_project_dir", importedRoot.absolutePath).putString("active_project_name", importedRoot.name)
+                    .putString("imported_project_dir", importedRoot.absolutePath).putString("imported_project_name", importedRoot.name)
+                    .putString("active_firebase_project_id", detectedFirebaseId.orEmpty()).apply()
+                if (!detectedFirebaseId.isNullOrBlank()) projectId = detectedFirebaseId
                 output = "Projeto importado da pasta selecionada em: ${importedRoot.absolutePath}" +
                     "\nArquivos: " + importedRoot.walkTopDown().count { it.isFile } +
                     "\nEstrutura de diretórios preservada." +

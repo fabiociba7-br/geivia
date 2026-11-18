@@ -1,0 +1,74 @@
+name: GEIVIA 1.1.2 one-time verification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/geivia-build-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          submodules: recursive
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Install Android SDK packages
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+        run: |
+          set -euo pipefail
+          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
+
+      - name: Run unit tests and compile release
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+          GEIVIA_KEYSTORE_FILE: ${{ runner.temp }}/geivia-signing/geivia-release.jks
+          GEIVIA_KEYSTORE_PASSWORD: ${{ secrets.GEIVIA_KEYSTORE_PASSWORD }}
+          GEIVIA_KEY_ALIAS: ${{ secrets.GEIVIA_KEY_ALIAS }}
+          GEIVIA_KEY_PASSWORD: ${{ secrets.GEIVIA_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "${GEIVIA_KEYSTORE_PASSWORD:-}" || { echo "::error::Missing GEIVIA_KEYSTORE_PASSWORD"; exit 1; }
+          test -n "${GEIVIA_KEY_ALIAS:-}" || { echo "::error::Missing GEIVIA_KEY_ALIAS"; exit 1; }
+          test -n "${GEIVIA_KEY_PASSWORD:-}" || { echo "::error::Missing GEIVIA_KEY_PASSWORD"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/geivia-signing"
+          printf '%s' "${{ secrets.GEIVIA_KEYSTORE_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/geivia-signing/geivia-release.jks"
+          test -s "$RUNNER_TEMP/geivia-signing/geivia-release.jks"
+          gradle --no-daemon :app:testDebugUnitTest :app:assembleRelease
+          APK="app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          "$AAPT" dump badging "$APK" | grep -F "package: name='com.geivia.app' versionCode='13' versionName='1.1.2'"
+          CERT="$("$APKSIGNER" verify --print-certs "$APK" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print tolower($2); exit}' | tr -d ':')"
+          test "$CERT" = "949cea4f465b3bf42e04c8d8792e470da7c5a6b5c379361003eddc32112d272c"
+          "$APKSIGNER" verify --verbose "$APK"
+          sha256sum "$APK"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GEIVIA-1.1.2-verified-release
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 7

@@ -94,10 +94,15 @@ internal data class ProjectWorkspaceInfo(
             val webEntry = listOf("index.html", "public/index.html", "dist/index.html", "build/index.html")
                 .map { File(root, it) }.firstOrNull { it.isFile }
                 ?: relevant.firstOrNull { it.name == "index.html" && it.parentFile?.name !in setOf("node_modules", "build") }
+            // Flutter projects contain an Android subproject (Gradle + Manifest).
+            // Detect Flutter first so its nested Android files do not misclassify the
+            // whole workspace as a native Android project.
             val kind = when {
-                manifest || gradle -> Kind.ANDROID
                 flutter -> Kind.FLUTTER
+                manifest && gradle -> Kind.ANDROID
+                manifest -> Kind.ANDROID
                 has("package.json") -> Kind.NODE
+                gradle -> Kind.UNKNOWN
                 webEntry != null -> Kind.WEB
                 else -> Kind.UNKNOWN
             }

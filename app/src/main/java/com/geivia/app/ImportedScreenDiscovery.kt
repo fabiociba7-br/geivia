@@ -23,7 +23,7 @@ internal data class ImportedScreen(
 
 internal object ImportedScreenDiscovery {
     private val composeAnnotation = Regex(
-        """@Composable(?:\\s*\\([^)]*\\))?\\s+(?:(?:private|internal|public|protected|inline|tailrec|operator|suspend|override)\\s+)*fun\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*\\("""
+        """@Composable(?:\s*\([^)]*\))?\s+(?:(?:private|internal|public|protected|inline|tailrec|operator|suspend|override)\s+)*fun\s+([A-Za-z_][A-Za-z0-9_]*)\s*\("""
     )
     private val composeCalls = listOf(
         "Column", "Row", "Box", "LazyColumn", "LazyRow", "Text", "Button",
@@ -31,13 +31,13 @@ internal object ImportedScreenDiscovery {
         "Image", "Card", "Surface", "Scaffold", "TopAppBar", "NavigationBar",
         "Checkbox", "RadioButton", "Switch", "Slider", "Spacer", "HorizontalDivider"
     )
-    private val xmlTag = Regex("""<([A-Za-z_][A-Za-z0-9_.]*)\\b([^<>]*?)(?:/?>)""")
-    private val xmlId = Regex("""(?:android:)?id\\s*=\\s*["']@\\+?id/([^"']+)["']""")
-    private val xmlText = Regex("""(?:android:)?text\\s*=\\s*["']([^"']*)["']""")
-    private val composeText = Regex("""\\bText\\s*\\(\\s*(?:text\\s*=\\s*)?"([^"]{1,160})"""")
-    private val composeButton = Regex("""\\b(?:Button|OutlinedButton)\\s*\\([^)]*\\)\\s*\\{\\s*Text\\s*\\(\\s*(?:text\\s*=\\s*)?"([^"]{1,100})"""")
-    private val composeField = Regex("""\\b(?:OutlinedTextField|TextField)\\s*\\(""")
-    private val composeImage = Regex("""\\bImage\\s*\\(""")
+    private val xmlTag = Regex("""<([A-Za-z_][A-Za-z0-9_.]*)\b([^<>]*?)(?:/?>)""")
+    private val xmlId = Regex("""(?:android:)?id\s*=\s*["']@\+?id/([^"']+)["']""")
+    private val xmlText = Regex("""(?:android:)?text\s*=\s*["']([^"']*)["']""")
+    private val composeText = Regex("""\bText\s*\(\s*(?:text\s*=\s*)?"([^"]{1,160})"""")
+    private val composeButton = Regex("""\b(?:Button|OutlinedButton)\s*\([^)]*\)\s*\{\s*Text\s*\(\s*(?:text\s*=\s*)?"([^"]{1,100})"""")
+    private val composeField = Regex("""\b(?:OutlinedTextField|TextField)\s*\(""")
+    private val composeImage = Regex("""\bImage\s*\(""")
 
     fun scan(projectRoot: File, maxFiles: Int = 5000): List<ImportedScreen> {
         val root = projectRoot.canonicalFile
@@ -57,7 +57,7 @@ internal object ImportedScreenDiscovery {
             val relative = file.relativeTo(root).invariantSeparatorsPath
             if (file.length() > MAX_SOURCE_BYTES) return@flatMap emptyList()
             val source = runCatching { file.readText(Charsets.UTF_8) }.getOrNull()
-                ?.takeIf { !it.contains('\\u0000') } ?: return@flatMap emptyList()
+                ?.takeIf { !it.contains('\u0000') } ?: return@flatMap emptyList()
             when {
                 file.extension.equals("xml", true) -> parseXml(relative, source)
                 file.extension.equals("kt", true) -> parseCompose(relative, source)
@@ -108,7 +108,7 @@ internal object ImportedScreenDiscovery {
             }
             composeCalls.filter { it !in setOf("Text", "Button", "OutlinedButton", "TextField", "OutlinedTextField", "Image") }
                 .forEach { type ->
-                    Regex("""\\b${Regex.escape(type)}\\s*(?:\\(|\\{)""").findAll(block).forEach {
+                    Regex("""\b${Regex.escape(type)}\s*(?:\(|\{)""").findAll(block).forEach {
                         visualItems += it.range.first to ImportedScreenComponent(type, text = null)
                     }
                 }
@@ -123,7 +123,7 @@ internal object ImportedScreenDiscovery {
     }
 
     private fun unescape(value: String): String =
-        value.replace("\\n", " ").replace("\\\"", "\"").replace("\\\\", "\\")
+        value.replace("\n", " ").replace("\\"", "\"").replace("\\", "\")
 
     private const val MAX_SOURCE_BYTES = 2L * 1024L * 1024L
 }

@@ -205,7 +205,7 @@ internal fun GeiviaRecoveryTerminal(
                                 color = TerminalForeground, fontSize = 11.sp
                             )
                         }
-                        OutlinedButton(onClick = { fullScreen = false }) { Text("Sair do terminal") }
+                        OutlinedButton(onClick = { fullScreen = false }) { Text("Voltar ao app") }
                     }
                     Divider(color = Color(0xFF344653))
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

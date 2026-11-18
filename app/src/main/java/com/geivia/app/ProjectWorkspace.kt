@@ -2,6 +2,7 @@ package com.geivia.app
 
 import android.content.Context
 import java.io.File
+import org.json.JSONObject
 
 internal data class ProjectWorkspaceInfo(
     val root: File,
@@ -12,6 +13,7 @@ internal data class ProjectWorkspaceInfo(
     val hasGradleWrapper: Boolean,
     val hasManifest: Boolean,
     val hasFirebaseConfig: Boolean,
+    val firebaseProjectId: String?,
     val webEntry: File?,
     val buildFiles: List<File>
 ) {
@@ -83,6 +85,18 @@ internal data class ProjectWorkspaceInfo(
                 .mapNotNull { it.parentFile?.relativeTo(root)?.invariantSeparatorsPath }
                 .filter { it.isNotBlank() }
                 .distinct().take(100).toList()
+            val firebaseProjectId = relevant.firstOrNull { it.name == "google-services.json" }
+                ?.let { file ->
+                    runCatching {
+                        JSONObject(file.readText()).optJSONObject("project_info")
+                            ?.optString("project_id")?.takeIf { it.isNotBlank() }
+                    }.getOrNull()
+                } ?: relevant.firstOrNull { it.name == ".firebaserc" }?.let { file ->
+                    runCatching {
+                        JSONObject(file.readText()).optJSONObject("projects")
+                            ?.optString("default")?.takeIf { it.isNotBlank() }
+                    }.getOrNull()
+                }
             val buildFiles = all.filter {
                 it.name in setOf("settings.gradle", "settings.gradle.kts", "build.gradle", "build.gradle.kts", "gradlew", "gradlew.bat")
             }.take(100)
@@ -95,6 +109,7 @@ internal data class ProjectWorkspaceInfo(
                 hasGradleWrapper = File(root, "gradlew").isFile,
                 hasManifest = manifest,
                 hasFirebaseConfig = has("firebase.json"),
+                firebaseProjectId = firebaseProjectId,
                 webEntry = webEntry,
                 buildFiles = buildFiles
             )

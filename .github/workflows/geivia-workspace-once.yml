@@ -33,12 +33,14 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
-      - uses: android-actions/setup-android@v3
       - name: Install Android SDK packages
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
         run: |
           sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
       - name: Compile and package signed APK
         env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
           GEIVIA_KEYSTORE_FILE: ${{ runner.temp }}/geivia-signing/geivia-release.jks
           GEIVIA_KEYSTORE_PASSWORD: ${{ secrets.GEIVIA_KEYSTORE_PASSWORD }}
           GEIVIA_KEY_ALIAS: ${{ secrets.GEIVIA_KEY_ALIAS }}

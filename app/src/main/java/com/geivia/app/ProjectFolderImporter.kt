@@ -95,14 +95,9 @@ internal object ProjectFolderImporter {
 
         try {
             copyDocument(rootId, "", 0)
-            val firebaseConfigs = project.walkTopDown()
-                .maxDepth(4)
-                .filter { it.isFile && it.name == "firebase.json" && !it.path.contains("/node_modules/") }
-                .toList()
-            require(firebaseConfigs.size <= 1) {
-                "A pasta contém mais de um firebase.json. Selecione a raiz de apenas um projeto."
-            }
-            return firebaseConfigs.firstOrNull()?.parentFile ?: project
+            // Resolve a single enclosing directory when the picker points one level above the actual project.
+            // firebase.json is metadata and must never replace the Android project's root.
+            return ProjectWorkspaceInfo.resolveRoot(project)
         } catch (error: Throwable) {
             project.deleteRecursively()
             throw error

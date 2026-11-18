@@ -40,10 +40,12 @@ import java.io.File
 import org.json.JSONObject
 import java.util.UUID
 
-private fun prefsImportedProjectDir(context: android.content.Context): String =
-    context.getSharedPreferences("geivia_onboarding", android.content.Context.MODE_PRIVATE)
-        .getString("imported_project_dir", "").orEmpty()
-        .takeIf { it.isNotBlank() && File(it).isDirectory }.orEmpty()
+private fun prefsImportedProjectDir(context: android.content.Context): String {
+    val prefs = context.getSharedPreferences("geivia_onboarding", android.content.Context.MODE_PRIVATE)
+    val path = prefs.getString("active_project_dir", "").orEmpty()
+        .ifBlank { prefs.getString("imported_project_dir", "").orEmpty() }
+    return path.takeIf { it.isNotBlank() && File(it).isDirectory }.orEmpty()
+}
 
 @Composable
 internal fun ProjectOperationsScreen(onBack: () -> Unit) {
@@ -52,13 +54,14 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
     val controller = remember { LinuxRuntimeController(context) }
     val workflowStore = remember { WorkflowProgressStore(context.getSharedPreferences("geivia_onboarding", android.content.Context.MODE_PRIVATE)) }
     var projectDir by rememberSaveable { mutableStateOf(prefsImportedProjectDir(context)) }
-    var projectId by rememberSaveable { mutableStateOf(context.getSharedPreferences("geivia_onboarding", 0).getString("selected_project_id", "").orEmpty()) }
+    var projectId by rememberSaveable { mutableStateOf(context.getSharedPreferences("geivia_onboarding", 0).getString("active_firebase_project_id", "").orEmpty().ifBlank { context.getSharedPreferences("geivia_onboarding", 0).getString("selected_project_id", "").orEmpty() }) }
     var output by rememberSaveable { mutableStateOf("Importe um ZIP ou selecione diretamente a pasta raiz do projeto. O GEIVIA copiará a estrutura completa para o Debian privado sem alterar os arquivos originais.") }
     var githubRepo by rememberSaveable { mutableStateOf("") }
     var githubBranch by rememberSaveable { mutableStateOf("main") }
     var busy by rememberSaveable { mutableStateOf(false) }
     var showDeployConfirm by remember { mutableStateOf(false) }
     var deployTargets by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    var firebaseConfigDir by rememberSaveable { mutableStateOf("") }
     var workflowRefresh by rememberSaveable { mutableStateOf(0) }
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", android.content.Context.MODE_PRIVATE) }
     LaunchedEffect(projectId) { prefs.edit().putString("selected_project_id", projectId).apply() }
@@ -73,7 +76,11 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                 }
             }.onSuccess {
                 projectDir = it.absolutePath
-                prefs.edit().putString("imported_project_dir", it.absolutePath).putString("imported_project_name", it.name).apply()
+                val detectedFirebaseId = ProjectWorkspaceInfo.scan(it).firebaseProjectId
+                prefs.edit().putString("active_project_dir", it.absolutePath).putString("active_project_name", it.name)
+                    .putString("imported_project_dir", it.absolutePath).putString("imported_project_name", it.name)
+                    .putString("active_firebase_project_id", detectedFirebaseId.orEmpty()).apply()
+                if (!detectedFirebaseId.isNullOrBlank()) projectId = detectedFirebaseId
                 output = "Projeto importado em: " + it.absolutePath + "\nArquivos: " + it.walkTopDown().count { f -> f.isFile } +
                     "\nfirebase.json: " + if (File(it, "firebase.json").isFile) "encontrado" else "não encontrado"
             }.onFailure { output = "Falha na importação: " + (it.message ?: "erro desconhecido") }
@@ -91,7 +98,11 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                 }
             }.onSuccess { importedRoot ->
                 projectDir = importedRoot.absolutePath
-                prefs.edit().putString("imported_project_dir", importedRoot.absolutePath).putString("imported_project_name", importedRoot.name).apply()
+                val detectedFirebaseId = ProjectWorkspaceInfo.scan(importedRoot).firebaseProjectId
+                prefs.edit().putString("active_project_dir", importedRoot.absolutePath).putString("active_project_name", importedRoot.name)
+                    .putString("imported_project_dir", importedRoot.absolutePath).putString("imported_project_name", importedRoot.name)
+                    .putString("active_firebase_project_id", detectedFirebaseId.orEmpty()).apply()
+                if (!detectedFirebaseId.isNullOrBlank()) projectId = detectedFirebaseId
                 output = "Projeto importado da pasta selecionada em: ${importedRoot.absolutePath}" +
                     "\nArquivos: " + importedRoot.walkTopDown().count { it.isFile } +
                     "\nEstrutura de diretórios preservada." +
@@ -110,7 +121,12 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Voltar ao painel") }
         Button(onClick = { folderPicker.launch(null) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Selecionar pasta raiz do projeto") }
         OutlinedButton(onClick = { zipPicker.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/octet-stream")) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Importar por arquivo ZIP") }
-        if (projectDir.isNotBlank()) Text("Pasta importada: $projectDir", color = Color(0xFF18794E), fontSize = 11.sp)
+        if (projectDir.isNotBlank()) {
+            val workspace = remember(projectDir) { runCatching { ProjectWorkspaceInfo.scan(File(projectDir)) }.getOrNull() }
+            Text("PROJETO ATIVO: ${workspace?.name ?: File(projectDir).name}", color = Color(0xFF18794E), fontSize = 12.sp)
+            Text("Tipo: ${workspace?.kind?.name ?: "Não identificado"} · Arquivos: ${workspace?.files?.size ?: 0}", color = Color(0xFF587083), fontSize = 11.sp)
+            Text(projectDir, color = Color(0xFF587083), fontSize = 10.sp)
+        }
         OutlinedTextField(value = projectId, onValueChange = { projectId = it.trim() }, modifier = Modifier.fillMaxWidth(), label = { Text("Firebase Project ID") }, singleLine = true)
         val deployRecord = remember(projectId, workflowRefresh) { if (projectId.isBlank()) null else workflowStore.get(projectId, "firebase_deploy") }
         if (deployRecord?.state == WorkflowStepState.WAITING_CONFIRMATION) {
@@ -138,8 +154,12 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                 Text("Prepara o comando de deploy para revisão e execução manual no Google Cloud Shell. O GEIVIA não publica automaticamente.", color = Color(0xFF587083), fontSize = 12.sp)
                 Button(onClick = {
     runCatching {
-        val configFile = File(projectDir, "firebase.json")
-        require(configFile.isFile) { "firebase.json não encontrado na raiz do projeto importado." }
+        val configFile = File(projectDir).walkTopDown()
+            .onEnter { it == File(projectDir) || it.name !in setOf(".git", "node_modules", "build", ".gradle") }
+            .maxDepth(4)
+            .firstOrNull { it.isFile && it.name == "firebase.json" }
+            ?: error("firebase.json não encontrado no projeto importado (busca até 4 níveis).")
+        firebaseConfigDir = configFile.parentFile?.absolutePath.orEmpty()
         val config = JSONObject(configFile.readText())
         val targets = FirebaseDeployPlanner.targets(config)
         require(targets.isNotEmpty()) { "Nenhum alvo implantável foi encontrado no firebase.json." }
@@ -204,10 +224,10 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
             title = { Text("Revisar deploy Firebase") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Projeto: $projectId\nPasta importada no aparelho: $projectDir")
+                    Text("Projeto: $projectId\nPasta importada: $projectDir\nPasta do firebase.json: $firebaseConfigDir")
                     Text("Alvos detectados no firebase.json: ${deployTargets.joinToString(", ")}. Hosting/Storage usam destinos individuais quando o arquivo define target; sem isso, o seletor pode abranger todos os destinos configurados. Firestore usa o seletor oficial único, que publica regras e índices juntos. Nenhum comando será executado pelo GEIVIA.")
                     Text("ANTES DE EXECUTAR", style = androidx.compose.material3.MaterialTheme.typography.labelMedium)
-                    Text("1. Envie a mesma pasta do projeto (ou um ZIP dela) para o ambiente Google Cloud Shell.\n2. Entre na pasta que contém firebase.json.\n3. Confira os alvos e as regras.\n4. Execute o comando abaixo somente depois da revisão.")
+                    Text("1. Envie a mesma pasta do projeto (ou um ZIP dela) para o ambiente Google Cloud Shell.\n2. Entre na pasta indicada em “Pasta do firebase.json”.\n3. Confira os alvos e as regras.\n4. Execute o comando abaixo somente depois da revisão.")
                     SelectionContainer { Text(deployCommand, fontSize = 12.sp, color = Color(0xFF1565C0)) }
                     if ("functions" in deployTargets) Text("ATENÇÃO: Functions podem exigir plano Blaze e faturamento ativo; não execute se a exigência de custo zero continuar valendo.", fontSize = 12.sp, color = Color(0xFF9A3D22))
                     Text("O deploy pode gerar cobrança e afetar usuários. A confirmação nesta tela apenas prepara e copia o comando; não publica o projeto.", fontSize = 12.sp)

@@ -54,7 +54,7 @@ internal fun StudioDashboardScreen(
     val prefs = context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE)
     val projectId = prefs.getString("selected_project_id", "").orEmpty()
     val projectName = prefs.getString("selected_project_name", "").orEmpty().ifBlank { projectId }
-    val importedProjectPath = prefs.getString("imported_project_dir", "").orEmpty()
+    val importedProjectPath = prefs.getString("active_project_dir", "").orEmpty().ifBlank { prefs.getString("imported_project_dir", "").orEmpty() }
     val importedProjectExists = importedProjectPath.isNotBlank() && java.io.File(importedProjectPath).isDirectory
     val importedProjectName = prefs.getString("imported_project_name", "").orEmpty()
         .ifBlank { java.io.File(importedProjectPath).name }

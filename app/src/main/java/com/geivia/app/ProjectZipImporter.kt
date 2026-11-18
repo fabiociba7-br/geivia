@@ -53,9 +53,8 @@ internal object ProjectZipImporter {
                     }
                 }
             }
-            val configs = project.walkTopDown().maxDepth(4).filter { it.isFile && it.name == "firebase.json" && !it.path.contains("/node_modules/") }.toList()
-            require(configs.size <= 1) { "O ZIP contém mais de um firebase.json. Separe os projetos antes de importar." }
-            return configs.firstOrNull()?.parentFile ?: project
+            // A nested firebase.json is not the project root. Resolve only a single wrapper directory.
+            return ProjectWorkspaceInfo.resolveRoot(project)
         } catch (error: Throwable) {
             project.deleteRecursively()
             throw error

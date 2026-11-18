@@ -1,0 +1,62 @@
+name: GEIVIA 1.1.1 Workspace Integration Validation
+
+on:
+  push:
+    paths:
+      - .github/workflows/geivia-workspace-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/imported-project-workspace
+          submodules: recursive
+      - name: Prepare release signing
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.GEIVIA_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE_B64"
+          mkdir -p "$RUNNER_TEMP/geivia-signing"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/geivia-signing/geivia-release.jks"
+          test -s "$RUNNER_TEMP/geivia-signing/geivia-release.jks"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools platforms;android-35 build-tools;35.0.0 ndk;27.2.12479018 cmake;3.22.1"
+      - name: Compile and package signed APK
+        env:
+          GEIVIA_KEYSTORE_FILE: ${{ runner.temp }}/geivia-signing/geivia-release.jks
+          GEIVIA_KEYSTORE_PASSWORD: ${{ secrets.GEIVIA_KEYSTORE_PASSWORD }}
+          GEIVIA_KEY_ALIAS: ${{ secrets.GEIVIA_KEY_ALIAS }}
+          GEIVIA_KEY_PASSWORD: ${{ secrets.GEIVIA_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          gradle --no-daemon :app:assembleRelease
+          APK=app/build/outputs/apk/release/app-release.apk
+          test -s "$APK"
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          "$AAPT" dump badging "$APK" | grep -F "package: name='com.geivia.app' versionCode='12' versionName='1.1.1'"
+          CERT=$("$APKSIGNER" verify --print-certs "$APK" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print tolower($2); exit}' | tr -d ':')
+          test "$CERT" = "949cea4f465b3bf42e04c8d8792e470da7c5a6b5c379361003eddc32112d272c"
+          "$APKSIGNER" verify --verbose "$APK"
+          sha256sum "$APK"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GEIVIA-1.1.1-workspace-integration-signed-apk-v2
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 30

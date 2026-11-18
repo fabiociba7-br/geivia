@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.io.File
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -347,8 +348,15 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                 "toolchain_updates" -> GeiviaToolchainUpdatesScreen(onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false })
                 "diagnostics" -> GeiviaDiagnosticsScreen(onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false })
                 "project_operations" -> ProjectOperationsScreen(onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false })
-                "project_preview" -> ProjectPreviewScreen(prefs.getString("imported_project_dir", "").orEmpty()) { page = "project_operations" }
-                "firebase_admin" -> FirebaseAdminScreen(prefs.getString("selected_project_id", preflightProjectId).orEmpty()) { page = if (returnToEditorAfterTool) "visual_editor" else "project_operations"; returnToEditorAfterTool = false }
+                "project_preview" -> ProjectPreviewScreen(
+                    projectDir = prefs.getString("active_project_dir", "").orEmpty()
+                        .ifBlank { prefs.getString("imported_project_dir", "").orEmpty() },
+                    onBack = { page = "dashboard" },
+                    onEditor = { page = "visual_editor" },
+                    onTerminal = { page = "terminal" },
+                    onOperations = { page = "project_operations" }
+                )
+                "firebase_admin" -> FirebaseAdminScreen(prefs.getString("active_firebase_project_id", "").orEmpty().ifBlank { prefs.getString("selected_project_id", preflightProjectId).orEmpty() }) { page = if (returnToEditorAfterTool) "visual_editor" else "project_operations"; returnToEditorAfterTool = false }
                 "legacy_dashboard" -> DashboardScreen(answers.toMap(), costMode,
                     onOperations = { page = "project_operations" },
                     onPreview = { page = "project_preview" },
@@ -2508,6 +2516,13 @@ private fun GitHubScreen(
 @Composable
 private fun TerminalPanel() {
     val context = LocalContext.current
+    val workspacePrefs = remember { context.getSharedPreferences("geivia_onboarding", android.content.Context.MODE_PRIVATE) }
+    val activeProjectPath = workspacePrefs.getString("active_project_dir", "").orEmpty()
+        .ifBlank { workspacePrefs.getString("imported_project_dir", "").orEmpty() }
+    val activeProjectRoot = remember(activeProjectPath) {
+        activeProjectPath.takeIf { it.isNotBlank() }?.let { runCatching { File(it).canonicalFile }.getOrNull() }
+            ?.takeIf { it.isDirectory }
+    }
     val engine = remember { LocalTerminalEngine(context.filesDir) }
     val importer = remember { TerminalWorkspaceImporter(context, context.filesDir) }
     val scope = rememberCoroutineScope()
@@ -2739,6 +2754,15 @@ private fun TerminalPanel() {
                                             linuxController.startDebianShell()
                                         }
                                         linuxSession = session
+                                        val projectRelative = activeProjectRoot?.let { root ->
+                                            runCatching { root.relativeTo(linuxController!!.homeDir.canonicalFile).invariantSeparatorsPath }
+                                                .getOrNull()?.takeIf { it != "." && !it.startsWith("..") }
+                                        }
+                                        if (projectRelative != null) {
+                                            val shellPath = "/root/" + projectRelative.replace("'", "'\\''")
+                                            linuxController!!.send(session, "cd '$shellPath'\n")
+                                            linuxTranscript += "\n[Terminal posicionado no projeto: $projectRelative]\n"
+                                        }
                                         linuxTranscript += "\n[Shell Debian iniciado]\n"
                                         scope.launch {
                                             val code = runCatching {

@@ -170,11 +170,22 @@ internal fun VisualEditorScreen(
     }
     var selectedId by remember(projectKey) { mutableStateOf(elements.firstOrNull()?.id) }
 
+    val undoStack = remember(projectKey) { mutableStateListOf<List<StudioElement>>() }
+    val redoStack = remember(projectKey) { mutableStateListOf<List<StudioElement>>() }
+    var message by remember(projectKey) { mutableStateOf("Rascunho local") }
+    var previewMode by rememberSaveable(projectKey) { mutableStateOf(false) }
+    var workspacePanel by rememberSaveable(projectKey) {
+        mutableStateOf(if (activeWorkspace != null) "imported" else "canvas")
+    }
+
     // Importa uma primeira representação visual das telas Compose já existentes.
     // O parser é best-effort: ele não reescreve nem altera os arquivos Kotlin originais.
     LaunchedEffect(importedProjectPath, projectKey) {
         if (importedProjectPath.isBlank()) return@LaunchedEffect
-        if (!prefs.getString(screenRegistryPrefKey, null).isNullOrBlank()) return@LaunchedEffect
+        if (!prefs.getString(screenRegistryPrefKey, null).isNullOrBlank()) {
+            workspacePanel = "canvas"
+            return@LaunchedEffect
+        }
         val parsed = withContext(Dispatchers.IO) {
             ComposeToStudioParser.persistToStudio(context, java.io.File(importedProjectPath))
         } ?: return@LaunchedEffect
@@ -185,15 +196,9 @@ internal fun VisualEditorScreen(
         elements.clear()
         elements.addAll(parsed.elementsByScreen[parsed.startScreenId].orEmpty())
         selectedId = elements.firstOrNull()?.id
+        workspacePanel = "canvas"
         message = "Telas Compose importadas para o modelo visual (rascunho)"
         ProjectAccountStore.applyActiveToGlobals(context)
-    }
-    val undoStack = remember(projectKey) { mutableStateListOf<List<StudioElement>>() }
-    val redoStack = remember(projectKey) { mutableStateListOf<List<StudioElement>>() }
-    var message by remember(projectKey) { mutableStateOf("Rascunho local") }
-    var previewMode by rememberSaveable(projectKey) { mutableStateOf(false) }
-    var workspacePanel by rememberSaveable(projectKey) {
-        mutableStateOf(if (activeWorkspace != null) "imported" else "canvas")
     }
     var themePrimary by remember(projectKey) { mutableStateOf(prefs.getString(themePrimaryPrefKey, if (allowLegacyProjectData) prefs.getString("studio_theme_primary", "#1769AA") else "#1769AA") ?: "#1769AA") }
     var themeBackground by remember(projectKey) { mutableStateOf(prefs.getString(themeBackgroundPrefKey, if (allowLegacyProjectData) prefs.getString("studio_theme_background", "#F3F6FA") else "#F3F6FA") ?: "#F3F6FA") }

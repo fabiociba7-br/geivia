@@ -1240,7 +1240,7 @@ internal fun VisualEditorScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text("${importedScreens.size} tela(s) encontradas", color = EditorInk, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.weight(1f))
-                                TextButton(onClick = onProjectFiles) { Text("Abrir código") }
+                                TextButton(onClick = { onProjectFiles(null) }) { Text("Abrir código") }
                             }
                             importedScreens.forEach { screen ->
                                 Card(colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(14.dp)) {

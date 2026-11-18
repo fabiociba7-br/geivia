@@ -41,7 +41,7 @@ import kotlin.math.roundToInt
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private data class StudioElement(
+internal data class StudioElement(
     val id: String = UUID.randomUUID().toString(),
     val type: String,
     val text: String,
@@ -169,6 +169,25 @@ internal fun VisualEditorScreen(
         }
     }
     var selectedId by remember(projectKey) { mutableStateOf(elements.firstOrNull()?.id) }
+
+    // Importa uma primeira representação visual das telas Compose já existentes.
+    // O parser é best-effort: ele não reescreve nem altera os arquivos Kotlin originais.
+    LaunchedEffect(importedProjectPath, projectKey) {
+        if (importedProjectPath.isBlank()) return@LaunchedEffect
+        if (!prefs.getString(screenRegistryPrefKey, null).isNullOrBlank()) return@LaunchedEffect
+        val parsed = withContext(Dispatchers.IO) {
+            ComposeToStudioParser.persistToStudio(context, java.io.File(importedProjectPath))
+        } ?: return@LaunchedEffect
+        screenRegistry.clear()
+        screenRegistry.addAll(parsed.screens)
+        activeScreenId = parsed.startScreenId
+        startScreenId = parsed.startScreenId
+        elements.clear()
+        elements.addAll(parsed.elementsByScreen[parsed.startScreenId].orEmpty())
+        selectedId = elements.firstOrNull()?.id
+        message = "Telas Compose importadas para o modelo visual (rascunho)"
+        ProjectAccountStore.applyActiveToGlobals(context)
+    }
     val undoStack = remember(projectKey) { mutableStateListOf<List<StudioElement>>() }
     val redoStack = remember(projectKey) { mutableStateListOf<List<StudioElement>>() }
     var message by remember(projectKey) { mutableStateOf("Rascunho local") }
@@ -707,6 +726,9 @@ internal fun VisualEditorScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onTerminal) {
+                        Icon(Icons.Default.Terminal, contentDescription = "Terminal", tint = EditorInk)
+                    }
                     if (activeWorkspace != null) {
                         TextButton(onClick = { saveSchema(); onProjectFiles(null) }) {
                             Text("Arquivos")

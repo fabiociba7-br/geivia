@@ -95,10 +95,9 @@ internal object ProjectFolderImporter {
 
         try {
             copyDocument(rootId, "", 0)
-            // Keep the exact folder selected by the user as the workspace root.
-            // firebase.json may live in a nested hosting/functions directory and must
-            // never silently replace the Android project's root.
-            return project
+            // Resolve a single enclosing directory when the picker points one level above the actual project.
+            // firebase.json is metadata and must never replace the Android project's root.
+            return ProjectWorkspaceInfo.resolveRoot(project)
         } catch (error: Throwable) {
             project.deleteRecursively()
             throw error

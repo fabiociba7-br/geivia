@@ -69,28 +69,40 @@ internal fun StudioDashboardScreen(
         action()
     }
     val navItems = listOf(
-        StudioNavItem("WORKSPACE", "Visão geral", Icons.Default.Dashboard, {}),
-        StudioNavItem("WORKSPACE", "Meus projetos", Icons.Default.FolderOpen, { navigate(onProjects) }),
-        StudioNavItem("CRIAR APLICATIVOS", "Editor visual", Icons.Default.Widgets, { navigate(onEditor) }),
-        StudioNavItem("CRIAR APLICATIVOS", "Biblioteca de componentes", Icons.Default.Extension, { navigate(onEditor) }),
-        StudioNavItem("CRIAR APLICATIVOS", "Ações e lógica", Icons.Default.AccountTree, { navigate(onEditor) }),
-        StudioNavItem("DADOS E SERVIÇOS", "Firebase e dados", Icons.Default.CloudQueue, { navigate(onFirebase) }),
-        StudioNavItem("DADOS E SERVIÇOS", "Integrações", Icons.Default.Extension, { navigate(onIntegrations) }),
-        StudioNavItem("TESTAR E PUBLICAR", "Pré-visualização", Icons.Default.Visibility, { navigate(onPreview) }),
-        StudioNavItem("TESTAR E PUBLICAR", "Operações do projeto", Icons.Default.Publish, { navigate(onProjects) }),
-        StudioNavItem("AMBIENTE", "Ferramentas e atualizações", Icons.Default.Terminal, { navigate(onTools) }),
-        StudioNavItem("DESENVOLVIMENTO", "Terminal", Icons.Default.Terminal, { navigate(onTerminal) }),
-        StudioNavItem("DESENVOLVIMENTO", "Editor de código", Icons.Default.Code, { navigate(onCodeEditor) }),
-        StudioNavItem("DESENVOLVIMENTO", "Compilar (Code on the Go)", Icons.Default.Build, {
+        StudioNavItem("ARQUIVO", "Novo projeto", Icons.Default.Add, { navigate(onNewProject) }),
+        StudioNavItem("ARQUIVO", "Abrir / importar projeto", Icons.Default.FolderOpen, { navigate(onProjects) }),
+
+        StudioNavItem("EDITAR", "Editor visual", Icons.Default.Widgets, { navigate(onEditor) }),
+        StudioNavItem("EDITAR", "Editor de código", Icons.Default.Code, { navigate(onCodeEditor) }),
+
+        StudioNavItem("PROJETO", "Visão geral e prévia", Icons.Default.Visibility, { navigate(onPreview) }),
+        StudioNavItem("PROJETO", "Gerenciar projeto e arquivos", Icons.Default.Folder, { navigate(onProjects) }),
+
+        StudioNavItem("FERRAMENTAS VISUAIS", "Telas e componentes", Icons.Default.Extension, { navigate(onEditor) }),
+        StudioNavItem("FERRAMENTAS VISUAIS", "Ações e lógica", Icons.Default.AccountTree, { navigate(onEditor) }),
+
+        StudioNavItem("TERMINAL E EXECUÇÃO", "Terminal Linux", Icons.Default.Terminal, { navigate(onTerminal) }),
+        StudioNavItem("TERMINAL E EXECUÇÃO", "Compilar aplicativo", Icons.Default.Build, {
             navigate {
                 val root = ProjectWorkspaceInfo.activeRoot(context)
                 CodeOnTheGoBridge.openProject(context, root)
             }
         }),
-        StudioNavItem("AMBIENTE", "Configurar ambiente Linux", Icons.Default.Build, { navigate(onEnvironmentSetup) }),
-        StudioNavItem("AMBIENTE", "Diagnóstico", Icons.Default.Build, { navigate(onDiagnostics) }),
-        StudioNavItem("AMBIENTE", "Acompanhamento clássico", Icons.Default.History, { navigate(onLegacyDashboard) }),
-        StudioNavItem("CONTA", "Contas e acesso", Icons.Default.AccountCircle, { navigate(onAccounts) })
+        StudioNavItem("TERMINAL E EXECUÇÃO", "Ferramentas de build", Icons.Default.Construction, { navigate(onTools) }),
+
+        StudioNavItem("FIREBASE E SERVIÇOS", "Firebase e dados", Icons.Default.CloudQueue, { navigate(onFirebase) }),
+        StudioNavItem("FIREBASE E SERVIÇOS", "Integrações e APIs", Icons.Default.Extension, { navigate(onIntegrations) }),
+
+        StudioNavItem("DEPLOY", "Preparar publicação Firebase", Icons.Default.CloudUpload, { navigate(onDeploy) }),
+        StudioNavItem("DEPLOY", "Diagnóstico de publicação", Icons.Default.FactCheck, { navigate(onDiagnostics) }),
+
+        StudioNavItem("GIT E GITHUB", "Repositórios e automações", Icons.Default.AccountTree, { navigate(onGitHub) }),
+
+        StudioNavItem("CONTAS", "Contas e permissões", Icons.Default.AccountCircle, { navigate(onAccounts) }),
+
+        StudioNavItem("AMBIENTE", "Configurar ambiente Linux", Icons.Default.Settings, { navigate(onEnvironmentSetup) }),
+        StudioNavItem("AMBIENTE", "Diagnóstico do ambiente", Icons.Default.Build, { navigate(onDiagnostics) }),
+        StudioNavItem("AMBIENTE", "Acompanhamento clássico", Icons.Default.History, { navigate(onLegacyDashboard) })
     )
 
     ModalNavigationDrawer(

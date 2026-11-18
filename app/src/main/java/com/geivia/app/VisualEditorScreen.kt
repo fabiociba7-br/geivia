@@ -197,7 +197,6 @@ internal fun VisualEditorScreen(
         elements.addAll(parsed.elementsByScreen[parsed.startScreenId].orEmpty())
         selectedId = elements.firstOrNull()?.id
         workspacePanel = "canvas"
-        message = "Telas Compose importadas para o modelo visual (rascunho)"
         ProjectAccountStore.applyActiveToGlobals(context)
     }
     var themePrimary by remember(projectKey) { mutableStateOf(prefs.getString(themePrimaryPrefKey, if (allowLegacyProjectData) prefs.getString("studio_theme_primary", "#1769AA") else "#1769AA") ?: "#1769AA") }

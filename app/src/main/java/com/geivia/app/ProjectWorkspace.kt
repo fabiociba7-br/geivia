@@ -2,7 +2,6 @@ package com.geivia.app
 
 import android.content.Context
 import java.io.File
-import org.json.JSONObject
 
 internal data class ProjectWorkspaceInfo(
     val root: File,
@@ -15,7 +14,8 @@ internal data class ProjectWorkspaceInfo(
     val hasFirebaseConfig: Boolean,
     val firebaseProjectId: String?,
     val webEntry: File?,
-    val buildFiles: List<File>
+    val buildFiles: List<File>,
+    val metadata: ProjectMetadata
 ) {
     enum class Kind { ANDROID, WEB, FLUTTER, NODE, UNKNOWN }
 
@@ -23,7 +23,6 @@ internal data class ProjectWorkspaceInfo(
         get() = files.map { it.relativeTo(root).invariantSeparatorsPath }
 
     companion object {
-        /** Directories that never belong to the user's sources (build output, VCS, ZIP metadata). */
         internal val IGNORED_DIRS = setOf(
             ".git", ".gradle", "build", "node_modules", ".idea", ".dart_tool", "__MACOSX",
             ".aistudio", ".cg.editor", ".cg.gradle-sync", ".kotlin", ".cxx", ".externalNativeBuild"
@@ -39,12 +38,6 @@ internal data class ProjectWorkspaceInfo(
                 File(dir, "src/main/AndroidManifest.xml").isFile ||
                 File(dir, "app/src/main/AndroidManifest.xml").isFile
 
-        /**
-         * Finds the real project root. If [rootDir] is already a project, it is returned. Otherwise
-         * the nearest (topmost) project directories below it are collected; only when there is exactly
-         * one is it chosen. Nested modules (e.g. wrapper/project/app) must not count as separate
-         * candidates, otherwise a project inside a wrapper folder is never resolved.
-         */
         fun resolveRoot(rootDir: File): File {
             val root = rootDir.canonicalFile
             if (isProjectDirectory(root)) return root
@@ -94,9 +87,6 @@ internal data class ProjectWorkspaceInfo(
             val webEntry = listOf("index.html", "public/index.html", "dist/index.html", "build/index.html")
                 .map { File(root, it) }.firstOrNull { it.isFile }
                 ?: relevant.firstOrNull { it.name == "index.html" && it.parentFile?.name !in setOf("node_modules", "build") }
-            // Flutter projects contain an Android subproject (Gradle + Manifest).
-            // Detect Flutter first so its nested Android files do not misclassify the
-            // whole workspace as a native Android project.
             val kind = when {
                 flutter -> Kind.FLUTTER
                 manifest && gradle -> Kind.ANDROID
@@ -109,35 +99,17 @@ internal data class ProjectWorkspaceInfo(
             val moduleNames = all.asSequence()
                 .filter { it.name == "build.gradle" || it.name == "build.gradle.kts" }
                 .mapNotNull { it.parentFile?.relativeTo(root)?.invariantSeparatorsPath }
-                .filter { it.isNotBlank() }
-                .distinct().take(100).toList()
-            val firebaseProjectId = relevant.firstOrNull { it.name == "google-services.json" }
-                ?.let { file ->
-                    runCatching {
-                        JSONObject(file.readText()).optJSONObject("project_info")
-                            ?.optString("project_id")?.takeIf { it.isNotBlank() }
-                    }.getOrNull()
-                } ?: relevant.firstOrNull { it.name == ".firebaserc" }?.let { file ->
-                    runCatching {
-                        JSONObject(file.readText()).optJSONObject("projects")
-                            ?.optString("default")?.takeIf { it.isNotBlank() }
-                    }.getOrNull()
-                }
+                .filter { it.isNotBlank() }.distinct().take(100).toList()
             val buildFiles = all.filter {
                 it.name in setOf("settings.gradle", "settings.gradle.kts", "build.gradle", "build.gradle.kts", "gradlew", "gradlew.bat")
             }.take(100)
+            val metadata = ProjectMetadata.analyze(root, relevant)
             return ProjectWorkspaceInfo(
-                root = root,
-                name = root.name,
-                kind = kind,
-                files = relevant.take(5000),
-                moduleNames = moduleNames,
-                hasGradleWrapper = File(root, "gradlew").isFile,
-                hasManifest = manifest,
-                hasFirebaseConfig = has("firebase.json"),
-                firebaseProjectId = firebaseProjectId,
-                webEntry = webEntry,
-                buildFiles = buildFiles
+                root = root, name = root.name, kind = kind, files = relevant.take(5000),
+                moduleNames = moduleNames, hasGradleWrapper = File(root, "gradlew").isFile,
+                hasManifest = manifest, hasFirebaseConfig = has("firebase.json"),
+                firebaseProjectId = metadata.firebaseProjectId, webEntry = webEntry,
+                buildFiles = buildFiles, metadata = metadata
             )
         }
     }

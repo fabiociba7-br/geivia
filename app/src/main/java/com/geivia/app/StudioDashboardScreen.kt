@@ -49,7 +49,9 @@ internal fun StudioDashboardScreen(
     onTools: () -> Unit,
     onDiagnostics: () -> Unit,
     onAccounts: () -> Unit,
-    onLegacyDashboard: () -> Unit
+    onLegacyDashboard: () -> Unit,
+    onTerminal: () -> Unit = {},
+    onCodeEditor: () -> Unit = {}
 ) {
     val prefs = context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE)
     val projectId = prefs.getString("selected_project_id", "").orEmpty()
@@ -75,6 +77,8 @@ internal fun StudioDashboardScreen(
         StudioNavItem("DADOS E SERVIÇOS", "Integrações", Icons.Default.Extension, { navigate(onIntegrations) }),
         StudioNavItem("TESTAR E PUBLICAR", "Pré-visualização", Icons.Default.Visibility, { navigate(onPreview) }),
         StudioNavItem("TESTAR E PUBLICAR", "Operações do projeto", Icons.Default.Publish, { navigate(onProjects) }),
+        StudioNavItem("DESENVOLVIMENTO", "Terminal", Icons.Default.Terminal, { navigate(onTerminal) }),
+        StudioNavItem("DESENVOLVIMENTO", "Editor de código", Icons.Default.Edit, { navigate(onCodeEditor) }),
         StudioNavItem("AMBIENTE", "Ferramentas e atualizações", Icons.Default.Terminal, { navigate(onTools) }),
         StudioNavItem("AMBIENTE", "Diagnóstico", Icons.Default.Build, { navigate(onDiagnostics) }),
         StudioNavItem("AMBIENTE", "Acompanhamento clássico", Icons.Default.History, { navigate(onLegacyDashboard) }),

@@ -1,8 +1,6 @@
 name: GEIVIA Signed Release APK
 
 on:
-  push:
-    branches: [integracao/terminal-tela-cheia]
   workflow_dispatch:
 
 permissions:
@@ -16,7 +14,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: integracao/terminal-tela-cheia
+          ref: main
           submodules: recursive
 
       - name: Require signing secrets

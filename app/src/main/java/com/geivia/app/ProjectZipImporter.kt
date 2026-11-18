@@ -28,6 +28,10 @@ internal object ProjectZipImporter {
                         require(name.isNotBlank() && !name.startsWith("/") && !name.split('/').any { it == ".." }) {
                             "O ZIP contém um caminho inseguro: $name"
                         }
+                        if (name.startsWith("__MACOSX/") || name.endsWith("/.DS_Store") || name == ".DS_Store") {
+                            zip.closeEntry()
+                            continue
+                        }
                         val target = File(project, name).canonicalFile
                         require(target.path == project.path || target.path.startsWith(project.path + File.separator)) {
                             "O ZIP tenta gravar fora da pasta do projeto."

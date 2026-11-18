@@ -2508,6 +2508,13 @@ private fun GitHubScreen(
 @Composable
 private fun TerminalPanel() {
     val context = LocalContext.current
+    val workspacePrefs = remember { context.getSharedPreferences("geivia_onboarding", android.content.Context.MODE_PRIVATE) }
+    val activeProjectPath = workspacePrefs.getString("active_project_dir", "").orEmpty()
+        .ifBlank { workspacePrefs.getString("imported_project_dir", "").orEmpty() }
+    val activeProjectRoot = remember(activeProjectPath) {
+        activeProjectPath.takeIf { it.isNotBlank() }?.let { runCatching { File(it).canonicalFile }.getOrNull() }
+            ?.takeIf { it.isDirectory }
+    }
     val engine = remember { LocalTerminalEngine(context.filesDir) }
     val importer = remember { TerminalWorkspaceImporter(context, context.filesDir) }
     val scope = rememberCoroutineScope()
@@ -2739,6 +2746,15 @@ private fun TerminalPanel() {
                                             linuxController.startDebianShell()
                                         }
                                         linuxSession = session
+                                        val projectRelative = activeProjectRoot?.let { root ->
+                                            runCatching { root.relativeTo(linuxController!!.homeDir.canonicalFile).invariantSeparatorsPath }
+                                                .getOrNull()?.takeIf { it != "." && !it.startsWith("..") }
+                                        }
+                                        if (projectRelative != null) {
+                                            val shellPath = "/root/" + projectRelative.replace("'", "'\\''")
+                                            linuxController!!.send(session, "cd '$shellPath'\\n")
+                                            linuxTranscript += "\n[Terminal posicionado no projeto: $projectRelative]\n"
+                                        }
                                         linuxTranscript += "\n[Shell Debian iniciado]\n"
                                         scope.launch {
                                             val code = runCatching {

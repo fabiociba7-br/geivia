@@ -270,7 +270,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                 "workspace_setup" -> WorkspaceSetupScreen(
                     initialName = workspaceName,
                     workspaceId = workspaceId,
-                    onBack = { page = "welcome" },
+                    onBack = { page = "dashboard" },
                     onContinue = { name ->
                         workspaceName = name.trim()
                         prefs.edit().putString("workspace_name", workspaceName).apply()

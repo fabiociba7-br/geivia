@@ -21,11 +21,12 @@ class ProjectMetadataAnalyzerTest {
             """{"projects":{"default":"my-firebase-project"},"targets":{"my-firebase-project":{"hosting":{"production":["my-production-site"]}}}}"""
         )
         File(root, "firebase.json").writeText(
-            """{"hosting":{"target":"production","public":"dist"},"functions":{"source":"functions"},"firestore":{"rules":"firestore.rules","indexes":"firestore.indexes.json"},"storage":{"rules":"storage.rules"}}"""
+            """{"hosting":{"target":"production","public":"dist"},"functions":{"source":"functions"},"firestore":{"rules":"firestore.rules","indexes":"firestore.indexes.json"},"storage":{"rules":"storage.rules"},"database":{"rules":"database.rules.json"}}"""
         )
         File(root, "functions/src/index.ts").apply { parentFile!!.mkdirs(); writeText("export {}") }
         File(root, "firestore.rules").writeText("rules_version = '2';")
         File(root, "storage.rules").writeText("rules_version = '2';")
+        File(root, "database.rules.json").writeText("{}")
         File(root, "dist/index.html").apply { parentFile!!.mkdirs(); writeText("<html/>") }
 
         val info = ProjectWorkspaceInfo.scan(root)
@@ -39,6 +40,7 @@ class ProjectMetadataAnalyzerTest {
         assertEquals(listOf("functions"), meta.functionsSources)
         assertEquals(listOf("firestore.rules"), meta.firestoreRules)
         assertEquals(listOf("storage.rules"), meta.storageRules)
+        assertEquals(listOf("database.rules.json"), meta.databaseRules)
         assertEquals(listOf("dist"), meta.hostingPublicDirs)
         assertTrue(meta.googleAiStudioProject)
         assertTrue(meta.structure.any { it.path == "functions/src" && it.role == "Firebase Cloud Functions" })

@@ -42,7 +42,7 @@ internal data class StudioScreenDocument(
                 errors += "Parâmetros de entrada duplicados na tela ${screen.id}"
             }
             screen.inputParameters.forEach { parameter ->
-                if (!ID_PATTERN.matches(parameter.key)) errors += "Identificador de parâmetro inválido: ${parameter.key}"
+                if (!PARAMETER_KEY_PATTERN.matches(parameter.key)) errors += "Identificador de parâmetro inválido: ${parameter.key}"
                 if (parameter.label.isBlank() || parameter.label.length > MAX_NAME_LENGTH) {
                     errors += "Nome de parâmetro inválido: ${parameter.key}"
                 }
@@ -102,6 +102,7 @@ internal data class StudioScreenDocument(
         const val MAX_PARAMETER_VALUE_LENGTH = 4096
         private val ID_PATTERN = Regex("[A-Za-z_][A-Za-z0-9_-]{0,63}")
         private val PARAMETER_TYPES = setOf("text", "number", "boolean", "json")
+        private val PARAMETER_KEY_PATTERN = Regex("[A-Za-z_][A-Za-z0-9_]{0,63}")
 
         fun fromJson(source: String): StudioScreenDocument {
             require(source.length <= 64 * 1024) { "Registro de telas muito grande" }

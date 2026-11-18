@@ -1,0 +1,35 @@
+name: GEIVIA source browser validation
+
+on:
+  push:
+    branches:
+      - fix/imported-project-source-browser
+    paths:
+      - '.github/workflows/source-browser-validation.yml'
+      - 'app/**'
+      - 'proot-engine/**'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/imported-project-source-browser
+          submodules: recursive
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: |
+          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
+      - name: Compile and run unit tests
+        run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug

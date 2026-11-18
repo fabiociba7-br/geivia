@@ -52,7 +52,9 @@ internal fun StudioDashboardScreen(
     onAccounts: () -> Unit,
     onLegacyDashboard: () -> Unit,
     onTerminal: () -> Unit = {},
-    onCodeEditor: () -> Unit = {}
+    onCodeEditor: () -> Unit = {},
+    onGitHub: () -> Unit = {},
+    onDeploy: () -> Unit = onProjects
 ) {
     val prefs = context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE)
     val projectId = prefs.getString("selected_project_id", "").orEmpty()

@@ -14,7 +14,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: feature/geivia-studio-complete
+          ref: main
           submodules: recursive
 
       - name: Require signing secrets
@@ -76,7 +76,7 @@ jobs:
           AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
           APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           BADGING="$("$AAPT" dump badging "$APK")"
-          echo "$BADGING" | grep -F "package: name='com.geivia.app' versionCode='9' versionName='1.0.8'"
+          echo "$BADGING" | grep -F "package: name='com.geivia.app' versionCode='13' versionName='1.1.2'"
           CERT="$("$APKSIGNER" verify --print-certs "$APK" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print tolower($2); exit}' | tr -d ':')"
           EXPECTED="949cea4f465b3bf42e04c8d8792e470da7c5a6b5c379361003eddc32112d272c"
           test "$CERT" = "$EXPECTED" || { echo "::error::Release certificate fingerprint mismatch"; exit 1; }
@@ -86,7 +86,7 @@ jobs:
       - name: Upload verified release APK
         uses: actions/upload-artifact@v4
         with:
-          name: GEIVIA-feature-studio-signed-apk
+          name: GEIVIA-1.1.2-signed-apk
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 30

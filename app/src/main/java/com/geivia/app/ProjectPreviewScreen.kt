@@ -11,6 +11,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 @Composable
@@ -22,50 +24,77 @@ internal fun ProjectPreviewScreen(
     onTerminal: () -> Unit,
     onOperations: () -> Unit
 ) {
-    val workspace = remember(projectDir) {
-        runCatching {
-            val root = File(projectDir).canonicalFile
-            require(root.isDirectory) { "A pasta do projeto ativo não existe mais." }
-            ProjectWorkspaceInfo.scan(root)
-        }.getOrNull()
+    // Project indexing can involve thousands of files. Never walk the project tree on
+    // the UI thread: doing so was capable of freezing or terminating the app on large projects.
+    val workspaceState = produceState<ProjectWorkspaceInfo?>(null, projectDir) {
+        value = withContext(Dispatchers.IO) {
+            runCatching {
+                val selected = File(projectDir).canonicalFile
+                require(selected.isDirectory) { "A pasta do projeto ativo não existe mais." }
+                ProjectWorkspaceInfo.scan(selected)
+            }.getOrNull()
+        }
     }
-    var showFiles by remember(projectDir) { mutableStateOf(true) }
+    val workspace = workspaceState.value
+    val screensState = produceState<List<ImportedScreen>>(emptyList(), projectDir, workspace?.root?.absolutePath) {
+        value = withContext(Dispatchers.IO) {
+            workspace?.takeIf { it.kind == ProjectWorkspaceInfo.Kind.ANDROID }
+                ?.let { runCatching { ImportedScreenDiscovery.scan(it.root, maxFiles = 1800) }.getOrDefault(emptyList()) }
+                ?: emptyList()
+        }
+    }
+    var showFiles by remember(projectDir) { mutableStateOf(false) }
+
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
             Column(Modifier.weight(1f)) {
-                Text("PROJETO ATIVO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                Text(workspace?.name ?: "Nenhum projeto carregado", style = MaterialTheme.typography.titleMedium)
+                Text("PRÉVIA DO PROJETO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                Text(workspace?.name ?: "Carregando projeto…", style = MaterialTheme.typography.titleMedium)
             }
             TextButton(onClick = onBack) { Text("Voltar") }
         }
-        if (workspace == null) {
-            Text("Não foi possível abrir a pasta do projeto. Volte à Central de Projetos e importe a pasta novamente.", Modifier.padding(16.dp))
+
+        if (workspaceState.value == null) {
+            if (projectDir.isBlank()) {
+                Text("Nenhum projeto ativo. Importe ou selecione um projeto para continuar.", Modifier.padding(16.dp))
+            } else {
+                LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+                Text("Lendo os arquivos do projeto em segundo plano…", Modifier.padding(16.dp))
+            }
             return@Column
         }
+
         Card(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 Text(
                     when (workspace.kind) {
-                        ProjectWorkspaceInfo.Kind.ANDROID -> "Projeto Android nativo detectado"
-                        ProjectWorkspaceInfo.Kind.FLUTTER -> "Projeto Flutter detectado"
-                        ProjectWorkspaceInfo.Kind.WEB -> "Projeto Web detectado"
-                        ProjectWorkspaceInfo.Kind.NODE -> "Projeto Node.js detectado"
+                        ProjectWorkspaceInfo.Kind.ANDROID -> "Aplicativo Android nativo"
+                        ProjectWorkspaceInfo.Kind.FLUTTER -> "Aplicativo Flutter"
+                        ProjectWorkspaceInfo.Kind.WEB -> "Projeto Web"
+                        ProjectWorkspaceInfo.Kind.NODE -> "Projeto Node.js"
                         ProjectWorkspaceInfo.Kind.UNKNOWN -> "Tipo de projeto não identificado"
                     },
                     style = MaterialTheme.typography.titleSmall
                 )
-                Text(workspace.root.absolutePath, style = MaterialTheme.typography.bodySmall)
-                Text("Arquivos indexados: ${workspace.files.size}", style = MaterialTheme.typography.bodySmall)
+                Text("Arquivos analisados: ${workspace.files.size}", style = MaterialTheme.typography.bodySmall)
                 if (workspace.kind == ProjectWorkspaceInfo.Kind.ANDROID) {
-                    Text("Manifest Android: ${if (workspace.hasManifest) "encontrado" else "não encontrado"}")
-                    Text("Gradle Wrapper: ${if (workspace.hasGradleWrapper) "encontrado" else "não encontrado"}")
-                    Text("Módulos Gradle: ${workspace.moduleNames.joinToString().ifBlank { "não identificados" }}")
-                    Text("Firebase: ${if (workspace.hasFirebaseConfig) "configuração encontrada" else "sem firebase.json"}")
-                    Text("A prévia executável de um app Android exige compilar e instalar um APK. Esta tela confirma a leitura e a estrutura do projeto; não simula o app nativo dentro de uma página HTML.")
+                    Text("Telas-fonte identificadas: ${screensState.value.size}", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        "Para mostrar o jogo exatamente como aparece no aparelho, o GEIVIA precisa compilar e executar o próprio aplicativo. Uma reconstrução por leitura de textos não representa corretamente mesas, cartas, imagens, animações ou posicionamento.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        "Esta tela não vai inventar um layout aproximado e apresentá-lo como se fosse o jogo real. A prévia fiel será feita executando o projeto compilado dentro do fluxo do GEIVIA.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 } else if (workspace.webEntry != null) {
-                    Text("Página de entrada: ${workspace.webEntry.relativeTo(workspace.root).invariantSeparatorsPath}")
+                    Text("Página de entrada: ${workspace.webEntry.relativeTo(workspace.root).invariantSeparatorsPath}", style = MaterialTheme.typography.bodySmall)
                 } else {
-                    Text("O projeto foi reconhecido e sua estrutura está disponível. Não foi encontrada uma entrada Web para renderização em WebView.")
+                    Text("A estrutura foi reconhecida, mas não há uma página de entrada Web para renderizar.", style = MaterialTheme.typography.bodySmall)
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = onEditor, modifier = Modifier.weight(1f)) { Text("Editor visual") }
@@ -77,6 +106,7 @@ internal fun ProjectPreviewScreen(
                 }
             }
         }
+
         if (workspace.kind == ProjectWorkspaceInfo.Kind.WEB && workspace.webEntry != null) {
             Text("PRÉVIA WEB", Modifier.padding(start = 14.dp, top = 12.dp), style = MaterialTheme.typography.labelMedium)
             AndroidView(
@@ -97,8 +127,11 @@ internal fun ProjectPreviewScreen(
                 }
             )
         } else {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("ESTRUTURA DO PROJETO", style = MaterialTheme.typography.labelMedium)
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("ARQUIVOS DO PROJETO", style = MaterialTheme.typography.labelMedium)
                 TextButton(onClick = { showFiles = !showFiles }) { Text(if (showFiles) "Ocultar" else "Mostrar") }
             }
             if (showFiles) {

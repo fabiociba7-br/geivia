@@ -35,6 +35,8 @@ internal data class ProjectWorkspaceInfo(
 
         private fun isProjectDirectory(dir: File): Boolean =
             PROJECT_MARKERS.any { File(dir, it).isFile } ||
+                File(dir, "firebase.json").isFile ||
+                File(dir, ".firebaserc").isFile ||
                 File(dir, "src/main/AndroidManifest.xml").isFile ||
                 File(dir, "app/src/main/AndroidManifest.xml").isFile
 

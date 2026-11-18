@@ -56,8 +56,9 @@ internal object ComposeToStudioParser {
     }
 
     fun persistToStudio(context: Context, projectRoot: File): ParsedProject? {
-        val parsed = parse(projectRoot) ?: return null
-        val projectKey = ("local_" + projectRoot.absolutePath.hashCode().toUInt().toString(16))
+        val resolvedRoot = ProjectWorkspaceInfo.resolveRoot(projectRoot)
+        val parsed = parse(resolvedRoot) ?: return null
+        val projectKey = ("local_" + resolvedRoot.absolutePath.hashCode().toUInt().toString(16))
             .replace(Regex("[^A-Za-z0-9_-]"), "_")
         val prefs = context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE)
         prefs.edit().putString(

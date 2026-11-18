@@ -6,7 +6,17 @@ Ambiente Android de desenvolvimento visual, inspirado no FlutterFlow, para monta
 
 ## Objetivo
 
-O GEIVIA será um produto independente do Zupi Gestão. Nesta primeira fase, o desenvolvimento é exclusivo para Android e todo o código, testes e builds serão mantidos neste repositório privado.
+O GEIVIA é um ambiente de desenvolvimento Android open source, independente do Zupi Gestão.
+
+## Licença
+
+GEIVIA é software livre licenciado sob a **GNU General Public License v3.0 (GPL-3.0)**.
+
+Copyright (C) 2026 Fábio Rodrigo Guimarães.
+
+Você pode usar, estudar, modificar e redistribuir o código, desde que mantenha a mesma licença e disponibilize o código-fonte das versões distribuídas.
+
+Veja o arquivo [LICENSE](LICENSE) para o texto da licença.
 
 ## Escopo do produto
 
@@ -32,7 +42,7 @@ O GEIVIA será um produto independente do Zupi Gestão. Nesta primeira fase, o d
 
 O aplicativo está em desenvolvimento. O fluxo atual usa o navegador e o Cloud Shell autenticados pelo próprio usuário: o GEIVIA prepara comandos, registra o progresso local e importa diagnósticos JSON. **O aplicativo ainda não executa operações de escrita diretamente no Google Cloud.** Cada alteração remota depende da revisão e execução manual do comando pelo usuário, seguida de novo diagnóstico quando aplicável.
 
-Por decisão do proprietário, os workflows de GitHub Actions para builds e validações automáticas foram removidos. O projeto não dispara builds, testes ou APKs automaticamente. A compilação e a revisão serão feitas manualmente, em conjunto, quando o proprietário considerar o aplicativo pronto.
+Os workflows de GitHub Actions permanecem manuais para evitar consumo automático de minutos. Testes, validações e geração de APK são executados somente quando solicitados.
 
 ## Terminal integrado
 
@@ -63,3 +73,10 @@ gradle assembleDebug
 ```
 
 A compilação final será realizada manualmente somente depois da revisão conjunta do projeto.
+
+## Incorporação do Code on the Go
+
+O GEIVIA inclui uma ponte opcional para abrir o projeto ativo no **Code on the Go**, IDE Android open source da App Dev for All. A integração é gradual; o aplicativo não incorpora toda a IDE nem garante que o deep link seja aceito por todas as versões instaladas.
+
+- Repositório: https://github.com/appdevforall/CodeOnTheGo
+- Avisos e status: [third_party/code-on-the-go/NOTICE.md](third_party/code-on-the-go/NOTICE.md)

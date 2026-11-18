@@ -61,6 +61,7 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
     var busy by rememberSaveable { mutableStateOf(false) }
     var showDeployConfirm by remember { mutableStateOf(false) }
     var deployTargets by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    var firebaseConfigDir by rememberSaveable { mutableStateOf("") }
     var workflowRefresh by rememberSaveable { mutableStateOf(0) }
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", android.content.Context.MODE_PRIVATE) }
     LaunchedEffect(projectId) { prefs.edit().putString("selected_project_id", projectId).apply() }
@@ -140,8 +141,12 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                 Text("Prepara o comando de deploy para revisão e execução manual no Google Cloud Shell. O GEIVIA não publica automaticamente.", color = Color(0xFF587083), fontSize = 12.sp)
                 Button(onClick = {
     runCatching {
-        val configFile = File(projectDir, "firebase.json")
-        require(configFile.isFile) { "firebase.json não encontrado na raiz do projeto importado." }
+        val configFile = File(projectDir).walkTopDown()
+            .onEnter { it == File(projectDir) || it.name !in setOf(".git", "node_modules", "build", ".gradle") }
+            .maxDepth(4)
+            .firstOrNull { it.isFile && it.name == "firebase.json" }
+            ?: error("firebase.json não encontrado no projeto importado (busca até 4 níveis).")
+        firebaseConfigDir = configFile.parentFile?.absolutePath.orEmpty()
         val config = JSONObject(configFile.readText())
         val targets = FirebaseDeployPlanner.targets(config)
         require(targets.isNotEmpty()) { "Nenhum alvo implantável foi encontrado no firebase.json." }
@@ -206,10 +211,10 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
             title = { Text("Revisar deploy Firebase") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Projeto: $projectId\nPasta importada no aparelho: $projectDir")
+                    Text("Projeto: $projectId\nPasta importada: $projectDir\nPasta do firebase.json: $firebaseConfigDir")
                     Text("Alvos detectados no firebase.json: ${deployTargets.joinToString(", ")}. Hosting/Storage usam destinos individuais quando o arquivo define target; sem isso, o seletor pode abranger todos os destinos configurados. Firestore usa o seletor oficial único, que publica regras e índices juntos. Nenhum comando será executado pelo GEIVIA.")
                     Text("ANTES DE EXECUTAR", style = androidx.compose.material3.MaterialTheme.typography.labelMedium)
-                    Text("1. Envie a mesma pasta do projeto (ou um ZIP dela) para o ambiente Google Cloud Shell.\n2. Entre na pasta que contém firebase.json.\n3. Confira os alvos e as regras.\n4. Execute o comando abaixo somente depois da revisão.")
+                    Text("1. Envie a mesma pasta do projeto (ou um ZIP dela) para o ambiente Google Cloud Shell.\n2. Entre na pasta indicada em “Pasta do firebase.json”.\n3. Confira os alvos e as regras.\n4. Execute o comando abaixo somente depois da revisão.")
                     SelectionContainer { Text(deployCommand, fontSize = 12.sp, color = Color(0xFF1565C0)) }
                     if ("functions" in deployTargets) Text("ATENÇÃO: Functions podem exigir plano Blaze e faturamento ativo; não execute se a exigência de custo zero continuar valendo.", fontSize = 12.sp, color = Color(0xFF9A3D22))
                     Text("O deploy pode gerar cobrança e afetar usuários. A confirmação nesta tela apenas prepara e copia o comando; não publica o projeto.", fontSize = 12.sp)

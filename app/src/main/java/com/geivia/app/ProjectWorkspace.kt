@@ -33,6 +33,8 @@ internal data class ProjectWorkspaceInfo(
             "gradlew", "pubspec.yaml", "package.json", "index.html"
         )
 
+        // Firebase config files identify the project root even when its public/ folder
+        // contains an index.html that would otherwise be mistaken for a nested web project.
         private fun isProjectDirectory(dir: File): Boolean =
             PROJECT_MARKERS.any { File(dir, it).isFile } ||
                 File(dir, "firebase.json").isFile ||

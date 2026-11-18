@@ -25,7 +25,8 @@ internal data class ProjectWorkspaceInfo(
     companion object {
         /** Directories that never belong to the user's sources (build output, VCS, ZIP metadata). */
         internal val IGNORED_DIRS = setOf(
-            ".git", ".gradle", "build", "node_modules", ".idea", ".dart_tool", "__MACOSX"
+            ".git", ".gradle", "build", "node_modules", ".idea", ".dart_tool", "__MACOSX",
+            ".aistudio", ".cg.editor", ".cg.gradle-sync", ".kotlin", ".cxx", ".externalNativeBuild"
         )
 
         private val PROJECT_MARKERS = listOf(

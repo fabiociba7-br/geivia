@@ -82,8 +82,11 @@ internal data class ProjectMetadata(
                 else -> emptyList()
             }
             hostingEntries.forEach { e ->
-                e.optString("target").takeIf { it.isNotBlank() }?.let { targets += "hosting:$it" }
-                e.optString("site").takeIf { it.isNotBlank() }?.let(sites::add)
+                val target = e.optString("target").takeIf { it.isNotBlank() }
+                val site = e.optString("site").takeIf { it.isNotBlank() }
+                if (target != null) targets += "hosting:$target"
+                else if (site == null) targets += "hosting"
+                site?.let(sites::add)
             }
             if (hosting != null && hosting != JSONObject.NULL && hostingEntries.isEmpty()) targets += "hosting"
             listOf("storage", "database").forEach { key ->

@@ -43,14 +43,18 @@ internal data class ProjectWorkspaceInfo(
             return candidates.singleOrNull() ?: root
         }
 
-        fun load(context: Context): ProjectWorkspaceInfo? {
+        fun activeRoot(context: Context): File? {
             val prefs = context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE)
-            val path = prefs.getString("active_project_dir", null)
-                ?.takeIf { it.isNotBlank() }
-                ?: prefs.getString("imported_project_dir", null)?.takeIf { it.isNotBlank() }
-                ?: return null
-            val root = runCatching { File(path).canonicalFile }.getOrNull()
-                ?.takeIf { it.isDirectory } ?: return null
+            return sequenceOf(
+                prefs.getString("active_project_dir", null),
+                prefs.getString("imported_project_dir", null)
+            ).filterNotNull().filter { it.isNotBlank() }
+                .mapNotNull { path -> runCatching { File(path).canonicalFile }.getOrNull() }
+                .firstOrNull { it.isDirectory }
+        }
+
+        fun load(context: Context): ProjectWorkspaceInfo? {
+            val root = activeRoot(context) ?: return null
             return scan(root)
         }
 

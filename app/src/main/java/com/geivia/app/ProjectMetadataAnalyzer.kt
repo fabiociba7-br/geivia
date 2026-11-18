@@ -8,7 +8,7 @@ import org.json.JSONObject
 internal data class ProjectMetadata(
     val appName: String?, val packageName: String?, val appTitle: String?,
     val firebaseProjectId: String?, val hostingSiteIds: List<String>, val deployTargets: List<String>,
-    val functionsSources: List<String>, val firestoreRules: List<String>, val storageRules: List<String>,
+    val functionsSources: List<String>, val firestoreRules: List<String>, val storageRules: List<String>, val databaseRules: List<String>,
     val hostingPublicDirs: List<String>, val configFiles: List<String>,
     val structure: List<ProjectFolderRole>, val warnings: List<String>, val googleAiStudioProject: Boolean
 ) {
@@ -26,9 +26,15 @@ internal data class ProjectMetadata(
             val packageDisplay = listOf("displayName", "productName", "appName").firstNotNullOfOrNull { key ->
                 pkg?.optString(key)?.takeIf { it.isNotBlank() && it != "null" }
             }
+            val metadataJson = json(first("metadata.json"))
             val appConfig = listOf("app.json", "app.config.json", "capacitor.config.json").firstNotNullOfOrNull(::first).let(::json)
-            val appConfigName = appConfig?.optString("name")?.takeIf { it.isNotBlank() && it != "null" }
-                ?: appConfig?.optJSONObject("expo")?.optString("name")?.takeIf { it.isNotBlank() && it != "null" }
+            val appConfigName = sequenceOf(
+                metadataJson?.optString("appName")?.takeIf { it.isNotBlank() && it != "null" },
+                metadataJson?.optString("displayName")?.takeIf { it.isNotBlank() && it != "null" },
+                metadataJson?.optString("title")?.takeIf { it.isNotBlank() && it != "null" },
+                appConfig?.optString("name")?.takeIf { it.isNotBlank() && it != "null" },
+                appConfig?.optJSONObject("expo")?.optString("name")?.takeIf { it.isNotBlank() && it != "null" }
+            ).firstOrNull { !it.isNullOrBlank() }
             val manifestText = read(first("AndroidManifest.xml")).orEmpty()
             val manifestLabel = Regex("""android:label\s*=\s*["']([^"']+)["']""").find(manifestText)?.groupValues?.getOrNull(1)
             val gradleText = files.filter { it.name == "build.gradle" || it.name == "build.gradle.kts" }
@@ -109,6 +115,13 @@ internal data class ProjectMetadata(
                 else -> emptyList()
             }
             val storageRules = storageEntries.mapNotNull { it.optString("rules").takeIf(String::isNotBlank) }
+            val databaseValue = firebase?.opt("database")
+            val databaseEntries = when (databaseValue) {
+                is JSONObject -> listOf(databaseValue)
+                is JSONArray -> (0 until databaseValue.length()).mapNotNull { databaseValue.optJSONObject(it) }
+                else -> emptyList()
+            }
+            val databaseRules = databaseEntries.mapNotNull { it.optString("rules").takeIf(String::isNotBlank) }
             val publicDirs = hostingEntries.mapNotNull { it.optString("public").takeIf(String::isNotBlank) }
             val configNames = setOf("firebase.json", ".firebaserc", "google-services.json", "package.json", "app.json",
                 "app.config.json", "pubspec.yaml", "AndroidManifest.xml", "vite.config.js", "vite.config.ts",
@@ -149,7 +162,7 @@ internal data class ProjectMetadata(
                 (devDependencies?.has("@google/genai") == true) || (devDependencies?.has("@google/generative-ai") == true)
             val appName = packageDisplay ?: appConfigName ?: htmlTitle ?: packageName ?: manifestLabel?.takeUnless { it.startsWith("@") }
             return ProjectMetadata(appName, appId ?: packageName, htmlTitle, projectIds.firstOrNull(), sites.toList(),
-                targets.toList(), functionSources.distinct(), firestoreRules.distinct(), storageRules.distinct(),
+                targets.toList(), functionSources.distinct(), firestoreRules.distinct(), storageRules.distinct(), databaseRules.distinct(),
                 publicDirs.distinct(), configs, roles.map { ProjectFolderRole(it.key, it.value) }.sortedBy { it.path },
                 warnings, aiStudio)
         }

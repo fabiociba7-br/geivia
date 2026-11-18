@@ -1287,6 +1287,9 @@ internal fun VisualEditorScreen(
                                             Text("${screen.components.size} itens", color = EditorMuted, fontSize = 10.sp)
                                         }
                                         Text(screen.sourcePath, color = EditorMuted, fontSize = 10.sp)
+                                        Text("PRÉVIA DA TELA", color = EditorBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        ImportedScreenPreview(screen)
+                                        Text("Elementos reconhecidos", color = EditorInk, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                                         if (screen.components.isEmpty()) {
                                             Text("Nenhum componente reconhecido nesta tela.", color = EditorMuted, fontSize = 11.sp)
                                         } else {

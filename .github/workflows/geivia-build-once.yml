@@ -1,8 +1,6 @@
 name: GEIVIA manual verification
 
 on:
-  push:
-    branches: [integracao/terminal-tela-cheia]
   workflow_dispatch:
 
 permissions:
@@ -15,7 +13,7 @@ jobs:
       - name: Checkout main
         uses: actions/checkout@v4
         with:
-          ref: integracao/terminal-tela-cheia
+          ref: main
           submodules: recursive
 
       - name: Set up JDK 17

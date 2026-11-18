@@ -1,4 +1,4 @@
-name: GEIVIA Signed Release APK (one-time dispatch)
+name: GEIVIA Signed Release APK (one-time dispatch trigger)
 
 on:
   push:

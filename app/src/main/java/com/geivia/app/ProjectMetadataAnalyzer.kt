@@ -53,6 +53,15 @@ internal data class ProjectMetadata(
 
             val targets = linkedSetOf<String>()
             val sites = linkedSetOf<String>()
+            val targetProject = projectIds.firstOrNull()
+            val hostingTargetMap = targetProject?.let { rc?.optJSONObject("targets")?.optJSONObject(it)?.optJSONObject("hosting") }
+            hostingTargetMap?.keys()?.forEach { targetName ->
+                val siteList = hostingTargetMap.optJSONArray(targetName)
+                if (siteList != null) {
+                    for (i in 0 until siteList.length()) siteList.optString(i).takeIf { it.isNotBlank() }?.let(sites::add)
+                    if (siteList.length() > 0) targets += "hosting:$targetName"
+                }
+            }
             val hosting = firebase?.opt("hosting")
             val hostingEntries = when (hosting) {
                 is JSONObject -> listOf(hosting)
@@ -132,8 +141,12 @@ internal data class ProjectMetadata(
             if (firebaseFile != null && projectIds.isEmpty()) warnings += "firebase.json encontrado, mas o Firebase Project ID não foi identificado."
             if (firebase != null && targets.isEmpty()) warnings += "firebase.json não declarou serviços de deploy reconhecidos."
             if (manifestLabel?.startsWith("@string/") == true) warnings += "O nome Android aponta para recurso ${manifestLabel}; resolva-o em strings.xml."
+            val dependencies = pkg?.optJSONObject("dependencies")
+            val devDependencies = pkg?.optJSONObject("devDependencies")
             val aiStudio = files.any { it.name == ".aistudio" || rel(it).contains("/.aistudio/") } ||
-                (pkg?.optString("description")?.contains("Google AI Studio", true) == true)
+                (pkg?.optString("description")?.contains("Google AI Studio", true) == true) ||
+                (dependencies?.has("@google/genai") == true) || (dependencies?.has("@google/generative-ai") == true) ||
+                (devDependencies?.has("@google/genai") == true) || (devDependencies?.has("@google/generative-ai") == true)
             val appName = packageDisplay ?: appConfigName ?: htmlTitle ?: packageName ?: manifestLabel?.takeUnless { it.startsWith("@") }
             return ProjectMetadata(appName, appId ?: packageName, htmlTitle, projectIds.firstOrNull(), sites.toList(),
                 targets.toList(), functionSources.distinct(), firestoreRules.distinct(), storageRules.distinct(),

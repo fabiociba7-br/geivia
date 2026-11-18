@@ -21,7 +21,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
-private enum class ProjectContentTab { FILES, SOURCE, WEB_PREVIEW }
+private enum class ProjectContentTab { FILES, SCREENS, SOURCE, WEB_PREVIEW }
 
 @Composable
 internal fun ProjectPreviewScreen(
@@ -45,6 +45,11 @@ internal fun ProjectPreviewScreen(
         val ext = file.extension.lowercase()
         ext in sourceExtensions || file.name in setOf("gradlew", "Dockerfile", "Makefile", ".firebaserc", "firebase.json")
     }.sortedBy { it.relativeTo(workspace!!.root).invariantSeparatorsPath.lowercase() }
+    val screenFiles = visibleFiles.filter { file ->
+        val path = file.relativeTo(workspace!!.root).invariantSeparatorsPath.lowercase()
+        (path.contains("/res/layout/") && file.extension.equals("xml", true)) ||
+            (file.extension.equals("kt", true) && (file.name.contains("screen", true) || file.name.contains("activity", true) || file.name.equals("main.kt", true)))
+    }
     LaunchedEffect(projectDir, visibleFiles.size) {
         if (selectedPath == null || visibleFiles.none { it.relativeTo(workspace!!.root).invariantSeparatorsPath == selectedPath }) {
             val preferred = visibleFiles.firstOrNull { it.extension.lowercase() in setOf("kt", "java", "dart", "html", "xml") }
@@ -106,6 +111,7 @@ internal fun ProjectPreviewScreen(
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             FilterChip(selected = tab == ProjectContentTab.FILES, onClick = { tab = ProjectContentTab.FILES }, label = { Text("Arquivos") })
+            FilterChip(selected = tab == ProjectContentTab.SCREENS, onClick = { tab = ProjectContentTab.SCREENS }, label = { Text("Telas e interfaces") })
             FilterChip(selected = tab == ProjectContentTab.SOURCE, onClick = { tab = ProjectContentTab.SOURCE }, label = { Text("Código-fonte") })
             if (workspace.kind == ProjectWorkspaceInfo.Kind.WEB && workspace.webEntry != null) {
                 FilterChip(selected = tab == ProjectContentTab.WEB_PREVIEW, onClick = { tab = ProjectContentTab.WEB_PREVIEW }, label = { Text("Prévia Web") })
@@ -123,6 +129,20 @@ internal fun ProjectPreviewScreen(
                         ) {
                             Text(path, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
                             Text(if (file.extension.lowercase() in setOf("xml", "html", "htm")) "Tela" else "Código", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp)
+                        }
+                        HorizontalDivider()
+                    }
+                }
+            }
+            ProjectContentTab.SCREENS -> {
+                Text("TELAS E ARQUIVOS DE INTERFACE DETECTADOS", Modifier.padding(start = 14.dp, bottom = 4.dp), style = MaterialTheme.typography.labelMedium)
+                Text("Layouts XML e arquivos Kotlin com nomes típicos de telas/Activities. Toque para abrir o código-fonte.", Modifier.padding(horizontal = 14.dp, vertical = 4.dp), style = MaterialTheme.typography.bodySmall)
+                LazyColumn(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp)) {
+                    items(screenFiles, key = { it.relativeTo(workspace.root).invariantSeparatorsPath }) { file ->
+                        val path = file.relativeTo(workspace.root).invariantSeparatorsPath
+                        Row(Modifier.fillMaxWidth().clickable { selectedPath = path; tab = ProjectContentTab.SOURCE }.padding(10.dp)) {
+                            Text(path, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                            Text("Abrir", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp)
                         }
                         HorizontalDivider()
                     }

@@ -351,8 +351,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                 "diagnostics" -> GeiviaDiagnosticsScreen(onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false })
                 "project_operations" -> ProjectOperationsScreen(onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false })
                 "project_preview" -> ProjectPreviewScreen(
-                    projectDir = prefs.getString("active_project_dir", "").orEmpty()
-                        .ifBlank { prefs.getString("imported_project_dir", "").orEmpty() },
+                    projectDir = ProjectWorkspaceInfo.activeRoot(context)?.absolutePath.orEmpty(),
                     onBack = { page = "dashboard" },
                     onEditor = { page = "visual_editor" },
                     onCodeEditor = { codeEditorReturnPage = "project_preview"; page = "project_code_editor" },
@@ -360,8 +359,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onOperations = { page = "project_operations" }
                 )
                 "project_code_editor" -> ProjectCodeEditorScreen(
-                    projectDir = prefs.getString("active_project_dir", "").orEmpty()
-                        .ifBlank { prefs.getString("imported_project_dir", "").orEmpty() },
+                    projectDir = ProjectWorkspaceInfo.activeRoot(context)?.absolutePath.orEmpty(),
                     onBack = { page = codeEditorReturnPage }
                 )
                 "firebase_admin" -> FirebaseAdminScreen(prefs.getString("active_firebase_project_id", "").orEmpty().ifBlank { prefs.getString("selected_project_id", preflightProjectId).orEmpty() }) { page = if (returnToEditorAfterTool) "visual_editor" else "project_operations"; returnToEditorAfterTool = false }

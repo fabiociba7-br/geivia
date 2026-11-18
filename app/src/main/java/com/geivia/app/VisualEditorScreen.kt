@@ -71,7 +71,8 @@ internal fun VisualEditorScreen(
     onTools: () -> Unit = {},
     onDiagnostics: () -> Unit = {},
     onTerminal: () -> Unit = {},
-    onProjects: () -> Unit = {}
+    onProjects: () -> Unit = {},
+    onProjectFiles: () -> Unit = {}
 ) {
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE) }
     val cloudProjectId = prefs.getString("selected_project_id", null).orEmpty()
@@ -695,6 +696,11 @@ internal fun VisualEditorScreen(
                     }
                 },
                 actions = {
+                    if (activeWorkspace != null) {
+                        TextButton(onClick = { saveSchema(); onProjectFiles() }) {
+                            Text("Arquivos")
+                        }
+                    }
                     TextButton(onClick = { saveSchema() }) {
                         Icon(Icons.Default.Save, null, modifier = Modifier.size(17.dp))
                         Spacer(Modifier.width(4.dp))

@@ -88,7 +88,7 @@ internal object ImportedScreenDiscovery {
             val nextStart = matches.getOrNull(index + 1)?.range?.first ?: source.length
             val block = source.substring(match.range.first, nextStart)
             val componentList = composeCalls.mapNotNull { type ->
-                val count = Regex("""\b${Regex.escape(type)}\s*\(""").findAll(block).count()
+                val count = Regex("""\b${Regex.escape(type)}\s*(?:\(|\{)""").findAll(block).count()
                 if (count == 0) null else ImportedScreenComponent(type = type).copy(text = "×$count")
             }
             ImportedScreen(

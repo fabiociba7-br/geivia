@@ -11,23 +11,39 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Real source browser/editor for the imported project, with path containment checks. */
 @Composable
 internal fun ProjectCodeEditorScreen(projectDir: String, onBack: () -> Unit) {
-    val root = remember(projectDir) { runCatching { File(projectDir).canonicalFile.takeIf { it.isDirectory } }.getOrNull() }
-    var refreshToken by remember { mutableIntStateOf(0) }
+    // Same resolved root used by the preview and terminal, so every screen sees the same project.
+    val root = remember(projectDir) {
+        runCatching {
+            ProjectWorkspaceInfo.resolveRoot(File(projectDir)).canonicalFile.takeIf { it.isDirectory }
+        }.getOrNull()
+    }
     var query by remember { mutableStateOf("") }
     var selectedPath by remember(projectDir) { mutableStateOf<String?>(null) }
     var source by remember(projectDir) { mutableStateOf("") }
     var status by remember(projectDir) { mutableStateOf("Selecione um arquivo do projeto para abrir.") }
     var dirty by remember(projectDir) { mutableStateOf(false) }
+    var pendingOpen by remember(projectDir) { mutableStateOf<File?>(null) }
+    var confirmLeave by remember(projectDir) { mutableStateOf(false) }
 
-    val files = remember(root, refreshToken) {
-        root?.walkTopDown()
-            ?.onEnter { dir -> dir == root || dir.name !in setOf(".git", ".gradle", "build", "node_modules", ".idea", ".dart_tool") }
-            ?.filter { it.isFile }?.take(10001)?.toList().orEmpty()
+    // Listing a large project on the main thread can freeze the UI, so it runs on IO.
+    val filesState = produceState<List<File>?>(null, root) {
+        value = withContext(Dispatchers.IO) {
+            val base = root ?: return@withContext emptyList<File>()
+            base.walkTopDown()
+                .onEnter { dir -> dir == base || dir.name !in ProjectWorkspaceInfo.IGNORED_DIRS }
+                .filter { it.isFile }
+                .take(10001)
+                .sortedBy { it.relativeTo(base).invariantSeparatorsPath }
+                .toList()
+        }
     }
+    val files = filesState.value.orEmpty()
     val visibleFiles = remember(files, query) {
         files.asSequence()
             .filter { query.isBlank() || it.relativeTo(root!!).invariantSeparatorsPath.contains(query, ignoreCase = true) }
@@ -42,7 +58,7 @@ internal fun ProjectCodeEditorScreen(projectDir: String, onBack: () -> Unit) {
         }.getOrNull()
     }
 
-    fun openFile(file: File) {
+    fun loadFile(file: File) {
         val relative = runCatching { file.canonicalFile.relativeTo(root!!).invariantSeparatorsPath }.getOrNull()
         if (relative == null) { status = "Arquivo fora da pasta do projeto."; return }
         if (file.length() > MAX_EDIT_BYTES) { status = "Arquivo maior que 1 MB. Ele aparece na lista, mas não pode ser aberto neste editor."; return }
@@ -56,19 +72,27 @@ internal fun ProjectCodeEditorScreen(projectDir: String, onBack: () -> Unit) {
         status = "Arquivo carregado: " + relative
     }
 
+    fun openFile(file: File) {
+        if (dirty && selectedPath != null) pendingOpen = file else loadFile(file)
+    }
+
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
             Column(Modifier.weight(1f)) {
                 Text("ARQUIVOS DO PROJETO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                 Text(root?.name ?: "Projeto indisponível", style = MaterialTheme.typography.titleMedium)
             }
-            TextButton(onClick = onBack) { Text("Voltar") }
+            TextButton(onClick = { if (dirty) confirmLeave = true else onBack() }) { Text("Voltar") }
         }
         if (root == null) {
             Text("A pasta importada não está disponível. Importe o projeto novamente.", Modifier.padding(16.dp))
             return@Column
         }
-        Text(files.size.toString() + if (files.size > 10000) "+ arquivos encontrados" else " arquivos encontrados", Modifier.padding(horizontal = 14.dp), style = MaterialTheme.typography.bodySmall)
+        Text(
+            if (filesState.value == null) "Lendo arquivos do projeto…"
+            else files.size.toString() + if (files.size > 10000) "+ arquivos encontrados" else " arquivos encontrados",
+            Modifier.padding(horizontal = 14.dp), style = MaterialTheme.typography.bodySmall
+        )
         OutlinedTextField(
             value = query, onValueChange = { query = it },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -115,7 +139,6 @@ internal fun ProjectCodeEditorScreen(projectDir: String, onBack: () -> Unit) {
                             }.onSuccess {
                                 dirty = false
                                 status = "Salvo no projeto: " + path
-                                refreshToken++
                             }.onFailure {
                                 status = "Falha ao salvar: " + (it.message ?: "erro de gravação")
                             }
@@ -131,6 +154,25 @@ internal fun ProjectCodeEditorScreen(projectDir: String, onBack: () -> Unit) {
             style = MaterialTheme.typography.bodySmall,
             color = if (dirty) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
     }
+    pendingOpen?.let { target ->
+        AlertDialog(
+            onDismissRequest = { pendingOpen = null },
+            title = { Text("Alterações não salvas") },
+            text = { Text("O arquivo aberto tem alterações não salvas. Abrir outro arquivo vai descartá-las.") },
+            confirmButton = { TextButton(onClick = { pendingOpen = null; loadFile(target) }) { Text("Descartar e abrir") } },
+            dismissButton = { TextButton(onClick = { pendingOpen = null }) { Text("Continuar editando") } }
+        )
+    }
+    if (confirmLeave) {
+        AlertDialog(
+            onDismissRequest = { confirmLeave = false },
+            title = { Text("Alterações não salvas") },
+            text = { Text("Sair agora vai descartar as alterações não salvas deste arquivo.") },
+            confirmButton = { TextButton(onClick = { confirmLeave = false; onBack() }) { Text("Descartar e sair") } },
+            dismissButton = { TextButton(onClick = { confirmLeave = false }) { Text("Continuar editando") } }
+        )
+    }
+
 }
 
 private const val MAX_EDIT_BYTES = 1024L * 1024L

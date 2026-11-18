@@ -40,13 +40,18 @@ import java.io.File
 import org.json.JSONObject
 import java.util.UUID
 
+private fun prefsImportedProjectDir(context: android.content.Context): String =
+    context.getSharedPreferences("geivia_onboarding", android.content.Context.MODE_PRIVATE)
+        .getString("imported_project_dir", "").orEmpty()
+        .takeIf { it.isNotBlank() && File(it).isDirectory }.orEmpty()
+
 @Composable
 internal fun ProjectOperationsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val controller = remember { LinuxRuntimeController(context) }
     val workflowStore = remember { WorkflowProgressStore(context.getSharedPreferences("geivia_onboarding", android.content.Context.MODE_PRIVATE)) }
-    var projectDir by rememberSaveable { mutableStateOf("") }
+    var projectDir by rememberSaveable { mutableStateOf(prefsImportedProjectDir(context)) }
     var projectId by rememberSaveable { mutableStateOf(context.getSharedPreferences("geivia_onboarding", 0).getString("selected_project_id", "").orEmpty()) }
     var output by rememberSaveable { mutableStateOf("Importe um ZIP ou selecione diretamente a pasta raiz do projeto. O GEIVIA copiará a estrutura completa para o Debian privado sem alterar os arquivos originais.") }
     var githubRepo by rememberSaveable { mutableStateOf("") }
@@ -68,7 +73,7 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                 }
             }.onSuccess {
                 projectDir = it.absolutePath
-                prefs.edit().putString("imported_project_dir", it.absolutePath).apply()
+                prefs.edit().putString("imported_project_dir", it.absolutePath).putString("imported_project_name", it.name).apply()
                 output = "Projeto importado em: " + it.absolutePath + "\nArquivos: " + it.walkTopDown().count { f -> f.isFile } +
                     "\nfirebase.json: " + if (File(it, "firebase.json").isFile) "encontrado" else "não encontrado"
             }.onFailure { output = "Falha na importação: " + (it.message ?: "erro desconhecido") }
@@ -86,7 +91,7 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                 }
             }.onSuccess { importedRoot ->
                 projectDir = importedRoot.absolutePath
-                prefs.edit().putString("imported_project_dir", importedRoot.absolutePath).apply()
+                prefs.edit().putString("imported_project_dir", importedRoot.absolutePath).putString("imported_project_name", importedRoot.name).apply()
                 output = "Projeto importado da pasta selecionada em: ${importedRoot.absolutePath}" +
                     "\nArquivos: " + importedRoot.walkTopDown().count { it.isFile } +
                     "\nEstrutura de diretórios preservada." +

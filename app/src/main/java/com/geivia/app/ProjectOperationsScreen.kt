@@ -65,6 +65,11 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
         val path = projectDir.takeIf { it.isNotBlank() } ?: ProjectAccountStore.activePath(context)
         if (!path.isNullOrBlank()) ProjectAccountStore.saveFirebase(context, path, projectId)
     }
+    LaunchedEffect(projectDir) {
+        if (projectDir.isNotBlank() && projectId.isBlank()) {
+            ProjectWorkspaceInfo.scan(File(projectDir)).metadata.firebaseProjectId?.let { projectId = it }
+        }
+    }
     val zipPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
             busy = true
@@ -184,6 +189,29 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
             Text("PROJETO CARREGADO: ${workspace?.name ?: File(projectDir).name}", color = Color(0xFF18794E), fontSize = 12.sp)
             Text("O projeto está ativo. Volte ao painel para editar telas, ver código ou abrir o terminal.", color = Color(0xFF18794E), fontSize = 11.sp)
             Text("Tipo: ${workspace?.kind?.name ?: "Não identificado"} · Arquivos: ${workspace?.files?.size ?: 0}", color = Color(0xFF587083), fontSize = 11.sp)
+            workspace?.metadata?.let { meta ->
+                Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F7FB))) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("IDENTIDADE E CONFIGURAÇÃO DETECTADAS", color = Color(0xFF087DB5), fontSize = 11.sp)
+                        if (meta.googleAiStudioProject) Text("Origem Google AI Studio reconhecida", color = Color(0xFF18794E), fontSize = 12.sp)
+                        Text("Nome do aplicativo: ${meta.appName ?: "não identificado"}", fontSize = 12.sp)
+                        Text("Package / identificador: ${meta.packageName ?: "não identificado"}", fontSize = 12.sp)
+                        Text("Firebase Project ID: ${meta.firebaseProjectId ?: "não identificado"}", fontSize = 12.sp)
+                        if (meta.hostingSiteIds.isNotEmpty()) Text("Hosting Site ID: ${meta.hostingSiteIds.joinToString()}", fontSize = 12.sp)
+                        if (meta.deployTargets.isNotEmpty()) Text("Serviços de deploy: ${meta.deployTargets.joinToString()}", fontSize = 12.sp)
+                        if (meta.functionsSources.isNotEmpty()) Text("Functions: ${meta.functionsSources.joinToString()}", fontSize = 12.sp)
+                        if (meta.firestoreRules.isNotEmpty()) Text("Firestore rules: ${meta.firestoreRules.joinToString()}", fontSize = 12.sp)
+                        if (meta.storageRules.isNotEmpty()) Text("Storage rules: ${meta.storageRules.joinToString()}", fontSize = 12.sp)
+                        if (meta.hostingPublicDirs.isNotEmpty()) Text("Hosting public: ${meta.hostingPublicDirs.joinToString()}", fontSize = 12.sp)
+                        if (meta.structure.isNotEmpty()) {
+                            Text("Pastas interpretadas:", fontSize = 12.sp)
+                            meta.structure.take(12).forEach { Text("• ${it.path}: ${it.role}", fontSize = 11.sp) }
+                            if (meta.structure.size > 12) Text("e mais ${meta.structure.size - 12} pastas…", fontSize = 10.sp)
+                        }
+                        meta.warnings.forEach { Text("Atenção: $it", color = Color(0xFF9A641B), fontSize = 11.sp) }
+                    }
+                }
+            }
             Text(projectDir, color = Color(0xFF587083), fontSize = 10.sp)
         }
         OutlinedTextField(value = projectId, onValueChange = { projectId = it.trim() }, modifier = Modifier.fillMaxWidth(), label = { Text("Firebase Project ID") }, singleLine = true)

@@ -74,7 +74,12 @@ internal fun VisualEditorScreen(
     onProjects: () -> Unit = {}
 ) {
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE) }
-    val projectIdForStorage = prefs.getString("selected_project_id", null).orEmpty().ifBlank { "local" }
+    val cloudProjectId = prefs.getString("selected_project_id", null).orEmpty()
+    val importedProjectPath = prefs.getString("imported_project_dir", "").orEmpty()
+    val projectIdForStorage = cloudProjectId.ifBlank {
+        importedProjectPath.takeIf { it.isNotBlank() && java.io.File(it).isDirectory }
+            ?.let { "local_" + it.hashCode().toUInt().toString(16) } ?: "local"
+    }
     val projectKey = projectIdForStorage.replace(Regex("[^A-Za-z0-9_-]"), "_")
     val allowLegacyProjectData = !prefs.getBoolean("studio_legacy_data_migrated", false) && !prefs.getBoolean("studio_project_migrated_$projectKey", false)
     val screenRegistryPrefKey = "geivia_studio_screens_v1_$projectKey"

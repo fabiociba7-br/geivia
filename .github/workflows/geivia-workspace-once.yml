@@ -35,7 +35,7 @@ jobs:
           gradle-version: "8.9"
       - uses: android-actions/setup-android@v3
         with:
-          packages: platform-tools,platforms;android-35,build-tools;35.0.0,ndk;27.2.12479018,cmake;3.22.1
+          packages: "platform-tools platforms;android-35 build-tools;35.0.0 ndk;27.2.12479018 cmake;3.22.1"
       - name: Compile and package signed APK
         env:
           GEIVIA_KEYSTORE_FILE: ${{ runner.temp }}/geivia-signing/geivia-release.jks

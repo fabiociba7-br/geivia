@@ -19,7 +19,7 @@ internal object ComposeToStudioParser {
     fun parse(projectRoot: File): ParsedProject? {
         if (!projectRoot.isDirectory) return null
         val ktFiles = projectRoot.walkTopDown()
-            .onEnter { it.name !in setOf("build", ".gradle", "node_modules", ".git", ".idea", ".dart_tool") }
+            .onEnter { it == projectRoot.canonicalFile || it.name !in ProjectWorkspaceInfo.IGNORED_DIRS }
             .filter { it.isFile && it.extension == "kt" && it.length() <= 2L * 1024 * 1024 }
             .take(200)
             .toList()

@@ -13,6 +13,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -123,6 +124,11 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
         )
     }
     var returnToEditorAfterTool by rememberSaveable { mutableStateOf(false) }
+    var terminalReturnPage by rememberSaveable { mutableStateOf("dashboard") }
+    BackHandler(enabled = page == "terminal") {
+        page = terminalReturnPage
+        returnToEditorAfterTool = false
+    }
     var codeEditorReturnPage by rememberSaveable { mutableStateOf("project_preview") }
     var pendingProjectFilePath by rememberSaveable { mutableStateOf<String?>(null) }
     var index by rememberSaveable {
@@ -301,7 +307,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onAccounts = { returnToEditorAfterTool = true; page = "accounts" },
                     onTools = { returnToEditorAfterTool = true; page = "toolchain_updates" },
                     onDiagnostics = { returnToEditorAfterTool = true; page = "diagnostics" },
-                    onTerminal = { returnToEditorAfterTool = true; page = "terminal" },
+                    onTerminal = { terminalReturnPage = "visual_editor"; returnToEditorAfterTool = true; page = "terminal" },
                     onProjects = { returnToEditorAfterTool = true; page = "project_operations" },
                     onProjectFiles = { path ->
                         pendingProjectFilePath = path
@@ -337,20 +343,30 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                         } else "dashboard"
                     }
                 )
-                "terminal" -> Column(
-                    Modifier.fillMaxSize().padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { page = "visual_editor"; returnToEditorAfterTool = false }) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Voltar ao editor")
+                "terminal" -> Box(Modifier.fillMaxSize().background(Color(0xFF0F1720))) {
+                    Column(Modifier.fillMaxSize()) {
+                        Row(
+                            Modifier.fillMaxWidth().background(Color(0xFF1A2332)).padding(horizontal = 4.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(onClick = {
+                                page = terminalReturnPage
+                                returnToEditorAfterTool = false
+                            }) {
+                                Icon(Icons.Default.ArrowBack, contentDescription = "Voltar ao app", tint = Color.White)
+                            }
+                            Text("Terminal GEIVIA", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                            TextButton(onClick = {
+                                page = terminalReturnPage
+                                returnToEditorAfterTool = false
+                            }) {
+                                Text("Voltar ao app", color = Color(0xFF8AB4F8), fontSize = 12.sp)
+                            }
                         }
-                        Column {
-                            Text("Terminal GEIVIA", fontWeight = FontWeight.Bold)
-                            Text("Terminal local e ambiente Debian/PRoot", fontSize = 11.sp, color = Muted)
+                        Box(Modifier.weight(1f).fillMaxWidth()) {
+                            TerminalPanel()
                         }
                     }
-                    TerminalPanel()
                 }
                 "toolchain_updates" -> GeiviaToolchainUpdatesScreen(onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false })
                 "diagnostics" -> GeiviaDiagnosticsScreen(onBack = { page = if (returnToEditorAfterTool) "visual_editor" else "dashboard"; returnToEditorAfterTool = false })
@@ -360,7 +376,7 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onBack = { page = "dashboard" },
                     onEditor = { page = "visual_editor" },
                     onCodeEditor = { codeEditorReturnPage = "project_preview"; page = "project_code_editor" },
-                    onTerminal = { page = "terminal" },
+                    onTerminal = { terminalReturnPage = "project_preview"; page = "terminal" },
                     onOperations = { page = "project_operations" }
                 )
                 "project_code_editor" -> ProjectCodeEditorScreen(
@@ -414,7 +430,9 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                     onTools = { page = "toolchain_updates" },
                     onDiagnostics = { page = "diagnostics" },
                     onAccounts = { page = "accounts" },
-                    onLegacyDashboard = { page = "legacy_dashboard" }
+                    onLegacyDashboard = { page = "legacy_dashboard" },
+                    onTerminal = { terminalReturnPage = "dashboard"; page = "terminal" },
+                    onCodeEditor = { codeEditorReturnPage = "dashboard"; pendingProjectFilePath = null; page = "project_code_editor" }
                 )
             }
         }

@@ -40,12 +40,8 @@ import java.io.File
 import org.json.JSONObject
 import java.util.UUID
 
-private fun prefsImportedProjectDir(context: android.content.Context): String {
-    val prefs = context.getSharedPreferences("geivia_onboarding", android.content.Context.MODE_PRIVATE)
-    val path = prefs.getString("active_project_dir", "").orEmpty()
-        .ifBlank { prefs.getString("imported_project_dir", "").orEmpty() }
-    return path.takeIf { it.isNotBlank() && File(it).isDirectory }.orEmpty()
-}
+private fun prefsImportedProjectDir(context: android.content.Context): String =
+    ProjectWorkspaceInfo.activeRoot(context)?.absolutePath.orEmpty()
 
 @Composable
 internal fun ProjectOperationsScreen(onBack: () -> Unit) {

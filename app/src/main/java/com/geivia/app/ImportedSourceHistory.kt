@@ -113,12 +113,14 @@ internal object ImportedSourceHistory {
         validateSnapshot(snapshot, target.extension)
         val temp = File(target.parentFile, target.name + ".geivia.history.tmp")
         val rollback = File(target.parentFile, target.name + ".geivia.history.rollback")
+        val beforeHistory = File(target.parentFile, target.name + ".geivia.before-history")
         require(!temp.exists() && !rollback.exists()) {
             "Há uma restauração anterior incompleta; preserve os arquivos temporários."
         }
         try {
             snapshot.copyTo(temp, overwrite = false)
             validateSnapshot(temp, target.extension)
+            target.copyTo(beforeHistory, overwrite = true)
             require(target.renameTo(rollback)) { "Não foi possível preservar a versão atual." }
             if (!temp.renameTo(target)) {
                 val recovered = rollback.renameTo(target)

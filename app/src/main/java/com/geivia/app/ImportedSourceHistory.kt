@@ -65,12 +65,16 @@ internal object ImportedSourceHistory {
         val root = projectRoot.canonicalFile
         val target = currentSource.canonicalFile
         requireInside(root, target)
-        require(entry.path == target.relativeTo(root).invariantSeparatorsPath) { "A entrada pertence a outro arquivo-fonte." }
-        require(entry.path == target.relativeTo(root).invariantSeparatorsPath) { "A entrada pertence a outro arquivo-fonte." }
+        require(entry.path == target.relativeTo(root).invariantSeparatorsPath) {
+            "A entrada pertence a outro arquivo-fonte."
+        }
         val snapshot = snapshotFile(root, entry)
-            ?: throw IllegalArgumentException("Esta entrada não possui uma cópia histórica.") && snapshot.length() in 1..MAX_SNAPSHOT_BYTES)
+            ?: throw IllegalArgumentException("Esta entrada não possui uma cópia histórica.")
+        require(snapshot.isFile && snapshot.length() in 1..MAX_SNAPSHOT_BYTES) {
+            "A cópia histórica não existe ou excede o limite permitido."
+        }
         val historical = snapshot.readText(Charsets.UTF_8)
-        val current = currentSource.readText(Charsets.UTF_8)
+        val current = target.readText(Charsets.UTF_8)
         val oldLines = historical.lines()
         val newLines = current.lines()
         val result = StringBuilder()
@@ -100,22 +104,32 @@ internal object ImportedSourceHistory {
         val target = source.canonicalFile
         requireInside(root, target)
         require(target.isFile && target.extension.lowercase() in setOf("xml", "kt"))
+        require(entry.path == target.relativeTo(root).invariantSeparatorsPath) {
+            "A entrada pertence a outro arquivo-fonte."
+        }
         val snapshot = snapshotFile(root, entry)
             ?: throw IllegalArgumentException("Esta entrada não possui uma cópia histórica.")
         require(snapshot.isFile && snapshot.length() in 1..MAX_SNAPSHOT_BYTES)
         validateSnapshot(snapshot, target.extension)
         val temp = File(target.parentFile, target.name + ".geivia.history.tmp")
         val rollback = File(target.parentFile, target.name + ".geivia.history.rollback")
-        require(!temp.exists() && !rollback.exists()) { "Há uma restauração anterior incompleta; preserve os arquivos temporários." }
+        require(!temp.exists() && !rollback.exists()) {
+            "Há uma restauração anterior incompleta; preserve os arquivos temporários."
+        }
         try {
             snapshot.copyTo(temp, overwrite = false)
             validateSnapshot(temp, target.extension)
             require(target.renameTo(rollback)) { "Não foi possível preservar a versão atual." }
             if (!temp.renameTo(target)) {
                 val recovered = rollback.renameTo(target)
-                throw IllegalStateException(if (recovered) "A restauração falhou; a versão atual foi recuperada." else "Falha crítica. A versão atual está em ${rollback.name}.")
+                throw IllegalStateException(
+                    if (recovered) "A restauração falhou; a versão atual foi recuperada."
+                    else "Falha crítica. A versão atual está em ${rollback.name}."
+                )
             }
-            require(rollback.delete()) { "Versão restaurada, mas a cópia temporária ${rollback.name} permaneceu." }
+            require(rollback.delete()) {
+                "Versão restaurada, mas a cópia temporária ${rollback.name} permaneceu."
+            }
         } finally {
             if (temp.exists()) temp.delete()
         }

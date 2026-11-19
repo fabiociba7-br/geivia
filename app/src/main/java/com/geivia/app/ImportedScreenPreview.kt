@@ -1,5 +1,8 @@
 package com.geivia.app
 
+import android.graphics.BitmapFactory
+import java.io.File
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,9 +24,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -31,7 +37,7 @@ import androidx.compose.ui.unit.sp
 
 /** Read-only phone mockup generated from the imported screen's visible source elements. */
 @Composable
-internal fun ImportedScreenPreview(screen: ImportedScreen) {
+internal fun ImportedScreenPreview(screen: ImportedScreen, projectRoot: File) {
     val background = Color(0xFFF5F7FA)
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -77,10 +83,33 @@ internal fun ImportedScreenPreview(screen: ImportedScreen) {
                                     label = { Text(component.text?.ifBlank { "Campo de entrada" } ?: "Campo de entrada", fontSize = 11.sp) },
                                     modifier = Modifier.fillMaxWidth()
                                 )
-                                "image", "imageview" -> Box(
-                                    Modifier.fillMaxWidth().height(74.dp).background(Color(0xFFDCE5EF), RoundedCornerShape(10.dp)),
-                                    contentAlignment = Alignment.Center
-                                ) { Text("Imagem", color = Color(0xFF64748B), fontSize = 11.sp) }
+                                "image", "imageview" -> {
+                                    val imageFile = remember(projectRoot.absolutePath, component.imageResourceName) {
+                                        component.imageResourceName?.let { resource ->
+                                            val resRoot = File(projectRoot, "app/src/main/res")
+                                            resRoot.listFiles()?.asSequence()
+                                                ?.filter { it.isDirectory && (it.name.startsWith("drawable") || it.name.startsWith("mipmap")) }
+                                                ?.flatMap { it.walkTopDown().asSequence() }
+                                                ?.firstOrNull { it.isFile && it.nameWithoutExtension == resource }
+                                        }
+                                    }
+                                    val bitmap = remember(imageFile?.absolutePath) {
+                                        imageFile?.let { runCatching { BitmapFactory.decodeFile(it.absolutePath) }.getOrNull() }
+                                    }
+                                    if (bitmap != null) {
+                                        Image(
+                                            bitmap.asImageBitmap(),
+                                            contentDescription = component.imageResourceName,
+                                            modifier = Modifier.fillMaxWidth().height(112.dp),
+                                            contentScale = ContentScale.Fit
+                                        )
+                                    } else {
+                                        Box(
+                                            Modifier.fillMaxWidth().height(74.dp).background(Color(0xFFDCE5EF), RoundedCornerShape(10.dp)),
+                                            contentAlignment = Alignment.Center
+                                        ) { Text(component.imageResourceName?.let { "Imagem não localizada: $it" } ?: "Imagem sem recurso identificado", color = Color(0xFF64748B), fontSize = 11.sp) }
+                                    }
+                                }
                                 "card", "materialcardview" -> Surface(
                                     modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp),
                                     color = Color.White, shadowElevation = 1.dp

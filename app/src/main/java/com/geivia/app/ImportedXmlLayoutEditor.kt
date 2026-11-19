@@ -44,13 +44,13 @@ internal object ImportedXmlLayoutEditor {
                         text = child.getAttributeNS(ANDROID_NS, "text").takeIf { it.isNotBlank() },
                         parentId = parentId,
                         siblingIndex = index,
-                        canReorder = parentTag == "LinearLayout"
+                        canReorder = parentTag == "LinearLayout" && parentId != null
                     )
                 }
                 visit(child, id ?: parentId)
             }
         }
-        visit(document.documentElement, null)
+        visit(document.documentElement, viewId(document.documentElement) ?: "__root__")
         return result
     }
 
@@ -75,6 +75,7 @@ internal object ImportedXmlLayoutEditor {
                 "Movimentação por arraste só é segura dentro de LinearLayout nesta versão."
             }
             val siblings = elementChildren(parent)
+            require(siblings.all { viewId(it) != null }) { "Reordenação exige IDs estáveis em todos os elementos irmãos." }
             require(newIndex in siblings.indices) { "Posição de destino inválida." }
             val oldIndex = siblings.indexOfFirst { it === target }
             require(oldIndex >= 0) { "Componente não pertence ao contêiner informado." }

@@ -278,7 +278,8 @@ internal fun ImportedScreenVisualEditor(
                     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("RECUPERAÇÃO DO ARQUIVO-FONTE", color = Color(0xFF1769AA), fontWeight = FontWeight.Bold, fontSize = 10.sp)
                         Text("Restaure uma cópia de segurança sem apagar os arquivos de backup.", color = Color(0xFF718397), fontSize = 11.sp)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                             if (latestBackupAvailable) OutlinedButton(onClick = {
                                 backupPreview = runCatching {
                                     ImportedSourceRecovery.preview(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)
@@ -289,8 +290,8 @@ internal fun ImportedScreenVisualEditor(
                                     ImportedSourceRecovery.preview(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
                                 }.fold({ "Versão anterior · ${File(projectRoot, screen.sourcePath).name}\n\n" + it }, { "Não foi possível abrir a prévia: ${it.message}" })
                             }) { Text("Prévia da anterior") }
-                            if (latestBackupAvailable) OutlinedButton(onClick = {
-                                requestChange {
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                     runCatching {
                                         ImportedSourceRecovery.restore(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)
                                         components = ImportedXmlLayoutEditor.inspect(File(projectRoot, screen.sourcePath))
@@ -312,7 +313,8 @@ internal fun ImportedScreenVisualEditor(
                                         onSourceChanged()
                                     }.onFailure { status = it.message ?: "Não foi possível restaurar a versão." }
                                 }
-                            }) { Text("Restaurar anterior") }
+                            }) { Text("Restaurar anterior") }                            }
+                        }
                         }
                     }
                 }

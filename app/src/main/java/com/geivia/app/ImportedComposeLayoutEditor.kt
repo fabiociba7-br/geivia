@@ -40,7 +40,7 @@ internal object ImportedComposeLayoutEditor {
         val source = readSource(file)
         val target = inspect(file, functionName).firstOrNull { it.id == componentId }
             ?: throw IllegalArgumentException("Texto literal não encontrado na função selecionada.")
-        val encoded = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"").replace("$", "\\$").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t") + "\""
+        val encoded = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t") + "\""
         val updated = source.substring(0, target.start) + encoded + source.substring(target.end)
         require(updated.length <= MAX_SOURCE_LENGTH) { "Arquivo Kotlin excede o limite permitido." }
         val temp = File(file.parentFile, file.name.removeSuffix(".kt") + ".geivia.tmp.kt")
@@ -222,7 +222,7 @@ internal object ImportedComposeLayoutEditor {
 
     private fun decode(value: String): String = value.removeSurrounding("\"")
         .replace("\\n", "\n").replace("\\r", "\r").replace("\\t", "\t")
-        .replace("\\$", "$").replace("\\\"", "\"").replace("\\\\", "\\")
+        .replace("\\\"", "\"").replace("\\\\", "\\")
 
     private val IDENTIFIER = Regex("[A-Za-z_][A-Za-z0-9_]{0,127}")
     private const val MAX_TEXT_LENGTH = 4096

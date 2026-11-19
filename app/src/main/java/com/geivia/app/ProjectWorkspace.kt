@@ -90,6 +90,9 @@ internal data class ProjectWorkspaceInfo(
             val manifest = has("AndroidManifest.xml")
             val gradle = has("settings.gradle") || has("settings.gradle.kts") ||
                 has("build.gradle") || has("build.gradle.kts") || has("gradlew")
+            // An app Gradle module is a strong Android signal even when a partial
+            // import does not include its AndroidManifest.xml.
+            val androidModule = has("app/build.gradle") || has("app/build.gradle.kts")
             val flutter = has("pubspec.yaml") && has("lib/main.dart")
             val webEntry = listOf("index.html", "public/index.html", "dist/index.html", "build/index.html")
                 .map { File(root, it) }.firstOrNull { it.isFile }
@@ -100,6 +103,7 @@ internal data class ProjectWorkspaceInfo(
             val kind = when {
                 flutter -> Kind.FLUTTER
                 manifest && gradle -> Kind.ANDROID
+                androidModule && gradle -> Kind.ANDROID
                 manifest -> Kind.ANDROID
                 has("package.json") -> Kind.NODE
                 gradle -> Kind.UNKNOWN

@@ -175,8 +175,12 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                 .remove("imported_project_dir")
                 .remove("imported_project_name")
                 .remove("active_firebase_project_id")
+                .remove("selected_project_id")
+                .remove("selected_project_name")
+                .remove("selected_project_number")
                 .apply()
             projectDir = ""
+            projectId = ""
             output = "Projeto desvinculado. Os arquivos continuam preservados no armazenamento do GEIVIA."
         }, enabled = !busy && projectDir.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Desvincular projeto ativo") }
         if (projectDir.isNotBlank()) {

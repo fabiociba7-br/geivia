@@ -34,17 +34,18 @@ internal object ImportedXmlLayoutEditor {
         val result = mutableListOf<Component>()
         fun visit(parent: Element, parentKey: String) {
             val children = elementChildren(parent)
+            val parentCanReorder = parent.tagName.substringAfterLast('.') == "LinearLayout" &&
+                children.all { viewId(it) != null }
             children.forEachIndexed { index, child ->
                 val id = viewId(child)
                 if (id != null) {
-                    val parentTag = parent.tagName.substringAfterLast('.')
                     result += Component(
                         id = id,
                         tag = child.tagName.substringAfterLast('.'),
                         text = child.getAttributeNS(ANDROID_NS, "text").takeIf { it.isNotBlank() },
                         parentId = parentKey,
                         siblingIndex = index,
-                        canReorder = parentTag == "LinearLayout"
+                        canReorder = parentCanReorder
                     )
                 }
                 visit(child, id ?: (parentKey + "/" + index))

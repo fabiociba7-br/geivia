@@ -1288,7 +1288,7 @@ internal fun VisualEditorScreen(
                                         }
                                         Text(screen.sourcePath, color = EditorMuted, fontSize = 10.sp)
                                         Text("PRÉVIA DA TELA", color = EditorBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                        ImportedScreenPreview(screen)
+                                        ImportedScreenPreview(screen, java.io.File(importedProjectPath))
                                         Text("Elementos reconhecidos", color = EditorInk, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                                         if (screen.components.isEmpty()) {
                                             Text("Nenhum componente reconhecido nesta tela.", color = EditorMuted, fontSize = 11.sp)

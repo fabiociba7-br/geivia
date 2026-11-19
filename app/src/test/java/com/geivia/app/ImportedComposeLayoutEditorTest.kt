@@ -3,6 +3,7 @@ package com.geivia.app
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -40,9 +41,9 @@ class ImportedComposeLayoutEditorTest {
         ImportedComposeLayoutEditor.updateText(file, "SampleScreen", "text_1", "Confirmar")
 
         val updated = file.readText()
-        assert(updated.contains("""Text(text = "Confirmar")"""))
-        assert(updated.contains("""Text("Título")"""))
-        assert(updated.contains("Text(text = dynamicLabel)"))
+        assertTrue(updated.contains("""Text(text = "Confirmar")"""))
+        assertTrue(updated.contains("""Text("Título")"""))
+        assertTrue(updated.contains("Text(text = dynamicLabel)"))
         assertEquals("Confirmar", ImportedComposeLayoutEditor.inspect(file, "SampleScreen")[1].value)
     }
 

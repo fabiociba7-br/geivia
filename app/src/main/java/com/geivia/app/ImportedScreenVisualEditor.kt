@@ -54,6 +54,8 @@ internal fun ImportedScreenVisualEditor(
     var previewOnly by rememberSaveable(screen.sourcePath, screen.name) { mutableStateOf(false) }
     var selectedComponentId by rememberSaveable(screen.sourcePath, screen.name) { mutableStateOf<String?>(null) }
     var editableText by remember(screen.sourcePath, screen.name, selectedComponentId) { mutableStateOf("") }
+    var widthDraft by remember(screen.sourcePath, screen.name, selectedComponentId) { mutableStateOf("") }
+    var heightDraft by remember(screen.sourcePath, screen.name, selectedComponentId) { mutableStateOf("") }
     var status by remember(screen.sourcePath, screen.name) { mutableStateOf("Selecione um elemento para editar.") }
     var dragDistance by remember(screen.sourcePath, screen.name) { mutableFloatStateOf(0f) }
     var components by remember(screen.sourcePath, screen.name) {
@@ -66,6 +68,10 @@ internal fun ImportedScreenVisualEditor(
 
     val selected = components.firstOrNull { it.id == selectedComponentId }
     LaunchedEffect(selected?.id, selected?.text) { editableText = selected?.text.orEmpty() }
+    LaunchedEffect(selected?.id, selected?.width, selected?.height) {
+        widthDraft = selected?.width.orEmpty()
+        heightDraft = selected?.height.orEmpty()
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -168,6 +174,33 @@ internal fun ImportedScreenVisualEditor(
                 Card(colors = CardDefaults.cardColors(containerColor = Color.White)) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Propriedades · ${selected.tag}", color = Color(0xFF17354D), fontWeight = FontWeight.Bold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = widthDraft,
+                                onValueChange = { widthDraft = it.take(12) },
+                                label = { Text("Largura") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = heightDraft,
+                                onValueChange = { heightDraft = it.take(12) },
+                                label = { Text("Altura") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
+                            )
+                        }
+                        Text("Use wrap_content, match_parent ou valores em dp.", color = Color(0xFF718397), fontSize = 10.sp)
+                        OutlinedButton(onClick = {
+                            runCatching {
+                                val file = File(projectRoot, screen.sourcePath)
+                                ImportedXmlLayoutEditor.updateDimension(file, selected.id, "layout_width", widthDraft)
+                                ImportedXmlLayoutEditor.updateDimension(file, selected.id, "layout_height", heightDraft)
+                                components = ImportedXmlLayoutEditor.inspect(file)
+                                status = "Dimensões salvas no XML original."
+                                onSourceChanged()
+                            }.onFailure { status = it.message ?: "Dimensões inválidas." }
+                        }) { Text("Salvar dimensões") }
                         if (selected.tag in setOf("TextView", "Button", "EditText", "CheckedTextView", "ToggleButton", "RadioButton", "CheckBox", "Switch", "AutoCompleteTextView")) {
                             OutlinedTextField(
                                 value = editableText,

@@ -141,6 +141,8 @@ internal fun ImportedComposeVisualEditor(
                                             latestBackupAvailable = ImportedSourceRecovery.available(sourceFile, projectRoot, ImportedSourceRecovery.Version.LATEST)
                                             previousBackupAvailable = ImportedSourceRecovery.available(sourceFile, projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
                                             status = "Última versão de segurança restaurada."
+                                            ImportedSourceHistory.record(projectRoot, File(projectRoot, screen.sourcePath), "Alteração de fonte", status)
+                                            historyEntries = ImportedSourceHistory.recent(projectRoot, File(projectRoot, screen.sourcePath))
                                             onSourceChanged()
                                         }.onFailure { status = it.message ?: "Não foi possível restaurar a versão." }
                                     }
@@ -162,6 +164,8 @@ internal fun ImportedComposeVisualEditor(
                                             latestBackupAvailable = ImportedSourceRecovery.available(sourceFile, projectRoot, ImportedSourceRecovery.Version.LATEST)
                                             previousBackupAvailable = ImportedSourceRecovery.available(sourceFile, projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
                                             status = "Versão anterior restaurada."
+                                            ImportedSourceHistory.record(projectRoot, File(projectRoot, screen.sourcePath), "Alteração de fonte", status)
+                                            historyEntries = ImportedSourceHistory.recent(projectRoot, File(projectRoot, screen.sourcePath))
                                             onSourceChanged()
                                         }.onFailure { status = it.message ?: "Não foi possível restaurar a versão." }
                                     }

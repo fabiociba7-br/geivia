@@ -1261,9 +1261,14 @@ internal fun VisualEditorScreen(
                                 onBack = { importedEditorScreenKey = null },
                                 onOpenCode = { onProjectFiles(editingScreen.sourcePath) },
                                 onSourceChanged = {
-                                    importedScreens = runCatching {
-                                        ImportedScreenDiscovery.scan(java.io.File(importedProjectPath))
-                                    }.getOrDefault(importedScreens)
+                                    editorScope.launch {
+                                        val refreshed = withContext(Dispatchers.IO) {
+                                            runCatching {
+                                                ImportedScreenDiscovery.scan(java.io.File(importedProjectPath))
+                                            }
+                                        }
+                                        importedScreens = refreshed.getOrDefault(importedScreens)
+                                    }
                                 }
                             )
                         } else if (importedScreens.isEmpty()) {

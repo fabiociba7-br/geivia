@@ -27,6 +27,8 @@ internal object ImportedXmlLayoutEditor {
         val parentId: String?,
         val siblingIndex: Int,
         val orientation: String?,
+        val width: String?,
+        val height: String?,
         val canReorder: Boolean
     )
 
@@ -47,6 +49,8 @@ internal object ImportedXmlLayoutEditor {
                         parentId = parentKey,
                         siblingIndex = index,
                         orientation = parent.getAttributeNS(ANDROID_NS, "orientation").takeIf { it.isNotBlank() },
+                        width = child.getAttributeNS(ANDROID_NS, "layout_width").takeIf { it.isNotBlank() },
+                        height = child.getAttributeNS(ANDROID_NS, "layout_height").takeIf { it.isNotBlank() },
                         canReorder = parentCanReorder
                     )
                 }
@@ -65,6 +69,16 @@ internal object ImportedXmlLayoutEditor {
             val tag = target.tagName.substringAfterLast('.')
             require(tag in TEXT_CAPABLE_TAGS) { "Este componente não possui atributo android:text editável." }
             target.setAttributeNS(ANDROID_NS, "android:text", text)
+        }
+    }
+
+    fun updateDimension(layoutFile: File, componentId: String, attribute: String, value: String) {
+        require(attribute in setOf("layout_width", "layout_height")) { "Propriedade de dimensão não permitida." }
+        require(DIMENSION_PATTERN.matches(value)) { "Use wrap_content, match_parent ou uma medida em dp." }
+        edit(layoutFile) { document ->
+            val target = findById(document, componentId)
+                ?: throw IllegalArgumentException("Componente @id/$componentId não encontrado.")
+            target.setAttributeNS(ANDROID_NS, "android:$attribute", value)
         }
     }
 
@@ -170,6 +184,7 @@ internal object ImportedXmlLayoutEditor {
     private const val ANDROID_NS = "http://schemas.android.com/apk/res/android"
     private const val MAX_TEXT_LENGTH = 4096
     private val ID_PATTERN = Regex("[A-Za-z_][A-Za-z0-9_]{0,127}")
+    private val DIMENSION_PATTERN = Regex("(?:wrap_content|match_parent|0dp|[1-9][0-9]{0,4}dp)")
     private val TEXT_CAPABLE_TAGS = setOf(
         "TextView", "Button", "EditText", "CheckedTextView", "ToggleButton",
         "RadioButton", "CheckBox", "Switch", "AutoCompleteTextView"

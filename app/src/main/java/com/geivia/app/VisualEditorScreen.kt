@@ -49,6 +49,8 @@ internal data class StudioElement(
     val padding: Float = 12f,
     val alignment: String = "start",
     val parentId: String? = null,
+    val offsetX: Float = 0f,
+    val offsetY: Float = 0f,
     val backgroundColor: String = "#FFFFFF",
     val textColor: String = "#17354D",
     val cornerRadius: Float = 10f,
@@ -148,6 +150,8 @@ internal fun VisualEditorScreen(
                         if (it in listOf("start", "center", "end")) it else "start"
                     },
                     parentId = item.optString("parentId").takeIf { it.isNotBlank() },
+                    offsetX = item.optDouble("offsetX", 0.0).toFloat().coerceIn(-240f, 240f),
+                    offsetY = item.optDouble("offsetY", 0.0).toFloat().coerceIn(-480f, 480f),
                     backgroundColor = item.optString("backgroundColor", "#FFFFFF"),
                     textColor = item.optString("textColor", "#17354D"),
                     cornerRadius = item.optDouble("cornerRadius", 10.0).toFloat().coerceIn(0f, 32f),
@@ -335,6 +339,8 @@ internal fun VisualEditorScreen(
                 .put("padding", element.padding.toDouble())
                 .put("alignment", element.alignment)
                 .put("parentId", element.parentId ?: "")
+                .put("offsetX", element.offsetX.toDouble())
+                .put("offsetY", element.offsetY.toDouble())
                 .put("backgroundColor", element.backgroundColor)
                 .put("textColor", element.textColor)
                 .put("cornerRadius", element.cornerRadius.toDouble())
@@ -577,7 +583,9 @@ internal fun VisualEditorScreen(
             val copy = source.copy(
                 id = newId,
                 text = if (source.id == root.id) source.text + " (cópia)" else source.text,
-                parentId = newParentId
+                parentId = newParentId,
+                offsetX = if (source.id == root.id) (source.offsetX + 12f).coerceIn(-240f, 240f) else source.offsetX,
+                offsetY = if (source.id == root.id) (source.offsetY + 12f).coerceIn(-480f, 480f) else source.offsetY
             )
             elements.add(copy)
             if (source.id == root.id) duplicatedRootId = newId
@@ -591,6 +599,16 @@ internal fun VisualEditorScreen(
 
     fun updateSelected(transform: (StudioElement) -> StudioElement) {
         if (selectedIndex >= 0) elements[selectedIndex] = transform(elements[selectedIndex])
+    }
+
+    fun moveElement(id: String, deltaX: Float, deltaY: Float) {
+        val index = elements.indexOfFirst { it.id == id }
+        if (index < 0) return
+        val current = elements[index]
+        elements[index] = current.copy(
+            offsetX = (current.offsetX + deltaX).coerceIn(-240f, 240f),
+            offsetY = (current.offsetY + deltaY).coerceIn(-480f, 480f)
+        )
     }
 
     fun reorderDraggedElement(id: String, steps: Int) {
@@ -861,8 +879,8 @@ internal fun VisualEditorScreen(
                                         defaultTextColor = editorColor(themeText, EditorInk),
                                         onSelect = { selectedId = it },
                                         dragEnabled = true,
-                                        dragStepPx = dragStepPx,
-                                        onReorder = { id, steps -> reorderDraggedElement(id, steps) }
+                                        onMoveStart = { checkpoint() },
+                                        onMove = { id, dx, dy -> moveElement(id, dx, dy) }
                                     )
                                 }
                             }
@@ -1077,7 +1095,7 @@ internal fun VisualEditorScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("Canvas", fontWeight = FontWeight.Bold, color = EditorInk)
-                            Text("Segure um componente e arraste para cima ou para baixo para reposicioná-lo.", color = EditorMuted, fontSize = 11.sp)
+                            Text("Toque para selecionar; segure e arraste para mover o componente no canvas.", color = EditorMuted, fontSize = 11.sp)
                         }
                         Surface(color = Color(0xFFEAF3FB), shape = RoundedCornerShape(20.dp)) {
                             Text("MOBILE", modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp), color = EditorBlue, fontSize = 9.sp, fontWeight = FontWeight.Bold)
@@ -1104,8 +1122,8 @@ internal fun VisualEditorScreen(
                                     defaultTextColor = editorColor(themeText, EditorInk),
                                     onSelect = { selectedId = it },
                                     dragEnabled = true,
-                                    dragStepPx = dragStepPx,
-                                    onReorder = { id, steps -> reorderDraggedElement(id, steps) }
+                                    onMoveStart = { checkpoint() },
+                                    onMove = { id, dx, dy -> moveElement(id, dx, dy) }
                                 )
                             }
                         }
@@ -1581,7 +1599,7 @@ internal fun VisualEditorScreen(
                                     else decodeElements(prefs.getString("${schemaPrefix}_${screen.id}", null) ?: if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_${screen.id}", null) else null)
                                 screen.id to sourceElements.map { item ->
                                     val generatedText = if (item.type == "image") localAssetNames[item.text]?.let { "asset://$it" } ?: item.text else item.text
-                                    StudioGeneratedElement(item.id, item.type, generatedText, item.fontSize, item.padding, item.alignment, item.parentId, item.backgroundColor, item.textColor, item.cornerRadius, item.visible)
+                                    StudioGeneratedElement(item.id, item.type, generatedText, item.fontSize, item.padding, item.alignment, item.parentId, item.backgroundColor, item.textColor, item.cornerRadius, item.visible, item.offsetX, item.offsetY)
                                 }
                             }
                             val logicDocument = readLogicDocument()
@@ -1667,10 +1685,11 @@ private fun EditorCanvasNode(
     onActivate: (String, String, String) -> Unit = { _, _, _ -> },
     onSelect: (String) -> Unit,
     dragEnabled: Boolean = false,
-    dragStepPx: Float = 52f,
-    onReorder: (String, Int) -> Unit = { _, _ -> }
+    onMoveStart: (String) -> Unit = {},
+    onMove: (String, Float, Float) -> Unit = { _, _, _ -> }
 ) {
     if (!element.visible) return
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
     val children = allElements.filter { it.parentId == element.id && it.visible }
     val selected = element.id == selectedId
     val defaultBackground = if (element.type == "button") primaryColor else Color.White
@@ -1680,23 +1699,18 @@ private fun EditorCanvasNode(
     val container = element.type in setOf("section", "column", "row") || (element.type == "card" && children.isNotEmpty())
     Surface(
         modifier = Modifier.fillMaxWidth()
-            .pointerInput(element.id, allElements.size, dragEnabled, dragStepPx) {
+            .offset(x = element.offsetX.dp, y = element.offsetY.dp)
+            .pointerInput(element.id, allElements.size, dragEnabled) {
                 if (dragEnabled) {
-                    var totalDragY = 0f
                     detectDragGesturesAfterLongPress(
                         onDragStart = {
-                            totalDragY = 0f
                             onSelect(element.id)
+                            onMoveStart(element.id)
                         },
                         onDrag = { change, amount ->
                             change.consume()
-                            totalDragY += amount.y
-                        },
-                        onDragEnd = {
-                            val steps = (totalDragY / dragStepPx.coerceAtLeast(1f)).roundToInt()
-                            if (steps != 0) onReorder(element.id, steps)
-                        },
-                        onDragCancel = { totalDragY = 0f }
+                            onMove(element.id, amount.x / density, amount.y / density)
+                        }
                     )
                 }
             }
@@ -1715,11 +1729,11 @@ private fun EditorCanvasNode(
                 } else if (element.type == "row") {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                         children.forEach { child ->
-                            Box(Modifier.weight(1f)) { EditorCanvasNode(child, allElements, selectedId, primaryColor, defaultTextColor, interactive, onActivate, onSelect, dragEnabled, dragStepPx, onReorder) }
+                            Box(Modifier.weight(1f)) { EditorCanvasNode(child, allElements, selectedId, primaryColor, defaultTextColor, interactive, onActivate, onSelect, dragEnabled, onMoveStart, onMove) }
                         }
                     }
                 } else {
-                    children.forEach { child -> EditorCanvasNode(child, allElements, selectedId, primaryColor, defaultTextColor, interactive, onActivate, onSelect, dragEnabled, dragStepPx, onReorder) }
+                    children.forEach { child -> EditorCanvasNode(child, allElements, selectedId, primaryColor, defaultTextColor, interactive, onActivate, onSelect, dragEnabled, onMoveStart, onMove) }
                 }
             } else {
                 val align = when (element.alignment) {

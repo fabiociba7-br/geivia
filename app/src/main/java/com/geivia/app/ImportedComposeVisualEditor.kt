@@ -121,40 +121,48 @@ internal fun ImportedComposeVisualEditor(
                 Card(colors = CardDefaults.cardColors(containerColor = Color.White)) {
                     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("RECUPERAÇÃO DO ARQUIVO-FONTE", color = Color(0xFF1769AA), fontWeight = FontWeight.Bold, fontSize = 10.sp)
-                        Text("Restaure uma cópia de segurança sem apagar os arquivos de backup.", color = Color(0xFF718397), fontSize = 11.sp)
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            if (latestBackupAvailable) OutlinedButton(onClick = {
-                                backupPreview = runCatching {
-                                    ImportedSourceRecovery.preview(sourceFile, projectRoot, ImportedSourceRecovery.Version.LATEST)
-                                }.fold({ "Última versão · ${sourceFile.name}\n\n" + it }, { "Não foi possível abrir a prévia: ${it.message}" })
-                            }) { Text("Prévia da última") }
-                            if (previousBackupAvailable) OutlinedButton(onClick = {
-                                backupPreview = runCatching {
-                                    ImportedSourceRecovery.preview(sourceFile, projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
-                                }.fold({ "Versão anterior · ${sourceFile.name}\n\n" + it }, { "Não foi possível abrir a prévia: ${it.message}" })
-                            }) { Text("Prévia da anterior") }
+                        Text("Confira o conteúdo antes de restaurar uma cópia.", color = Color(0xFF718397), fontSize = 11.sp)
+                        if (latestBackupAvailable) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(onClick = {
+                                    backupPreview = runCatching {
+                                        ImportedSourceRecovery.preview(sourceFile, projectRoot, ImportedSourceRecovery.Version.LATEST)
+                                    }.fold({ "Última versão · ${sourceFile.name}\n\n" + it }, { "Não foi possível abrir a prévia: ${it.message}" })
+                                }) { Text("Prévia da última") }
+                                OutlinedButton(onClick = {
+                                    pendingChange = {
+                                        runCatching {
+                                            ImportedSourceRecovery.restore(sourceFile, projectRoot, ImportedSourceRecovery.Version.LATEST)
+                                            texts = ImportedComposeLayoutEditor.inspect(sourceFile, screen.name)
+                                            latestBackupAvailable = ImportedSourceRecovery.available(sourceFile, projectRoot, ImportedSourceRecovery.Version.LATEST)
+                                            previousBackupAvailable = ImportedSourceRecovery.available(sourceFile, projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
+                                            status = "Última versão de segurança restaurada."
+                                            onSourceChanged()
+                                        }.onFailure { status = it.message ?: "Não foi possível restaurar a versão." }
+                                    }
+                                }) { Text("Restaurar última") }
                             }
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    runCatching {
-                                        ImportedSourceRecovery.restore(sourceFile, projectRoot, ImportedSourceRecovery.Version.LATEST)
-                                        texts = ImportedComposeLayoutEditor.inspect(sourceFile, screen.name)
-                                        status = "Última versão de segurança restaurada."
-                                        onSourceChanged()
-                                    }.onFailure { status = it.message ?: "Não foi possível restaurar a versão." }
-                                }
-                            }) { Text("Restaurar última") }
-                            if (previousBackupAvailable) OutlinedButton(onClick = {
-                                pendingChange = {
-                                    runCatching {
-                                        ImportedSourceRecovery.restore(sourceFile, projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
-                                        texts = ImportedComposeLayoutEditor.inspect(sourceFile, screen.name)
-                                        status = "Versão anterior restaurada."
-                                        onSourceChanged()
-                                    }.onFailure { status = it.message ?: "Não foi possível restaurar a versão." }
-                                }
-                            }) { Text("Restaurar anterior") }                            }
                         }
+                        if (previousBackupAvailable) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(onClick = {
+                                    backupPreview = runCatching {
+                                        ImportedSourceRecovery.preview(sourceFile, projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
+                                    }.fold({ "Versão anterior · ${sourceFile.name}\n\n" + it }, { "Não foi possível abrir a prévia: ${it.message}" })
+                                }) { Text("Prévia da anterior") }
+                                OutlinedButton(onClick = {
+                                    pendingChange = {
+                                        runCatching {
+                                            ImportedSourceRecovery.restore(sourceFile, projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
+                                            texts = ImportedComposeLayoutEditor.inspect(sourceFile, screen.name)
+                                            latestBackupAvailable = ImportedSourceRecovery.available(sourceFile, projectRoot, ImportedSourceRecovery.Version.LATEST)
+                                            previousBackupAvailable = ImportedSourceRecovery.available(sourceFile, projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
+                                            status = "Versão anterior restaurada."
+                                            onSourceChanged()
+                                        }.onFailure { status = it.message ?: "Não foi possível restaurar a versão." }
+                                    }
+                                }) { Text("Restaurar anterior") }
+                            }
                         }
                     }
                 }

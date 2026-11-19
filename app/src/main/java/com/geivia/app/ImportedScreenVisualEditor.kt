@@ -194,8 +194,7 @@ internal fun ImportedScreenVisualEditor(
                         OutlinedButton(onClick = {
                             runCatching {
                                 val file = File(projectRoot, screen.sourcePath)
-                                ImportedXmlLayoutEditor.updateDimension(file, selected.id, "layout_width", widthDraft)
-                                ImportedXmlLayoutEditor.updateDimension(file, selected.id, "layout_height", heightDraft)
+                                ImportedXmlLayoutEditor.updateDimensions(file, selected.id, widthDraft, heightDraft)
                                 components = ImportedXmlLayoutEditor.inspect(file)
                                 status = "Dimensões salvas no XML original."
                                 onSourceChanged()

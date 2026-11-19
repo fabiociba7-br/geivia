@@ -164,6 +164,8 @@ internal fun ImportedScreenVisualEditor(
                     }
                 }
                     }
+                        }
+                    }
                 }
             }
             if (selected != null) {
@@ -218,7 +220,6 @@ internal fun ImportedScreenVisualEditor(
                 }
             }
             Text(status, color = Color(0xFF718397), fontSize = 11.sp)
-            ImportedScreenPreview(screen, projectRoot)
         }
     }
 }

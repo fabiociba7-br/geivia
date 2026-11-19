@@ -84,6 +84,27 @@ class ImportedXmlLayoutEditorTest {
         }
     }
 
+    @Test fun updatesWidthAndHeightTogether() {
+        val file = layout("""<TextView android:id="@+id/title" android:layout_width="wrap_content" android:layout_height="wrap_content" />""")
+
+        ImportedXmlLayoutEditor.updateDimensions(file, "title", "240dp", "48dp")
+
+        val component = ImportedXmlLayoutEditor.inspect(file).single()
+        assertEquals("240dp", component.width)
+        assertEquals("48dp", component.height)
+    }
+
+    @Test fun rejectsInvalidDimensionsWithoutChangingTheOriginalFile() {
+        val file = layout("""<TextView android:id="@+id/title" android:layout_width="wrap_content" android:layout_height="wrap_content" />""")
+        val original = file.readText()
+
+        assertThrows(IllegalArgumentException::class.java) {
+            ImportedXmlLayoutEditor.updateDimensions(file, "title", "240px", "48dp")
+        }
+
+        assertEquals(original, file.readText())
+    }
+
     @Test fun refusesTextUpdatesForComponentsWithoutTextAttribute() {
         val file = layout("""<ImageView android:id="@+id/logo" />""")
 

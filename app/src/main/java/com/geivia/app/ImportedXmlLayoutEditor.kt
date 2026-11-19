@@ -151,8 +151,7 @@ internal object ImportedXmlLayoutEditor {
                     else "Falha crítica: o layout não foi substituído. A cópia original permanece em ${backup.name}."
                 )
             }
-            // Keep the last known-good source and one earlier version for recovery.\n            ImportedSourceHistory.record(file.parentFile.parentFile, file, action)
-        } finally {
+            // Keep the last known-good source and one earlier version for recovery.\n        } finally {
             if (temp.exists()) temp.delete()
         }
     }

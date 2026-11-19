@@ -29,7 +29,7 @@ internal object ImportedSourceRecovery {
         validateCandidate(backup)
         val content = backup.readText(Charsets.UTF_8)
         return if (content.length > MAX_PREVIEW_CHARS) {
-            content.take(MAX_PREVIEW_CHARS) + "\\n\\n/* Prévia limitada. O arquivo completo será usado na restauração. */"
+            content.take(MAX_PREVIEW_CHARS) + "\n\n[Prévia limitada. O arquivo completo será usado na restauração.]"
         } else content
     }
 
@@ -75,7 +75,7 @@ internal object ImportedSourceRecovery {
         if (target.extension.lowercase() !in setOf("xml", "kt")) return null
         val backup = File(target.parentFile, target.name + version.suffix)
         val canonicalBackup = runCatching { backup.canonicalFile }.getOrNull() ?: return null
-        if (canonicalBackup.parentFile != target.parentFile) return null
+        if (canonicalBackup.parentFile != target.parentFile || canonicalBackup.name != target.name + version.suffix) return null
         return canonicalBackup
     }
 

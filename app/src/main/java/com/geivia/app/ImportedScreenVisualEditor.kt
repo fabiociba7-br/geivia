@@ -23,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -99,6 +100,11 @@ internal fun ImportedScreenVisualEditor(
             ImportedScreenPreview(screen)
         } else {
             Text("Selecione um componente. Segure e arraste para mudar sua ordem no LinearLayout.", color = Color(0xFF718397), fontSize = 12.sp)
+            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFE8EDF3)), shape = RoundedCornerShape(20.dp)) {
+                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("PRÉVIA EDITÁVEL · TOQUE E ARRASTE", color = Color(0xFF1769AA), fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                    Surface(color = Color.White, shape = RoundedCornerShape(14.dp)) {
+                        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             components.forEach { component ->
                 val active = component.id == selectedComponentId
                 Card(
@@ -143,13 +149,20 @@ internal fun ImportedScreenVisualEditor(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text(component.tag, color = Color(0xFF17354D), fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-                            Text("@id/${component.id} · ${component.text.orEmpty()}", color = Color(0xFF718397), fontSize = 10.sp)
+                            Text(
+                                component.text?.takeIf { it.isNotBlank() } ?: component.tag,
+                                color = Color(0xFF17354D),
+                                fontWeight = if (component.tag in setOf("Button", "TextView")) FontWeight.SemiBold else FontWeight.Normal,
+                                fontSize = if (component.tag == "Button") 13.sp else 12.sp
+                            )
+                            Text("${component.tag} · @id/${component.id}", color = Color(0xFF718397), fontSize = 9.sp)
                         }
                         if (component.canReorder) Icon(Icons.Default.DragIndicator, contentDescription = "Pode reordenar", tint = Color(0xFF1769AA))
                         IconButton(onClick = { selectedComponentId = component.id }) {
                             Icon(Icons.Default.Edit, contentDescription = "Editar componente", tint = Color(0xFF1769AA))
                         }
+                    }
+                }
                     }
                 }
             }

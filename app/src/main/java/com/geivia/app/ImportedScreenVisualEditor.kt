@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -57,6 +58,8 @@ internal fun ImportedScreenVisualEditor(
     var widthDraft by remember(screen.sourcePath, screen.name, selectedComponentId) { mutableStateOf("") }
     var heightDraft by remember(screen.sourcePath, screen.name, selectedComponentId) { mutableStateOf("") }
     var status by remember(screen.sourcePath, screen.name) { mutableStateOf("Selecione um elemento para editar.") }
+    var pendingChange by remember { mutableStateOf<(() -> Unit)?>(null) }
+    fun requestChange(change: () -> Unit) { pendingChange = change }
     var dragDistance by remember(screen.sourcePath, screen.name) { mutableFloatStateOf(0f) }
     var components by remember(screen.sourcePath, screen.name) {
         mutableStateOf(
@@ -125,12 +128,14 @@ internal fun ImportedScreenVisualEditor(
                                     val steps = (abs(dragDistance) / 64f).toInt().coerceAtLeast(1)
                                     val targetIndex = (currentIndex + direction * steps).coerceIn(0, (siblings.size - 1).coerceAtLeast(0))
                                     if (direction != 0 && component.canReorder && currentIndex >= 0) {
-                                        runCatching {
-                                            ImportedXmlLayoutEditor.moveSibling(File(projectRoot, screen.sourcePath), component.id, targetIndex)
-                                            components = ImportedXmlLayoutEditor.inspect(File(projectRoot, screen.sourcePath))
-                                            status = "Componente reposicionado e salvo no XML original."
-                                            onSourceChanged()
-                                        }.onFailure { status = it.message ?: "Não foi possível reposicionar." }
+                                        requestChange {
+                                            runCatching {
+                                                ImportedXmlLayoutEditor.moveSibling(File(projectRoot, screen.sourcePath), component.id, targetIndex)
+                                                components = ImportedXmlLayoutEditor.inspect(File(projectRoot, screen.sourcePath))
+                                                status = "Componente reposicionado e salvo no XML original."
+                                                onSourceChanged()
+                                            }.onFailure { status = it.message ?: "Não foi possível reposicionar." }
+                                        }
                                     }
                                     dragDistance = 0f
                                 },
@@ -192,13 +197,15 @@ internal fun ImportedScreenVisualEditor(
                         }
                         Text("Use wrap_content, match_parent ou valores em dp.", color = Color(0xFF718397), fontSize = 10.sp)
                         OutlinedButton(onClick = {
-                            runCatching {
-                                val file = File(projectRoot, screen.sourcePath)
-                                ImportedXmlLayoutEditor.updateDimensions(file, selected.id, widthDraft, heightDraft)
-                                components = ImportedXmlLayoutEditor.inspect(file)
-                                status = "Dimensões salvas no XML original."
-                                onSourceChanged()
-                            }.onFailure { status = it.message ?: "Dimensões inválidas." }
+                            requestChange {
+                                runCatching {
+                                    val file = File(projectRoot, screen.sourcePath)
+                                    ImportedXmlLayoutEditor.updateDimensions(file, selected.id, widthDraft, heightDraft)
+                                    components = ImportedXmlLayoutEditor.inspect(file)
+                                    status = "Dimensões salvas no XML original."
+                                    onSourceChanged()
+                                }.onFailure { status = it.message ?: "Dimensões inválidas." }
+                            }
                         }) { Text("Salvar dimensões") }
                         if (selected.tag in setOf("TextView", "Button", "EditText", "CheckedTextView", "ToggleButton", "RadioButton", "CheckBox", "Switch", "AutoCompleteTextView")) {
                             OutlinedTextField(
@@ -208,12 +215,14 @@ internal fun ImportedScreenVisualEditor(
                                 modifier = Modifier.fillMaxWidth()
                             )
                             Button(onClick = {
-                                runCatching {
-                                    ImportedXmlLayoutEditor.updateText(File(projectRoot, screen.sourcePath), selected.id, editableText)
-                                    components = ImportedXmlLayoutEditor.inspect(File(projectRoot, screen.sourcePath))
-                                    status = "Texto gravado no XML original."
-                                    onSourceChanged()
-                                }.onFailure { status = it.message ?: "Não foi possível salvar." }
+                                requestChange {
+                                    runCatching {
+                                        ImportedXmlLayoutEditor.updateText(File(projectRoot, screen.sourcePath), selected.id, editableText)
+                                        components = ImportedXmlLayoutEditor.inspect(File(projectRoot, screen.sourcePath))
+                                        status = "Texto gravado no XML original."
+                                        onSourceChanged()
+                                    }.onFailure { status = it.message ?: "Não foi possível salvar." }
+                                }
                             }) { Text("Salvar no arquivo-fonte") }
                         } else {
                             Text("Este tipo de componente não possui edição de texto disponível.", color = Color(0xFF718397), fontSize = 11.sp)
@@ -224,23 +233,27 @@ internal fun ImportedScreenVisualEditor(
                             OutlinedButton(
                                 enabled = selected.canReorder && index > 0,
                                 onClick = {
-                                    runCatching {
-                                        ImportedXmlLayoutEditor.moveSibling(File(projectRoot, screen.sourcePath), selected.id, index - 1)
-                                        components = ImportedXmlLayoutEditor.inspect(File(projectRoot, screen.sourcePath))
-                                        status = "Ordem atualizada no XML original."
-                                        onSourceChanged()
-                                    }.onFailure { status = it.message ?: "Não foi possível mover." }
+                                    requestChange {
+                                        runCatching {
+                                            ImportedXmlLayoutEditor.moveSibling(File(projectRoot, screen.sourcePath), selected.id, index - 1)
+                                            components = ImportedXmlLayoutEditor.inspect(File(projectRoot, screen.sourcePath))
+                                            status = "Ordem atualizada no XML original."
+                                            onSourceChanged()
+                                        }.onFailure { status = it.message ?: "Não foi possível mover." }
+                                    }
                                 }
                             ) { Text("Mover para cima") }
                             OutlinedButton(
                                 enabled = selected.canReorder && index >= 0 && index < siblings.lastIndex,
                                 onClick = {
-                                    runCatching {
-                                        ImportedXmlLayoutEditor.moveSibling(File(projectRoot, screen.sourcePath), selected.id, index + 1)
-                                        components = ImportedXmlLayoutEditor.inspect(File(projectRoot, screen.sourcePath))
-                                        status = "Ordem atualizada no XML original."
-                                        onSourceChanged()
-                                    }.onFailure { status = it.message ?: "Não foi possível mover." }
+                                    requestChange {
+                                        runCatching {
+                                            ImportedXmlLayoutEditor.moveSibling(File(projectRoot, screen.sourcePath), selected.id, index + 1)
+                                            components = ImportedXmlLayoutEditor.inspect(File(projectRoot, screen.sourcePath))
+                                            status = "Ordem atualizada no XML original."
+                                            onSourceChanged()
+                                        }.onFailure { status = it.message ?: "Não foi possível mover." }
+                                    }
                                 }
                             ) { Text("Mover para baixo") }
                         }
@@ -249,5 +262,21 @@ internal fun ImportedScreenVisualEditor(
             }
             Text(status, color = Color(0xFF718397), fontSize = 11.sp)
         }
+    }
+    pendingChange?.let { change ->
+        AlertDialog(
+            onDismissRequest = { pendingChange = null },
+            title = { Text("Confirmar alteração no projeto?") },
+            text = { Text("Esta ação vai modificar o arquivo XML original. O código permanecerá intacto se você cancelar.") },
+            confirmButton = {
+                Button(onClick = {
+                    pendingChange = null
+                    change()
+                }) { Text("Confirmar e aplicar") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { pendingChange = null }) { Text("Cancelar") }
+            }
+        )
     }
 }

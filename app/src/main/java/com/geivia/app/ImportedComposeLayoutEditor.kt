@@ -23,7 +23,9 @@ internal object ImportedComposeLayoutEditor {
             val literal = stringLiteral(source, argumentStart, close)
             if (literal != null) {
                 val before = source.substring(argumentStart, literal.first)
-                if (before.isBlank() || before.trim() == "text =") {
+                val after = skipTrivia(source, literal.second, close)
+                val standaloneLiteral = after == close || source[after] == ','
+                if ((before.isBlank() || before.trim() == "text =") && standaloneLiteral) {
                     val ordinal = result.size
                     result += LiteralText("text_$ordinal", decode(source.substring(literal.first, literal.second)), literal.first, literal.second)
                 }
@@ -74,7 +76,9 @@ internal object ImportedComposeLayoutEditor {
             val literal = stringLiteral(source, argumentStart, close)
             if (literal != null) {
                 val before = source.substring(argumentStart, literal.first)
-                if (before.isBlank() || before.trim() == "text =") {
+                val after = skipTrivia(source, literal.second, close)
+                val standaloneLiteral = after == close || source[after] == ','
+                if ((before.isBlank() || before.trim() == "text =") && standaloneLiteral) {
                     val ordinal = result.size
                     result += LiteralText("text_$ordinal", decode(source.substring(literal.first, literal.second)), literal.first, literal.second)
                 }

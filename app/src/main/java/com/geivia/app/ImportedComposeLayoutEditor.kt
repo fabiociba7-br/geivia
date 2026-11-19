@@ -195,6 +195,15 @@ internal object ImportedComposeLayoutEditor {
                 i += 3
                 continue
             }
+            if (!inString && !triple && source[i] == '\'') {
+                i++
+                while (i < limit) {
+                    if (source[i] == '\\') { i += 2; continue }
+                    if (source[i] == '\'') { i++; break }
+                    i++
+                }
+                continue
+            }
             val c = source[i]
             if (!triple && c == '"' && !escaped) inString = !inString
             if (!inString && !triple) {

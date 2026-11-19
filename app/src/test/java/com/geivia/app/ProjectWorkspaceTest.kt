@@ -150,6 +150,7 @@ class ProjectWorkspaceTest {
         val project = File(selected, "inner")
         File(project, "settings.gradle.kts").apply { parentFile!!.mkdirs(); writeText("") }
         File(project, "app/build.gradle.kts").apply { parentFile!!.mkdirs(); writeText("") }
+        File(project, "app/src/main/AndroidManifest.xml").apply { parentFile!!.mkdirs(); writeText("<manifest />") }
 
         val info = ProjectWorkspaceInfo.scan(selected)
 

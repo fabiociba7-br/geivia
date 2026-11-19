@@ -162,7 +162,7 @@ internal data class StudioLogicDocument(
         const val MAX_TARGET_LENGTH = 256
 
         private val KEY_PATTERN = Regex("[A-Za-z_][A-Za-z0-9_]{0,63}")
-        private val VARIABLE_REFERENCE = Regex("\\$\\{([A-Za-z_][A-Za-z0-9_]{0,63})}")
+        private val VARIABLE_REFERENCE = Regex("\\$\\{([A-Za-z_][A-Za-z0-9_]{0,63})\\}")
         private val VARIABLE_TYPES = setOf("text", "number", "boolean", "json")
         private val ACTION_TRIGGERS = setOf("on_click", "on_screen_open", "on_value_change")
         private val ACTION_KINDS = setOf("navigate", "set_variable", "show_message")

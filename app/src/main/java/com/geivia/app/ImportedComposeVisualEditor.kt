@@ -55,6 +55,7 @@ internal fun ImportedComposeVisualEditor(
     var previousBackupAvailable by remember(screen.sourcePath) { mutableStateOf(ImportedSourceRecovery.available(sourceFile, projectRoot, ImportedSourceRecovery.Version.PREVIOUS)) }
     var pendingChange by remember { mutableStateOf<(() -> Unit)?>(null) }
     var backupPreview by remember { mutableStateOf<String?>(null) }
+    var historyEntries by remember(screen.sourcePath) { mutableStateOf(ImportedSourceHistory.recent(projectRoot, File(projectRoot, screen.sourcePath))) }
     var texts by remember(screen.sourcePath, screen.name) {
         mutableStateOf(runCatching { ImportedComposeLayoutEditor.inspect(sourceFile, screen.name) }.getOrDefault(emptyList()))
     }
@@ -113,7 +114,7 @@ internal fun ImportedComposeVisualEditor(
                                     latestBackupAvailable = ImportedSourceRecovery.available(sourceFile, projectRoot, ImportedSourceRecovery.Version.LATEST)
                                     previousBackupAvailable = ImportedSourceRecovery.available(sourceFile, projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
                                     status = "Texto atualizado no arquivo Kotlin original."
-                                    onSourceChanged()
+                                    ImportedSourceHistory.record(projectRoot, File(projectRoot, screen.sourcePath), "Alteração de fonte", status)\n                                            historyEntries = ImportedSourceHistory.recent(projectRoot, File(projectRoot, screen.sourcePath))\n                                            onSourceChanged()
                                 }.onFailure { status = it.message ?: "Não foi possível salvar no Kotlin." }
                             }
                         }) { Text("Salvar no arquivo-fonte") }
@@ -171,6 +172,24 @@ internal fun ImportedComposeVisualEditor(
                 }
             }
             Text(status, color = Color(0xFF718397), fontSize = 11.sp)
+            Card(colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("HISTÓRICO DE ALTERAÇÕES", color = Color(0xFF1769AA), fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                    if (historyEntries.isEmpty()) {
+                        Text("Nenhuma alteração registrada nesta tela ainda.", color = Color(0xFF718397), fontSize = 11.sp)
+                    } else {
+                        historyEntries.forEach { entry ->
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(entry.action, color = Color(0xFF17354D), fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
+                                Text(ImportedSourceHistory.formatTime(entry.timestamp), color = Color(0xFF718397), fontSize = 10.sp)
+                                if (entry.detail.isNotBlank()) Text(entry.detail, color = Color(0xFF718397), fontSize = 10.sp, maxLines = 2)
+                            }
+                        }
+                    }
+                    Text("Armazenado localmente no projeto · até 100 eventos.", color = Color(0xFF718397), fontSize = 9.sp)
+                }
+            }
+
         }
     }
     backupPreview?.let { content ->

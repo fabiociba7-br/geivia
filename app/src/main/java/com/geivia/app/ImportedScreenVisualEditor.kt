@@ -142,7 +142,9 @@ internal fun ImportedScreenVisualEditor(
                                                 latestBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)
                                                 previousBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
                                                 status = "Componente reposicionado e salvo no XML original."
-                                                ImportedSourceHistory.record(projectRoot, File(projectRoot, screen.sourcePath), "Alteração de fonte", status)\n                                            historyEntries = ImportedSourceHistory.recent(projectRoot, File(projectRoot, screen.sourcePath))\n                                            onSourceChanged()
+                                                ImportedSourceHistory.record(projectRoot, File(projectRoot, screen.sourcePath), "Alteração de fonte", status)
+                                                historyEntries = ImportedSourceHistory.recent(projectRoot, File(projectRoot, screen.sourcePath))
+                                                onSourceChanged()
                                             }.onFailure { status = it.message ?: "Não foi possível reposicionar." }
                                         }
                                     }

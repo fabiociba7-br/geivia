@@ -45,6 +45,7 @@ internal object ImportedSourceRecovery {
 
         val candidate = File(source.parentFile, source.name + ".geivia.restore.tmp")
         val rollback = File(source.parentFile, source.name + ".geivia.restore.rollback")
+        val beforeRestore = File(source.parentFile, source.name + ".geivia.before-restore")
         require(!candidate.exists() && !rollback.exists()) {
             "Há uma recuperação anterior incompleta. Preserve os arquivos temporários antes de continuar."
         }
@@ -52,6 +53,8 @@ internal object ImportedSourceRecovery {
         try {
             backup.copyTo(candidate, overwrite = false)
             validateCandidate(candidate)
+            // Keep the exact pre-restoration source as an additional recovery point.
+            source.copyTo(beforeRestore, overwrite = true)
             require(source.renameTo(rollback)) { "Não foi possível preservar o arquivo atual." }
             if (!candidate.renameTo(source)) {
                 val restored = rollback.renameTo(source)

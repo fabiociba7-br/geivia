@@ -94,7 +94,7 @@ internal object ImportedComposeLayoutEditor {
 
     private fun composableBody(source: String, name: String): Pair<Int, Int> {
         require(IDENTIFIER.matches(name)) { "Nome de função inválido." }
-        val declaration = Regex("""@Composable(?:\\s*\\([^)]*\\))?\\s+(?:(?:private|internal|public|protected|inline|suspend|override)\\s+)*fun\\s+${Regex.escape(name)}\\s*\\(""")
+        val declaration = Regex("""@Composable(?:\s*\\([^)]*\\))?\s+(?:(?:private|internal|public|protected|inline|suspend|override)\s+)*fun\s+${Regex.escape(name)}\s*\\(""")
             .find(source) ?: throw IllegalArgumentException("Função @Composable não encontrada.")
         val paramsOpen = source.indexOf('(', declaration.range.first)
         val paramsClose = matching(source, paramsOpen, '(', ')', source.length)

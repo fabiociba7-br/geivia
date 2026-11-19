@@ -113,13 +113,37 @@ internal object ImportedComposeLayoutEditor {
     private fun findIdentifierCall(source: String, name: String, from: Int, limit: Int): Int? {
         var i = from
         while (i < limit) {
-            i = source.indexOf(name, i)
-            if (i < 0 || i >= limit) return null
-            val beforeOk = i == 0 || !source[i - 1].isLetterOrDigit() && source[i - 1] != '_'
-            var next = i + name.length
-            while (next < limit && source[next].isWhitespace()) next++
-            if (beforeOk && next < limit && source[next] == '(') return i
-            i += name.length
+            if (source.startsWith("//", i)) {
+                i = source.indexOf('\n', i).takeIf { it >= 0 } ?: limit
+                continue
+            }
+            if (source.startsWith("/*", i)) {
+                val close = source.indexOf("*/", i + 2)
+                i = if (close < 0) limit else close + 2
+                continue
+            }
+            if (source.startsWith("\"\"\"", i)) {
+                val close = source.indexOf("\"\"\"", i + 3)
+                i = if (close < 0) limit else close + 3
+                continue
+            }
+            if (source[i] == '"' || source[i] == '\'') {
+                val quote = source[i]
+                i++
+                while (i < limit) {
+                    if (source[i] == '\\') { i += 2; continue }
+                    if (source[i] == quote) { i++; break }
+                    i++
+                }
+                continue
+            }
+            if (i + name.length <= limit && source.regionMatches(i, name, 0, name.length)) {
+                val beforeOk = i == 0 || !source[i - 1].isLetterOrDigit() && source[i - 1] != '_'
+                var next = i + name.length
+                while (next < limit && source[next].isWhitespace()) next++
+                if (beforeOk && next < limit && source[next] == '(') return i
+            }
+            i++
         }
         return null
     }

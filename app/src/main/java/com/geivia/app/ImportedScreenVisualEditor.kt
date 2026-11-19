@@ -114,7 +114,8 @@ internal fun ImportedScreenVisualEditor(
                                     val siblings = components.filter { it.parentId == component.parentId }
                                     val currentIndex = siblings.indexOfFirst { it.id == component.id }
                                     val direction = if (dragDistance < -24f) -1 else if (dragDistance > 24f) 1 else 0
-                                    val targetIndex = (currentIndex + direction).coerceIn(0, (siblings.size - 1).coerceAtLeast(0))
+                                    val steps = (abs(dragDistance) / 64f).toInt().coerceAtLeast(1)
+                                    val targetIndex = (currentIndex + direction * steps).coerceIn(0, (siblings.size - 1).coerceAtLeast(0))
                                     if (direction != 0 && component.canReorder && currentIndex >= 0) {
                                         runCatching {
                                             ImportedXmlLayoutEditor.moveSibling(File(projectRoot, screen.sourcePath), component.id, targetIndex)

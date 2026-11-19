@@ -277,44 +277,50 @@ internal fun ImportedScreenVisualEditor(
                 Card(colors = CardDefaults.cardColors(containerColor = Color.White)) {
                     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("RECUPERAÇÃO DO ARQUIVO-FONTE", color = Color(0xFF1769AA), fontWeight = FontWeight.Bold, fontSize = 10.sp)
-                        Text("Restaure uma cópia de segurança sem apagar os arquivos de backup.", color = Color(0xFF718397), fontSize = 11.sp)
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            if (latestBackupAvailable) OutlinedButton(onClick = {
-                                backupPreview = runCatching {
-                                    ImportedSourceRecovery.preview(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)
-                                }.fold({ "Última versão · ${File(projectRoot, screen.sourcePath).name}\n\n" + it }, { "Não foi possível abrir a prévia: ${it.message}" })
-                            }) { Text("Prévia da última") }
-                            if (previousBackupAvailable) OutlinedButton(onClick = {
-                                backupPreview = runCatching {
-                                    ImportedSourceRecovery.preview(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
-                                }.fold({ "Versão anterior · ${File(projectRoot, screen.sourcePath).name}\n\n" + it }, { "Não foi possível abrir a prévia: ${it.message}" })
-                            }) { Text("Prévia da anterior") }
+                        Text("Confira o conteúdo antes de restaurar uma cópia.", color = Color(0xFF718397), fontSize = 11.sp)
+                        if (latestBackupAvailable) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(onClick = {
+                                    backupPreview = runCatching {
+                                        ImportedSourceRecovery.preview(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)
+                                    }.fold({ "Última versão · ${File(projectRoot, screen.sourcePath).name}\n\n" + it }, { "Não foi possível abrir a prévia: ${it.message}" })
+                                }) { Text("Prévia da última") }
+                                OutlinedButton(onClick = {
+                                    requestChange {
+                                        runCatching {
+                                            ImportedSourceRecovery.restore(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)
+                                            val file = File(projectRoot, screen.sourcePath)
+                                            components = ImportedXmlLayoutEditor.inspect(file)
+                                            latestBackupAvailable = ImportedSourceRecovery.available(file, projectRoot, ImportedSourceRecovery.Version.LATEST)
+                                            previousBackupAvailable = ImportedSourceRecovery.available(file, projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
+                                            status = "Última versão de segurança restaurada."
+                                            onSourceChanged()
+                                        }.onFailure { status = it.message ?: "Não foi possível restaurar a versão." }
+                                    }
+                                }) { Text("Restaurar última") }
                             }
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    runCatching {
-                                        ImportedSourceRecovery.restore(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)
-                                        components = ImportedXmlLayoutEditor.inspect(File(projectRoot, screen.sourcePath))
-                                                latestBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)
-                                                previousBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
-                                        status = "Última versão de segurança restaurada."
-                                        onSourceChanged()
-                                    }.onFailure { status = it.message ?: "Não foi possível restaurar a versão." }
-                                }
-                            }) { Text("Restaurar última") }
-                            if (previousBackupAvailable) OutlinedButton(onClick = {
-                                requestChange {
-                                    runCatching {
-                                        ImportedSourceRecovery.restore(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
-                                        components = ImportedXmlLayoutEditor.inspect(File(projectRoot, screen.sourcePath))
-                                                latestBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)
-                                                previousBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
-                                        status = "Versão anterior restaurada."
-                                        onSourceChanged()
-                                    }.onFailure { status = it.message ?: "Não foi possível restaurar a versão." }
-                                }
-                            }) { Text("Restaurar anterior") }                            }
                         }
+                        if (previousBackupAvailable) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(onClick = {
+                                    backupPreview = runCatching {
+                                        ImportedSourceRecovery.preview(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
+                                    }.fold({ "Versão anterior · ${File(projectRoot, screen.sourcePath).name}\n\n" + it }, { "Não foi possível abrir a prévia: ${it.message}" })
+                                }) { Text("Prévia da anterior") }
+                                OutlinedButton(onClick = {
+                                    requestChange {
+                                        runCatching {
+                                            ImportedSourceRecovery.restore(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
+                                            val file = File(projectRoot, screen.sourcePath)
+                                            components = ImportedXmlLayoutEditor.inspect(file)
+                                            latestBackupAvailable = ImportedSourceRecovery.available(file, projectRoot, ImportedSourceRecovery.Version.LATEST)
+                                            previousBackupAvailable = ImportedSourceRecovery.available(file, projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
+                                            status = "Versão anterior restaurada."
+                                            onSourceChanged()
+                                        }.onFailure { status = it.message ?: "Não foi possível restaurar a versão." }
+                                    }
+                                }) { Text("Restaurar anterior") }
+                            }
                         }
                     }
                 }

@@ -853,7 +853,17 @@ internal fun VisualEditorScreen(
                                 }
                             } else {
                                 elements.filter { it.parentId == null && it.visible }.forEach { element ->
-                                    EditorCanvasNode(element, elements, selectedId, editorColor(themePrimary, EditorBlue), editorColor(themeText, EditorInk)) { selectedId = it }
+                                    EditorCanvasNode(
+                                        element = element,
+                                        allElements = elements,
+                                        selectedId = selectedId,
+                                        primaryColor = editorColor(themePrimary, EditorBlue),
+                                        defaultTextColor = editorColor(themeText, EditorInk),
+                                        onSelect = { selectedId = it },
+                                        dragEnabled = true,
+                                        dragStepPx = dragStepPx,
+                                        onReorder = { id, steps -> reorderDraggedElement(id, steps) }
+                                    )
                                 }
                             }
                         }
@@ -1067,7 +1077,7 @@ internal fun VisualEditorScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("Canvas", fontWeight = FontWeight.Bold, color = EditorInk)
-                            Text("Prévia da tela Android", color = EditorMuted, fontSize = 11.sp)
+                            Text("Segure um componente e arraste para cima ou para baixo para reposicioná-lo.", color = EditorMuted, fontSize = 11.sp)
                         }
                         Surface(color = Color(0xFFEAF3FB), shape = RoundedCornerShape(20.dp)) {
                             Text("MOBILE", modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp), color = EditorBlue, fontSize = 9.sp, fontWeight = FontWeight.Bold)
@@ -1086,7 +1096,17 @@ internal fun VisualEditorScreen(
                                 Icon(Icons.Default.MoreHoriz, null, tint = EditorMuted)
                             }
                             elements.filter { it.parentId == null }.forEach { element ->
-                                EditorCanvasNode(element = element, allElements = elements, selectedId = selectedId, primaryColor = editorColor(themePrimary, EditorBlue), defaultTextColor = editorColor(themeText, EditorInk), onSelect = { selectedId = it })
+                                EditorCanvasNode(
+                                    element = element,
+                                    allElements = elements,
+                                    selectedId = selectedId,
+                                    primaryColor = editorColor(themePrimary, EditorBlue),
+                                    defaultTextColor = editorColor(themeText, EditorInk),
+                                    onSelect = { selectedId = it },
+                                    dragEnabled = true,
+                                    dragStepPx = dragStepPx,
+                                    onReorder = { id, steps -> reorderDraggedElement(id, steps) }
+                                )
                             }
                         }
                     }
@@ -1645,7 +1665,10 @@ private fun EditorCanvasNode(
     defaultTextColor: Color = EditorInk,
     interactive: Boolean = false,
     onActivate: (String, String, String) -> Unit = { _, _, _ -> },
-    onSelect: (String) -> Unit
+    onSelect: (String) -> Unit,
+    dragEnabled: Boolean = false,
+    dragStepPx: Float = 52f,
+    onReorder: (String, Int) -> Unit = { _, _ -> }
 ) {
     if (!element.visible) return
     val children = allElements.filter { it.parentId == element.id && it.visible }
@@ -1656,7 +1679,28 @@ private fun EditorCanvasNode(
     val componentText = if (element.type == "button" && element.textColor == "#17354D") Color.White else editorColor(element.textColor, defaultText)
     val container = element.type in setOf("section", "column", "row") || (element.type == "card" && children.isNotEmpty())
     Surface(
-        modifier = Modifier.fillMaxWidth().clickable { onSelect(element.id); if (interactive) onActivate(element.id, "on_click", "") },
+        modifier = Modifier.fillMaxWidth()
+            .pointerInput(element.id, allElements.size, dragEnabled, dragStepPx) {
+                if (dragEnabled) {
+                    var totalDragY = 0f
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = {
+                            totalDragY = 0f
+                            onSelect(element.id)
+                        },
+                        onDrag = { change, amount ->
+                            change.consume()
+                            totalDragY += amount.y
+                        },
+                        onDragEnd = {
+                            val steps = (totalDragY / dragStepPx.coerceAtLeast(1f)).roundToInt()
+                            if (steps != 0) onReorder(element.id, steps)
+                        },
+                        onDragCancel = { totalDragY = 0f }
+                    )
+                }
+            }
+            .clickable { onSelect(element.id); if (interactive) onActivate(element.id, "on_click", "") },
         color = if (selected) Color(0xFFEAF3FB) else componentBackground,
         shape = RoundedCornerShape(element.cornerRadius.dp),
         border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) EditorBlue else Color(0xFFE3EAF1))
@@ -1671,11 +1715,11 @@ private fun EditorCanvasNode(
                 } else if (element.type == "row") {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                         children.forEach { child ->
-                            Box(Modifier.weight(1f)) { EditorCanvasNode(child, allElements, selectedId, primaryColor, defaultTextColor, interactive, onActivate, onSelect) }
+                            Box(Modifier.weight(1f)) { EditorCanvasNode(child, allElements, selectedId, primaryColor, defaultTextColor, interactive, onActivate, onSelect, dragEnabled, dragStepPx, onReorder) }
                         }
                     }
                 } else {
-                    children.forEach { child -> EditorCanvasNode(child, allElements, selectedId, primaryColor, defaultTextColor, interactive, onActivate, onSelect) }
+                    children.forEach { child -> EditorCanvasNode(child, allElements, selectedId, primaryColor, defaultTextColor, interactive, onActivate, onSelect, dragEnabled, dragStepPx, onReorder) }
                 }
             } else {
                 val align = when (element.alignment) {

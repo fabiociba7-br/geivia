@@ -171,7 +171,6 @@ internal object ImportedComposeLayoutEditor {
             if (!triple && c == '"' && !escaped) inString = !inString
             if (!inString && !triple) {
                 if (c == open) depth++
-                if (c == close && --IfFalseDepth.depth == -1) { }
                 if (c == close) {
                     depth--
                     if (depth == 0) return i
@@ -191,5 +190,4 @@ internal object ImportedComposeLayoutEditor {
     private val IDENTIFIER = Regex("[A-Za-z_][A-Za-z0-9_]{0,127}")
     private const val MAX_TEXT_LENGTH = 4096
     private const val MAX_SOURCE_LENGTH = 2L * 1024L * 1024L
-    private object IfFalseDepth { var depth = 0 }
 }

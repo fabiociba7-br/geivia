@@ -214,6 +214,8 @@ internal fun ImportedScreenVisualEditor(
                                     latestBackupAvailable = ImportedSourceRecovery.available(file, projectRoot, ImportedSourceRecovery.Version.LATEST)
                                     previousBackupAvailable = ImportedSourceRecovery.available(file, projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
                                     status = "Dimensões salvas no XML original."
+                                    ImportedSourceHistory.record(projectRoot, File(projectRoot, screen.sourcePath), "Alteração de fonte", status)
+                                    historyEntries = ImportedSourceHistory.recent(projectRoot, File(projectRoot, screen.sourcePath))
                                     onSourceChanged()
                                 }.onFailure { status = it.message ?: "Dimensões inválidas." }
                             }
@@ -233,6 +235,8 @@ internal fun ImportedScreenVisualEditor(
                                                 latestBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)
                                                 previousBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
                                         status = "Texto gravado no XML original."
+                                        ImportedSourceHistory.record(projectRoot, File(projectRoot, screen.sourcePath), "Alteração de fonte", status)
+                                        historyEntries = ImportedSourceHistory.recent(projectRoot, File(projectRoot, screen.sourcePath))
                                         onSourceChanged()
                                     }.onFailure { status = it.message ?: "Não foi possível salvar." }
                                 }
@@ -253,6 +257,8 @@ internal fun ImportedScreenVisualEditor(
                                                 latestBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)
                                                 previousBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
                                             status = "Ordem atualizada no XML original."
+                                            ImportedSourceHistory.record(projectRoot, File(projectRoot, screen.sourcePath), "Alteração de fonte", status)
+                                            historyEntries = ImportedSourceHistory.recent(projectRoot, File(projectRoot, screen.sourcePath))
                                             onSourceChanged()
                                         }.onFailure { status = it.message ?: "Não foi possível mover." }
                                     }
@@ -268,6 +274,8 @@ internal fun ImportedScreenVisualEditor(
                                                 latestBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)
                                                 previousBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
                                             status = "Ordem atualizada no XML original."
+                                            ImportedSourceHistory.record(projectRoot, File(projectRoot, screen.sourcePath), "Alteração de fonte", status)
+                                            historyEntries = ImportedSourceHistory.recent(projectRoot, File(projectRoot, screen.sourcePath))
                                             onSourceChanged()
                                         }.onFailure { status = it.message ?: "Não foi possível mover." }
                                     }
@@ -298,6 +306,8 @@ internal fun ImportedScreenVisualEditor(
                                             latestBackupAvailable = ImportedSourceRecovery.available(file, projectRoot, ImportedSourceRecovery.Version.LATEST)
                                             previousBackupAvailable = ImportedSourceRecovery.available(file, projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
                                             status = "Última versão de segurança restaurada."
+                                            ImportedSourceHistory.record(projectRoot, File(projectRoot, screen.sourcePath), "Alteração de fonte", status)
+                                            historyEntries = ImportedSourceHistory.recent(projectRoot, File(projectRoot, screen.sourcePath))
                                             onSourceChanged()
                                         }.onFailure { status = it.message ?: "Não foi possível restaurar a versão." }
                                     }
@@ -320,6 +330,8 @@ internal fun ImportedScreenVisualEditor(
                                             latestBackupAvailable = ImportedSourceRecovery.available(file, projectRoot, ImportedSourceRecovery.Version.LATEST)
                                             previousBackupAvailable = ImportedSourceRecovery.available(file, projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
                                             status = "Versão anterior restaurada."
+                                            ImportedSourceHistory.record(projectRoot, File(projectRoot, screen.sourcePath), "Alteração de fonte", status)
+                                            historyEntries = ImportedSourceHistory.recent(projectRoot, File(projectRoot, screen.sourcePath))
                                             onSourceChanged()
                                         }.onFailure { status = it.message ?: "Não foi possível restaurar a versão." }
                                     }

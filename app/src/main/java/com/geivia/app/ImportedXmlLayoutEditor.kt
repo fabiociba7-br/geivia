@@ -72,13 +72,14 @@ internal object ImportedXmlLayoutEditor {
         }
     }
 
-    fun updateDimension(layoutFile: File, componentId: String, attribute: String, value: String) {
-        require(attribute in setOf("layout_width", "layout_height")) { "Propriedade de dimensão não permitida." }
-        require(DIMENSION_PATTERN.matches(value)) { "Use wrap_content, match_parent ou uma medida em dp." }
+    fun updateDimensions(layoutFile: File, componentId: String, width: String, height: String) {
+        require(DIMENSION_PATTERN.matches(width)) { "Largura inválida: use wrap_content, match_parent ou dp." }
+        require(DIMENSION_PATTERN.matches(height)) { "Altura inválida: use wrap_content, match_parent ou dp." }
         edit(layoutFile) { document ->
             val target = findById(document, componentId)
                 ?: throw IllegalArgumentException("Componente @id/$componentId não encontrado.")
-            target.setAttributeNS(ANDROID_NS, "android:$attribute", value)
+            target.setAttributeNS(ANDROID_NS, "android:layout_width", width)
+            target.setAttributeNS(ANDROID_NS, "android:layout_height", height)
         }
     }
 

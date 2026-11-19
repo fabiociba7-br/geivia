@@ -63,7 +63,7 @@ internal object ImportedXmlLayoutEditor {
 
     fun updateText(layoutFile: File, componentId: String, text: String) {
         require(text.length <= MAX_TEXT_LENGTH) { "Texto excede o limite permitido." }
-        edit(layoutFile) { document ->
+        edit(layoutFile, "Edição de texto XML") { document ->
             val target = findById(document, componentId)
                 ?: throw IllegalArgumentException("Componente @id/$componentId não encontrado.")
             val tag = target.tagName.substringAfterLast('.')
@@ -75,7 +75,7 @@ internal object ImportedXmlLayoutEditor {
     fun updateDimensions(layoutFile: File, componentId: String, width: String, height: String) {
         require(DIMENSION_PATTERN.matches(width)) { "Largura inválida: use wrap_content, match_parent ou dp." }
         require(DIMENSION_PATTERN.matches(height)) { "Altura inválida: use wrap_content, match_parent ou dp." }
-        edit(layoutFile) { document ->
+        edit(layoutFile, "Alteração de dimensões XML") { document ->
             val target = findById(document, componentId)
                 ?: throw IllegalArgumentException("Componente @id/$componentId não encontrado.")
             target.setAttributeNS(ANDROID_NS, "android:layout_width", width)
@@ -84,7 +84,7 @@ internal object ImportedXmlLayoutEditor {
     }
 
     fun moveSibling(layoutFile: File, componentId: String, newIndex: Int) {
-        edit(layoutFile) { document ->
+        edit(layoutFile, "Reordenação de componentes XML") { document ->
             val target = findById(document, componentId)
                 ?: throw IllegalArgumentException("Componente @id/$componentId não encontrado.")
             val parent = target.parentNode as? Element
@@ -108,7 +108,7 @@ internal object ImportedXmlLayoutEditor {
         }
     }
 
-    private fun edit(file: File, mutation: (Document) -> Unit) {
+    private fun edit(file: File, action: String, mutation: (Document) -> Unit) {
         require(file.isFile && file.extension.equals("xml", true)) {
             "Selecione um arquivo de layout XML existente."
         }
@@ -151,7 +151,7 @@ internal object ImportedXmlLayoutEditor {
                     else "Falha crítica: o layout não foi substituído. A cópia original permanece em ${backup.name}."
                 )
             }
-            // Keep the last known-good source and one earlier version for recovery.
+            // Keep the last known-good source and one earlier version for recovery.\n            ImportedSourceHistory.record(file.parentFile.parentFile, file, action)
         } finally {
             if (temp.exists()) temp.delete()
         }

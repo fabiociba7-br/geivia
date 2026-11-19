@@ -162,8 +162,9 @@ internal object ImportedSourceHistory {
             output.append("Nenhuma diferença de texto encontrada.\\n")
             return
         }
+        val visibleChanges = changed.take(MAX_DIFF_LINES)
         val included = linkedSetOf<Int>()
-        changed.forEach { index ->
+        visibleChanges.forEach { index ->
             for (candidate in (index - DIFF_CONTEXT_LINES).coerceAtLeast(0)..(index + DIFF_CONTEXT_LINES).coerceAtMost(operations.lastIndex)) {
                 included += candidate
             }
@@ -181,8 +182,11 @@ internal object ImportedSourceHistory {
             if (line.kind != ' ') emittedChanges++
             previous = index
         }
-        if (emittedChanges > MAX_DIFF_LINES) output.append("[Exibindo contexto de todas as diferenças; quantidade de linhas alteradas: ")
-            .append(emittedChanges).append(".]\\n")
+        if (changed.size > visibleChanges.size) {
+            output.append("[Prévia limitada às primeiras ").append(visibleChanges.size)
+                .append(" linhas alteradas; ").append(changed.size - visibleChanges.size)
+                .append(" linhas alteradas não foram exibidas.]\\n")
+        }
     }
 
     fun restore(projectRoot: File, entry: Entry, source: File) {

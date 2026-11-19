@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -47,6 +48,7 @@ internal fun ImportedComposeVisualEditor(
     var selectedId by rememberSaveable(screen.sourcePath, screen.name) { mutableStateOf<String?>(null) }
     var draft by remember(screen.sourcePath, screen.name, selectedId) { mutableStateOf("") }
     var status by remember(screen.sourcePath, screen.name) { mutableStateOf("Somente textos literais são editáveis nesta versão.") }
+    var pendingChange by remember { mutableStateOf<(() -> Unit)?>(null) }
     var texts by remember(screen.sourcePath, screen.name) {
         mutableStateOf(runCatching { ImportedComposeLayoutEditor.inspect(sourceFile, screen.name) }.getOrDefault(emptyList()))
     }
@@ -98,17 +100,35 @@ internal fun ImportedComposeVisualEditor(
                             label = { Text("Texto do componente") }
                         )
                         Button(onClick = {
-                            runCatching {
-                                ImportedComposeLayoutEditor.updateText(sourceFile, screen.name, selected.id, draft)
-                                texts = ImportedComposeLayoutEditor.inspect(sourceFile, screen.name)
-                                status = "Texto atualizado no arquivo Kotlin original."
-                                onSourceChanged()
-                            }.onFailure { status = it.message ?: "Não foi possível salvar no Kotlin." }
+                            pendingChange = {
+                                runCatching {
+                                    ImportedComposeLayoutEditor.updateText(sourceFile, screen.name, selected.id, draft)
+                                    texts = ImportedComposeLayoutEditor.inspect(sourceFile, screen.name)
+                                    status = "Texto atualizado no arquivo Kotlin original."
+                                    onSourceChanged()
+                                }.onFailure { status = it.message ?: "Não foi possível salvar no Kotlin." }
+                            }
                         }) { Text("Salvar no arquivo-fonte") }
                     }
                 }
             }
             Text(status, color = Color(0xFF718397), fontSize = 11.sp)
         }
+    }
+    pendingChange?.let { change ->
+        AlertDialog(
+            onDismissRequest = { pendingChange = null },
+            title = { Text("Confirmar alteração no projeto?") },
+            text = { Text("Esta ação vai modificar o arquivo Kotlin original. O código permanecerá intacto se você cancelar.") },
+            confirmButton = {
+                Button(onClick = {
+                    pendingChange = null
+                    change()
+                }) { Text("Confirmar e aplicar") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { pendingChange = null }) { Text("Cancelar") }
+            }
+        )
     }
 }

@@ -48,6 +48,8 @@ internal fun ImportedComposeVisualEditor(
     var selectedId by rememberSaveable(screen.sourcePath, screen.name) { mutableStateOf<String?>(null) }
     var draft by remember(screen.sourcePath, screen.name, selectedId) { mutableStateOf("") }
     var status by remember(screen.sourcePath, screen.name) { mutableStateOf("Somente textos literais são editáveis nesta versão.") }
+    var latestBackupAvailable by remember(screen.sourcePath) { mutableStateOf(ImportedSourceRecovery.available(sourceFile, projectRoot, ImportedSourceRecovery.Version.LATEST)) }
+    var previousBackupAvailable by remember(screen.sourcePath) { mutableStateOf(ImportedSourceRecovery.available(sourceFile, projectRoot, ImportedSourceRecovery.Version.PREVIOUS)) }
     var pendingChange by remember { mutableStateOf<(() -> Unit)?>(null) }
     var texts by remember(screen.sourcePath, screen.name) {
         mutableStateOf(runCatching { ImportedComposeLayoutEditor.inspect(sourceFile, screen.name) }.getOrDefault(emptyList()))
@@ -109,6 +111,36 @@ internal fun ImportedComposeVisualEditor(
                                 }.onFailure { status = it.message ?: "Não foi possível salvar no Kotlin." }
                             }
                         }) { Text("Salvar no arquivo-fonte") }
+                    }
+                }
+            }
+            if (latestBackupAvailable || previousBackupAvailable) {
+                Card(colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("RECUPERAÇÃO DO ARQUIVO-FONTE", color = Color(0xFF1769AA), fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                        Text("Restaure uma cópia de segurança sem apagar os arquivos de backup.", color = Color(0xFF718397), fontSize = 11.sp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (latestBackupAvailable) OutlinedButton(onClick = {
+                                pendingChange = {
+                                    runCatching {
+                                        ImportedSourceRecovery.restore(sourceFile, projectRoot, ImportedSourceRecovery.Version.LATEST)
+                                        texts = ImportedComposeLayoutEditor.inspect(sourceFile, screen.name)
+                                        status = "Última versão de segurança restaurada."
+                                        onSourceChanged()
+                                    }.onFailure { status = it.message ?: "Não foi possível restaurar a versão." }
+                                }
+                            }) { Text("Restaurar última") }
+                            if (previousBackupAvailable) OutlinedButton(onClick = {
+                                pendingChange = {
+                                    runCatching {
+                                        ImportedSourceRecovery.restore(sourceFile, projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
+                                        texts = ImportedComposeLayoutEditor.inspect(sourceFile, screen.name)
+                                        status = "Versão anterior restaurada."
+                                        onSourceChanged()
+                                    }.onFailure { status = it.message ?: "Não foi possível restaurar a versão." }
+                                }
+                            }) { Text("Restaurar anterior") }
+                        }
                     }
                 }
             }

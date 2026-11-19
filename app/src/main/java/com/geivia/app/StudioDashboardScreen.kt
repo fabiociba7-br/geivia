@@ -84,12 +84,7 @@ internal fun StudioDashboardScreen(
         StudioNavItem("FERRAMENTAS VISUAIS", "Ações e lógica", Icons.Default.AccountTree, { navigate(onEditor) }),
 
         StudioNavItem("TERMINAL E EXECUÇÃO", "Terminal Linux", Icons.Default.Terminal, { navigate(onTerminal) }),
-        StudioNavItem("TERMINAL E EXECUÇÃO", "Compilar aplicativo", Icons.Default.Build, {
-            navigate {
-                val root = ProjectWorkspaceInfo.activeRoot(context)
-                CodeOnTheGoBridge.openProject(context, root)
-            }
-        }),
+        StudioNavItem("TERMINAL E EXECUÇÃO", "Compilar aplicativo", Icons.Default.Build, { navigate(onTools) }),
         StudioNavItem("TERMINAL E EXECUÇÃO", "Ferramentas de build", Icons.Default.Construction, { navigate(onTools) }),
 
         StudioNavItem("FIREBASE E SERVIÇOS", "Firebase e dados", Icons.Default.CloudQueue, { navigate(onFirebase) }),
@@ -306,10 +301,7 @@ internal fun StudioDashboardScreen(
                 Spacer(Modifier.height(9.dp))
                 StudioActionCard(Icons.Default.Widgets, "Editor visual", "Monte telas com componentes e edite suas propriedades", true, onEditor)
                 Spacer(Modifier.height(8.dp))
-                StudioActionCard(Icons.Default.Build, "Compilar (Code on the Go)", "Abre o projeto no Code on the Go para gerar o APK no celular", true, {
-                    val root = ProjectWorkspaceInfo.activeRoot(context)
-                    CodeOnTheGoBridge.openProject(context, root)
-                })
+                StudioActionCard(Icons.Default.Build, "Compilar com GEIVIA", "Use as ferramentas internas do GEIVIA para preparar e compilar o projeto", true, onTools)
                 Spacer(Modifier.height(8.dp))
                 StudioActionCard(Icons.Default.Preview, "Pré-visualizar projeto", "Confira os arquivos e a estrutura importada", true, onPreview)
                 Spacer(Modifier.height(8.dp))

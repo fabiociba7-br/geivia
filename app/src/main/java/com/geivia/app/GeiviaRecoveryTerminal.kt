@@ -222,6 +222,7 @@ internal fun GeiviaRecoveryTerminal(
                                 DropdownMenuItem(text = { Text("Copiar saída") }, onClick = { copyOutput(); menuExpanded = false })
                                 DropdownMenuItem(text = { Text("Colar") }, onClick = { pasteInput(); menuExpanded = false }, enabled = session != null)
                                 DropdownMenuItem(text = { Text("Interromper (Ctrl+C)") }, onClick = { sendText("\u0003"); menuExpanded = false }, enabled = session != null && !busy)
+                                DropdownMenuItem(text = { Text("Encerrar sessão") }, onClick = { controller.cancel(); menuExpanded = false }, enabled = session != null)
                                 DropdownMenuItem(text = { Text("Enviar Tab") }, onClick = { sendText("\t"); menuExpanded = false }, enabled = session != null && !busy)
                                 DropdownMenuItem(text = { Text("Enviar Ctrl+D") }, onClick = { sendText("\u0004"); menuExpanded = false }, enabled = session != null && !busy)
                                 DropdownMenuItem(text = { Text("Apagar entrada") }, onClick = { command = ""; menuExpanded = false })
@@ -294,17 +295,6 @@ internal fun GeiviaRecoveryTerminal(
                             enabled = session != null && !busy && command.isNotBlank(),
                             modifier = Modifier.weight(1f)
                         ) { Text(if (busy) "Enviando…" else "Enviar") }
-                        OutlinedButton(
-                            onClick = { sendText("\u0003") },
-                            enabled = session != null && !busy
-                        ) { Text("Interromper") }
-                        OutlinedButton(
-                            onClick = {
-                                controller.cancel()
-                                append("\n[GEIVIA] Encerramento solicitado. Aguarde a confirmação de fechamento da sessão.\n")
-                            },
-                            enabled = session != null
-                        ) { Text("Encerrar") }
                     }
                     Spacer(Modifier.height(2.dp))
                     Text(

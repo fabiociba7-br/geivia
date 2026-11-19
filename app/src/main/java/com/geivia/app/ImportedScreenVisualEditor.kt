@@ -134,6 +134,8 @@ internal fun ImportedScreenVisualEditor(
                                             runCatching {
                                                 ImportedXmlLayoutEditor.moveSibling(File(projectRoot, screen.sourcePath), component.id, targetIndex)
                                                 components = ImportedXmlLayoutEditor.inspect(File(projectRoot, screen.sourcePath))
+                                                latestBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)
+                                                previousBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
                                                 status = "Componente reposicionado e salvo no XML original."
                                                 onSourceChanged()
                                             }.onFailure { status = it.message ?: "Não foi possível reposicionar." }
@@ -221,6 +223,8 @@ internal fun ImportedScreenVisualEditor(
                                     runCatching {
                                         ImportedXmlLayoutEditor.updateText(File(projectRoot, screen.sourcePath), selected.id, editableText)
                                         components = ImportedXmlLayoutEditor.inspect(File(projectRoot, screen.sourcePath))
+                                                latestBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)
+                                                previousBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
                                         status = "Texto gravado no XML original."
                                         onSourceChanged()
                                     }.onFailure { status = it.message ?: "Não foi possível salvar." }
@@ -239,6 +243,8 @@ internal fun ImportedScreenVisualEditor(
                                         runCatching {
                                             ImportedXmlLayoutEditor.moveSibling(File(projectRoot, screen.sourcePath), selected.id, index - 1)
                                             components = ImportedXmlLayoutEditor.inspect(File(projectRoot, screen.sourcePath))
+                                                latestBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)
+                                                previousBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
                                             status = "Ordem atualizada no XML original."
                                             onSourceChanged()
                                         }.onFailure { status = it.message ?: "Não foi possível mover." }
@@ -252,6 +258,8 @@ internal fun ImportedScreenVisualEditor(
                                         runCatching {
                                             ImportedXmlLayoutEditor.moveSibling(File(projectRoot, screen.sourcePath), selected.id, index + 1)
                                             components = ImportedXmlLayoutEditor.inspect(File(projectRoot, screen.sourcePath))
+                                                latestBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)
+                                                previousBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
                                             status = "Ordem atualizada no XML original."
                                             onSourceChanged()
                                         }.onFailure { status = it.message ?: "Não foi possível mover." }
@@ -273,6 +281,8 @@ internal fun ImportedScreenVisualEditor(
                                     runCatching {
                                         ImportedSourceRecovery.restore(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)
                                         components = ImportedXmlLayoutEditor.inspect(File(projectRoot, screen.sourcePath))
+                                                latestBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)
+                                                previousBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
                                         status = "Última versão de segurança restaurada."
                                         onSourceChanged()
                                     }.onFailure { status = it.message ?: "Não foi possível restaurar a versão." }
@@ -283,6 +293,8 @@ internal fun ImportedScreenVisualEditor(
                                     runCatching {
                                         ImportedSourceRecovery.restore(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
                                         components = ImportedXmlLayoutEditor.inspect(File(projectRoot, screen.sourcePath))
+                                                latestBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)
+                                                previousBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
                                         status = "Versão anterior restaurada."
                                         onSourceChanged()
                                     }.onFailure { status = it.message ?: "Não foi possível restaurar a versão." }

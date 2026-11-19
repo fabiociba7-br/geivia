@@ -84,6 +84,18 @@ class ImportedXmlLayoutEditorTest {
         }
     }
 
+    @Test fun detectsHorizontalLinearLayoutForDragAxis() {
+        val file = File(temp.root, "horizontal.xml")
+        file.writeText(
+            """<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:orientation="horizontal">
+                <TextView android:id="@+id/first" />
+                <TextView android:id="@+id/second" />
+            </LinearLayout>"""
+        )
+
+        assertEquals("horizontal", ImportedXmlLayoutEditor.inspect(file).first().orientation)
+    }
+
     @Test fun updatesWidthAndHeightTogether() {
         val file = layout("""<TextView android:id="@+id/title" android:layout_width="wrap_content" android:layout_height="wrap_content" />""")
 

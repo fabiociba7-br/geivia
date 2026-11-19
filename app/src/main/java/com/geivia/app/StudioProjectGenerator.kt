@@ -11,7 +11,9 @@ internal data class StudioGeneratedElement(
     val backgroundColor: String,
     val textColor: String,
     val cornerRadius: Float,
-    val visible: Boolean
+    val visible: Boolean,
+    val offsetX: Float = 0f,
+    val offsetY: Float = 0f
 )
 
 internal object StudioProjectGenerator {
@@ -215,6 +217,7 @@ dependencies {
             else color(element.backgroundColor, "Color(0xFFFFFFFF)")
         val children = all.filter { it.parentId == element.id && it.visible }
         return buildString {
+            appendLine(indent + "Box(Modifier.offset(x = " + element.offsetX.coerceIn(-240f, 240f) + ".dp, y = " + element.offsetY.coerceIn(-480f, 480f) + ".dp)) {")
             when (element.type) {
                 "section", "column", "row" -> {
                     val isRow = element.type == "row"
@@ -261,6 +264,7 @@ dependencies {
                     appendLine(indent + "Text(resolve(" + text + ", \"\"), Modifier.fillMaxWidth().padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, color = " + foreground + ", fontSize = " + size + ".sp, textAlign = " + alignment + ")")
                 }
             }
+            appendLine(indent + "}")
         }
     }
 

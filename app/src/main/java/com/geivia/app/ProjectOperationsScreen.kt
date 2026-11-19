@@ -132,7 +132,7 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                 output = "Instalando toolchain Android no Debian (JDK, Gradle, SDK)…\n"
                 runCatching {
                     withContext(Dispatchers.IO) { controller.prepareEngine() }
-                    controller.execute(GeiviaAndroidBuild.installToolchain(), 20 * 60 * 1000L) { line ->
+                    controller.execute(GeiviaCompilerEngine.installToolchain(), 20 * 60 * 1000L) { line ->
                         output += line
                     }
                 }.onSuccess { code ->
@@ -153,10 +153,10 @@ internal fun ProjectOperationsScreen(onBack: () -> Unit) {
                 output = "Compilando ${root.name} (assembleDebug)…\n"
                 runCatching {
                     withContext(Dispatchers.IO) { controller.prepareEngine() }
-                    val code = controller.execute(GeiviaAndroidBuild.buildCommand(root.absolutePath), 30 * 60 * 1000L) { line ->
+                    val code = controller.execute(GeiviaCompilerEngine.compileDebug(root), 30 * 60 * 1000L) { line ->
                         output += line
                     }
-                    val apk = withContext(Dispatchers.IO) { GeiviaAndroidBuild.findApk(root) }
+                    val apk = withContext(Dispatchers.IO) { GeiviaCompilerEngine.locateGeneratedApk(root) }
                     code to apk
                 }.onSuccess { (code, apk) ->
                     output += if (code == 0) "\nBuild finalizado com sucesso.\n" else "\nBuild falhou (código $code).\n"

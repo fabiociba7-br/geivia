@@ -222,7 +222,7 @@ internal object ImportedComposeLayoutEditor {
 
     private fun decode(value: String): String = value.removeSurrounding("\"")
         .replace("\\n", "\n").replace("\\r", "\r").replace("\\t", "\t")
-        .replace("\\\"", "\"").replace("\\\\", "\\")
+        .replace("\\$", "$").replace("\\\"", "\"").replace("\\\\", "\\")
 
     private val IDENTIFIER = Regex("[A-Za-z_][A-Za-z0-9_]{0,127}")
     private const val MAX_TEXT_LENGTH = 4096

@@ -38,7 +38,7 @@ internal object ImportedScreenDiscovery {
     private val composeButton = Regex("""\b(?:Button|OutlinedButton)\s*\([^)]*\)\s*\{\s*Text\s*\(\s*(?:text\s*=\s*)?"([^"]{1,100})"""")
     private val composeField = Regex("""\b(?:OutlinedTextField|TextField)\s*\(""")
     private val composeImage = Regex("""\bImage\s*\(""")
-
+    
     fun scan(projectRoot: File, maxFiles: Int = 5000): List<ImportedScreen> {
         val root = projectRoot.canonicalFile
         require(root.isDirectory) { "A pasta do projeto não existe." }
@@ -112,9 +112,8 @@ internal object ImportedScreenDiscovery {
                         visualItems += it.range.first to ImportedScreenComponent(type, text = null)
                     }
                 }
-            // Keep a compact count marker for repeated Text composables, including
-            // labels nested inside Button content. The button itself remains a separate item.
-            val textComposableCount = Regex("""\\bText\\s*\\(""").findAll(block).count()
+            // Count Text composables, including labels nested inside Button content.
+            val textComposableCount = Regex("""\bText\s*\(""").findAll(block).count()
             if (textComposableCount > 1) {
                 visualItems += Int.MAX_VALUE to ImportedScreenComponent("Text", text = "×$textComposableCount")
             }

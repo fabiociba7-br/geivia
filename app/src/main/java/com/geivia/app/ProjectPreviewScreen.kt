@@ -1,6 +1,9 @@
 package com.geivia.app
 
+import android.net.Uri
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.*
@@ -14,6 +17,92 @@ import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileInputStream
+import java.net.URLConnection
+
+/**
+ * Serves project files through an isolated virtual origin.
+ *
+ * Using file:// together with allowFileAccessFromFileURLs=false prevents local
+ * CSS, JavaScript and image files from being loaded. Enabling that setting would
+ * expose unrelated device files to project HTML, so only files canonically
+ * contained in the selected project directory are served here.
+ */
+private class ProjectPreviewWebViewClient(projectRoot: File) : WebViewClient() {
+    private val root = projectRoot.canonicalFile
+    private val rootPrefix = root.path.trimEnd(File.separatorChar) + File.separator
+
+    override fun shouldInterceptRequest(
+        view: WebView?,
+        request: WebResourceRequest
+    ): WebResourceResponse? {
+        val uri = request.url
+        if (uri.scheme != "https" || uri.host != "geivia.local") return null
+        if (!request.method.equals("GET", ignoreCase = true)) {
+            return WebResourceResponse("text/plain", "utf-8", 405, "Method Not Allowed", emptyMap(), null)
+        }
+
+        return try {
+            val relativePath = Uri.decode(uri.encodedPath.orEmpty()).trimStart('/')
+            val requested = if (relativePath.isBlank()) File(root, "index.html") else File(root, relativePath)
+            val target = requested.canonicalFile
+
+            // Reject traversal and symlinks that point outside the selected project.
+            if (target != root && !target.path.startsWith(rootPrefix)) {
+                return WebResourceResponse("text/plain", "utf-8", 403, "Forbidden", emptyMap(), null)
+            }
+            if (!target.isFile || !target.canRead()) {
+                return WebResourceResponse("text/plain", "utf-8", 404, "Not Found", emptyMap(), null)
+            }
+
+            val mime = mimeTypeFor(target)
+            val charset = if (mime.startsWith("text/") || mime in setOf(
+                    "application/javascript",
+                    "application/json",
+                    "application/xml",
+                    "image/svg+xml"
+                )
+            ) "utf-8" else null
+
+            WebResourceResponse(
+                mime,
+                charset,
+                200,
+                "OK",
+                mapOf("Cache-Control" to "no-cache"),
+                FileInputStream(target)
+            )
+        } catch (_: Exception) {
+            WebResourceResponse("text/plain", "utf-8", 404, "Not Found", emptyMap(), null)
+        }
+    }
+
+    private fun mimeTypeFor(file: File): String {
+        return when (file.extension.lowercase()) {
+            "html", "htm" -> "text/html"
+            "css" -> "text/css"
+            "js", "mjs" -> "application/javascript"
+            "json", "map" -> "application/json"
+            "svg" -> "image/svg+xml"
+            "png" -> "image/png"
+            "jpg", "jpeg" -> "image/jpeg"
+            "gif" -> "image/gif"
+            "webp" -> "image/webp"
+            "avif" -> "image/avif"
+            "ico" -> "image/x-icon"
+            "bmp" -> "image/bmp"
+            "woff" -> "font/woff"
+            "woff2" -> "font/woff2"
+            "ttf" -> "font/ttf"
+            "otf" -> "font/otf"
+            "eot" -> "application/vnd.ms-fontobject"
+            "xml" -> "application/xml"
+            "txt" -> "text/plain"
+            "wasm" -> "application/wasm"
+            else -> URLConnection.guessContentTypeFromName(file.name) ?: "application/octet-stream"
+        }
+    }
+}
 
 @Composable
 internal fun ProjectPreviewScreen(
@@ -130,14 +219,18 @@ internal fun ProjectPreviewScreen(
                     WebView(ctx).apply {
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
-                        settings.allowFileAccess = true
+                        // Project assets are served only from the selected project root
+                        // by ProjectPreviewWebViewClient; broad file access stays disabled.
+                        settings.allowFileAccess = false
                         settings.allowContentAccess = false
                         settings.allowFileAccessFromFileURLs = false
                         settings.allowUniversalAccessFromFileURLs = false
                         settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                        webViewClient = WebViewClient()
+                        webViewClient = ProjectPreviewWebViewClient(workspace.root)
                         webChromeClient = WebChromeClient()
-                        loadUrl(android.net.Uri.fromFile(workspace.webEntry).toString())
+                        val relativeEntry = workspace.webEntry.relativeTo(workspace.root).invariantSeparatorsPath
+                        val encodedEntry = relativeEntry.split('/').joinToString("/") { Uri.encode(it) }
+                        loadUrl("https://geivia.local/$encodedEntry")
                     }
                 }
             )

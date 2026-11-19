@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -38,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.io.File
+import kotlin.math.abs
 
 @Composable
 internal fun ImportedScreenVisualEditor(
@@ -51,6 +53,7 @@ internal fun ImportedScreenVisualEditor(
     var selectedComponentId by rememberSaveable(screen.sourcePath, screen.name) { mutableStateOf<String?>(null) }
     var editableText by remember(screen.sourcePath, screen.name, selectedComponentId) { mutableStateOf("") }
     var status by remember(screen.sourcePath, screen.name) { mutableStateOf("Selecione um elemento para editar.") }
+    var dragDistance by remember(screen.sourcePath, screen.name) { mutableFloatStateOf(0f) }
     var components by remember(screen.sourcePath, screen.name) {
         mutableStateOf(
             if (screen.format == ImportedScreen.Format.ANDROID_XML) {
@@ -80,7 +83,7 @@ internal fun ImportedScreenVisualEditor(
             }
         }
         if (previewOnly) {
-            ImportedScreenPreview(screen, projectRoot)
+            ImportedScreenPreview(screen)
         } else if (screen.format != ImportedScreen.Format.ANDROID_XML) {
             Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF5E8))) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -102,10 +105,29 @@ internal fun ImportedScreenVisualEditor(
                         .fillMaxWidth()
                         .pointerInput(component.id, components) {
                             detectDragGesturesAfterLongPress(
-                                onDragEnd = { },
-                                onDrag = { change, _ ->
-                                    change.consume()
+                                onDragStart = {
+                                    dragDistance = 0f
                                     selectedComponentId = component.id
+                                },
+                                onDragEnd = {
+                                    val siblings = components.filter { it.parentId == component.parentId }
+                                    val currentIndex = siblings.indexOfFirst { it.id == component.id }
+                                    val direction = if (dragDistance < -24f) -1 else if (dragDistance > 24f) 1 else 0
+                                    val targetIndex = (currentIndex + direction).coerceIn(0, (siblings.size - 1).coerceAtLeast(0))
+                                    if (direction != 0 && component.canReorder && currentIndex >= 0) {
+                                        runCatching {
+                                            ImportedXmlLayoutEditor.moveSibling(File(projectRoot, screen.sourcePath), component.id, targetIndex)
+                                            components = ImportedXmlLayoutEditor.inspect(File(projectRoot, screen.sourcePath))
+                                            status = "Componente reposicionado e salvo no XML original."
+                                            onSourceChanged()
+                                        }.onFailure { status = it.message ?: "Não foi possível reposicionar." }
+                                    }
+                                    dragDistance = 0f
+                                },
+                                onDragCancel = { dragDistance = 0f },
+                                onDrag = { change, dragAmount ->
+                                    change.consume()
+                                    dragDistance += dragAmount.y
                                 }
                             )
                         },

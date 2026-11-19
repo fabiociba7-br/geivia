@@ -31,7 +31,7 @@ internal object ImportedSourceHistory {
             if (!snapshots.exists()) require(snapshots.mkdirs())
             val timestamp = System.currentTimeMillis()
             val relative = target.relativeTo(root).invariantSeparatorsPath
-            val snapshotName = "${timestamp}_${relative.hashCode().toUInt().toString(16)}.src"
+            val snapshotName = "${timestamp}_${Integer.toHexString(relative.hashCode())}.src"
             val snapshotFile = File(snapshots, snapshotName)
             target.copyTo(snapshotFile, overwrite = false)
             val entries = read(File(directory, HISTORY_FILE)).toMutableList()
@@ -62,9 +62,13 @@ internal object ImportedSourceHistory {
     }.getOrDefault(emptyList())
 
     fun preview(projectRoot: File, entry: Entry, currentSource: File): String {
-        val snapshot = snapshotFile(projectRoot, entry)
-            ?: throw IllegalArgumentException("Esta entrada não possui uma cópia histórica.")
-        require(snapshot.isFile && snapshot.length() in 1..MAX_SNAPSHOT_BYTES)
+        val root = projectRoot.canonicalFile
+        val target = currentSource.canonicalFile
+        requireInside(root, target)
+        require(entry.path == target.relativeTo(root).invariantSeparatorsPath) { "A entrada pertence a outro arquivo-fonte." }
+        require(entry.path == target.relativeTo(root).invariantSeparatorsPath) { "A entrada pertence a outro arquivo-fonte." }
+        val snapshot = snapshotFile(root, entry)
+            ?: throw IllegalArgumentException("Esta entrada não possui uma cópia histórica.") && snapshot.length() in 1..MAX_SNAPSHOT_BYTES)
         val historical = snapshot.readText(Charsets.UTF_8)
         val current = currentSource.readText(Charsets.UTF_8)
         val oldLines = historical.lines()
@@ -125,7 +129,10 @@ internal object ImportedSourceHistory {
         val name = entry.snapshot ?: return null
         if (!name.matches(Regex("[0-9]+_[0-9a-f]+\\.src"))) return null
         val root = projectRoot.canonicalFile
-        val directory = File(File(root, HISTORY_DIR), SNAPSHOT_DIR).canonicalFile
+        val historyDirectory = File(root, HISTORY_DIR).canonicalFile
+        if (!historyDirectory.path.startsWith(root.path.trimEnd(File.separatorChar) + File.separator)) return null
+        val directory = File(historyDirectory, SNAPSHOT_DIR).canonicalFile
+        if (directory.parentFile != historyDirectory) return null
         val candidate = File(directory, name).canonicalFile
         return candidate.takeIf { it.parentFile == directory }
     }

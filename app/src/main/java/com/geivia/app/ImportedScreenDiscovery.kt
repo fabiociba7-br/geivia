@@ -112,6 +112,12 @@ internal object ImportedScreenDiscovery {
                         visualItems += it.range.first to ImportedScreenComponent(type, text = null)
                     }
                 }
+            // Keep a compact count marker for repeated Text composables, including
+            // labels nested inside Button content. The button itself remains a separate item.
+            val textComposableCount = Regex("""\\bText\\s*\\(""").findAll(block).count()
+            if (textComposableCount > 1) {
+                visualItems += Int.MAX_VALUE to ImportedScreenComponent("Text", text = "×$textComposableCount")
+            }
             val components = visualItems.sortedBy { it.first }.map { it.second }.distinct()
             ImportedScreen(
                 name = match.groupValues[1],

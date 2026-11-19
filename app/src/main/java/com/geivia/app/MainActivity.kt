@@ -405,6 +405,16 @@ private fun GeiviaApp(githubCallbackUri: Uri? = null) {
                             .remove("workflow_checkpoint")
                             .remove("workflow_question_index")
                             .remove("workflow_checkpoint_updated_at")
+                            // Start a new workspace without retaining the previously imported folder.
+                            // The source files remain untouched in storage.
+                            .remove("active_project_dir")
+                            .remove("active_project_name")
+                            .remove("imported_project_dir")
+                            .remove("imported_project_name")
+                            .remove("active_firebase_project_id")
+                            .remove("selected_project_id")
+                            .remove("selected_project_name")
+                            .remove("selected_project_number")
                             .putBoolean("cloud_setup_completed", false)
                             .apply()
                         costMode = ""

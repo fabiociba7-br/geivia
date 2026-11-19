@@ -9,7 +9,8 @@ import java.io.File
 internal data class ImportedScreenComponent(
     val type: String,
     val id: String? = null,
-    val text: String? = null
+    val text: String? = null,
+    val imageResourceName: String? = null
 )
 
 internal data class ImportedScreen(
@@ -34,11 +35,13 @@ internal object ImportedScreenDiscovery {
     private val xmlTag = Regex("""<([A-Za-z_][A-Za-z0-9_.]*)\b([^<>]*?)(?:/?>)""")
     private val xmlId = Regex("""(?:android:)?id\s*=\s*["']@\+?id/([^"']+)["']""")
     private val xmlText = Regex("""(?:android:)?text\s*=\s*["']([^"']*)["']""")
+    private val xmlImage = Regex("""(?:android:src|app:srcCompat|src)\s*=\s*["']@(?:drawable|mipmap)/([^"']+)["']""")
+    private val composeImageResource = Regex("""(?:painterResource|ImageBitmap\.imageResource)\s*\(\s*(?:id\s*=\s*)?R\.drawable\.([A-Za-z0-9_]+)""")
     private val composeText = Regex("""\bText\s*\(\s*(?:text\s*=\s*)?"([^"]{1,160})"""")
     private val composeButton = Regex("""\b(?:Button|OutlinedButton)\s*\([^)]*\)\s*\{\s*Text\s*\(\s*(?:text\s*=\s*)?"([^"]{1,100})"""")
     private val composeField = Regex("""\b(?:OutlinedTextField|TextField)\s*\(""")
     private val composeImage = Regex("""\bImage\s*\(""")
-
+    
     fun scan(projectRoot: File, maxFiles: Int = 5000): List<ImportedScreen> {
         val root = projectRoot.canonicalFile
         require(root.isDirectory) { "A pasta do projeto não existe." }
@@ -77,7 +80,8 @@ internal object ImportedScreenDiscovery {
                 ImportedScreenComponent(
                     type = tag.substringAfterLast('.'),
                     id = xmlId.find(attrs)?.groupValues?.getOrNull(1),
-                    text = xmlText.find(attrs)?.groupValues?.getOrNull(1)?.replace("&amp;", "&")?.replace("&lt;", "<")?.replace("&gt;", ">")
+                    text = xmlText.find(attrs)?.groupValues?.getOrNull(1)?.replace("&amp;", "&")?.replace("&lt;", "<")?.replace("&gt;", ">"),
+                    imageResourceName = xmlImage.find(attrs)?.groupValues?.getOrNull(1)
                 )
             }
         }.toList()
@@ -103,8 +107,11 @@ internal object ImportedScreenDiscovery {
             composeField.findAll(block).forEach {
                 visualItems += it.range.first to ImportedScreenComponent("TextField", text = "Campo de entrada")
             }
-            composeImage.findAll(block).forEach {
-                visualItems += it.range.first to ImportedScreenComponent("Image", text = "Imagem")
+            composeImage.findAll(block).forEach { imageMatch ->
+                val resource = composeImageResource.find(block.substring(imageMatch.range.first))?.groupValues?.getOrNull(1)
+                visualItems += imageMatch.range.first to ImportedScreenComponent(
+                    "Image", text = resource?.let { "@drawable/$it" } ?: "Imagem", imageResourceName = resource
+                )
             }
             composeCalls.filter { it !in setOf("Text", "Button", "OutlinedButton", "TextField", "OutlinedTextField", "Image") }
                 .forEach { type ->
@@ -112,6 +119,11 @@ internal object ImportedScreenDiscovery {
                         visualItems += it.range.first to ImportedScreenComponent(type, text = null)
                     }
                 }
+            // Count Text composables, including labels nested inside Button content.
+            val textComposableCount = Regex("""\bText\s*\(""").findAll(block).count()
+            if (textComposableCount > 1) {
+                visualItems += Int.MAX_VALUE to ImportedScreenComponent("Text", text = "×$textComposableCount")
+            }
             val components = visualItems.sortedBy { it.first }.map { it.second }.distinct()
             ImportedScreen(
                 name = match.groupValues[1],

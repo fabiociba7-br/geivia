@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -21,6 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -38,6 +41,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -69,6 +75,9 @@ internal fun GeiviaRecoveryTerminal(
     var starting by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var fullScreen by remember { mutableStateOf(false) }
+    var menuExpanded by remember { mutableStateOf(false) }
+    var libraryExpanded by remember { mutableStateOf(false) }
+    var libraryCategory by remember { mutableStateOf("Android/Gradle") }
     val scrollState = rememberScrollState()
 
     fun append(text: String) {
@@ -191,7 +200,7 @@ internal fun GeiviaRecoveryTerminal(
                 color = TerminalBackground
             ) {
                 Column(
-                    modifier = Modifier.fillMaxSize().padding(10.dp),
+                    modifier = Modifier.fillMaxSize().imePadding().padding(10.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Row(
@@ -205,14 +214,23 @@ internal fun GeiviaRecoveryTerminal(
                                 color = TerminalForeground, fontSize = 11.sp
                             )
                         }
-                        OutlinedButton(onClick = { fullScreen = false }) { Text("Voltar ao app") }
+                        Box {
+                            OutlinedButton(onClick = { menuExpanded = true }) { Text("Menu ▾") }
+                            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                                DropdownMenuItem(text = { Text("Biblioteca de comandos") }, onClick = { menuExpanded = false; libraryExpanded = true })
+                                DropdownMenuItem(text = { Text("Limpar tela") }, onClick = { output = ""; menuExpanded = false })
+                                DropdownMenuItem(text = { Text("Copiar saída") }, onClick = { copyOutput(); menuExpanded = false })
+                                DropdownMenuItem(text = { Text("Colar") }, onClick = { pasteInput(); menuExpanded = false }, enabled = session != null)
+                                DropdownMenuItem(text = { Text("Interromper (Ctrl+C)") }, onClick = { sendText("\u0003"); menuExpanded = false }, enabled = session != null && !busy)
+                                DropdownMenuItem(text = { Text("Encerrar sessão") }, onClick = { controller.cancel(); menuExpanded = false }, enabled = session != null)
+                                DropdownMenuItem(text = { Text("Enviar Tab") }, onClick = { sendText("\t"); menuExpanded = false }, enabled = session != null && !busy)
+                                DropdownMenuItem(text = { Text("Enviar Ctrl+D") }, onClick = { sendText("\u0004"); menuExpanded = false }, enabled = session != null && !busy)
+                                DropdownMenuItem(text = { Text("Apagar entrada") }, onClick = { command = ""; menuExpanded = false })
+                                DropdownMenuItem(text = { Text("Voltar ao app") }, onClick = { fullScreen = false; menuExpanded = false })
+                            }
+                        }
                     }
                     Divider(color = Color(0xFF344653))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        OutlinedButton(onClick = { output = "" }) { Text("Limpar tela") }
-                        OutlinedButton(onClick = { copyOutput() }) { Text("Copiar") }
-                        OutlinedButton(onClick = { pasteInput() }, enabled = session != null) { Text("Colar") }
-                    }
                     BoxWithConstraints(
                         modifier = Modifier.weight(1f).fillMaxWidth()
                     ) {
@@ -246,13 +264,15 @@ internal fun GeiviaRecoveryTerminal(
                     }
                     OutlinedTextField(
                         value = command,
-                        onValueChange = { command = it.take(16000) },
+                        onValueChange = { command = it.take(60000) },
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text("Comando ou entrada para o shell") },
-                        placeholder = { Text("Digite ou cole comandos; várias linhas são aceitas") },
+                        placeholder = { Text("Digite ou cole comandos longos; Enter envia") },
                         enabled = session != null && !busy,
-                        minLines = 2,
-                        maxLines = 5,
+                        minLines = 3,
+                        maxLines = 8,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(onSend = { executeInput() }),
                         colors = TextFieldDefaults.colors(
                             focusedTextColor = Color(0xFFF4F7FB),
                             unfocusedTextColor = Color(0xFFE2EDF5),
@@ -275,28 +295,45 @@ internal fun GeiviaRecoveryTerminal(
                             enabled = session != null && !busy && command.isNotBlank(),
                             modifier = Modifier.weight(1f)
                         ) { Text(if (busy) "Enviando…" else "Enviar") }
-                        OutlinedButton(
-                            onClick = { sendText("\u0003") },
-                            enabled = session != null && !busy
-                        ) { Text("Interromper") }
-                        OutlinedButton(
-                            onClick = {
-                                controller.cancel()
-                                append("\n[GEIVIA] Encerramento solicitado. Aguarde a confirmação de fechamento da sessão.\n")
-                            },
-                            enabled = session != null
-                        ) { Text("Encerrar") }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        OutlinedButton(onClick = { sendText("\t") }, enabled = session != null && !busy) { Text("Tab") }
-                        OutlinedButton(onClick = { sendText("\u0004") }, enabled = session != null && !busy) { Text("Ctrl+D") }
-                        OutlinedButton(onClick = { command = "" }) { Text("Apagar entrada") }
                     }
                     Spacer(Modifier.height(2.dp))
                     Text(
                         "Ambiente isolado do GEIVIA. Não é root do Android. Use Interromper para enviar Ctrl+C ao processo em primeiro plano.",
                         color = Color(0xFF9AA9B8), fontSize = 10.sp, lineHeight = 14.sp
                     )
+                }
+            }
+        }
+    }
+
+    if (libraryExpanded) {
+        val categories = listOf("Android/Gradle", "Git", "Arquivos", "Firebase", "Linux")
+        val commandGroups = mapOf(
+            "Android/Gradle" to listOf("./gradlew tasks", "./gradlew assembleDebug", "./gradlew assembleRelease", "./gradlew test", "./gradlew clean", "./gradlew --version"),
+            "Git" to listOf("git status", "git branch --show-current", "git log --oneline -10", "git diff", "git pull", "git remote -v"),
+            "Arquivos" to listOf("pwd", "ls -la", "find . -maxdepth 3 -type f", "du -sh .", "mkdir -p nome-da-pasta", "cat caminho/do/arquivo"),
+            "Firebase" to listOf("firebase --version", "firebase projects:list", "firebase use", "firebase deploy --only hosting", "firebase deploy --only firestore:rules"),
+            "Linux" to listOf("whoami", "uname -a", "df -h", "free -h", "ps aux", "clear")
+        )
+        Dialog(onDismissRequest = { libraryExpanded = false }) {
+            Surface(shape = RoundedCornerShape(14.dp), color = Color(0xFF17232D)) {
+                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Text("Biblioteca de comandos", color = TerminalAccent, fontSize = 18.sp)
+                    Text("Selecione uma categoria. Toque em um comando para inseri-lo no campo.", color = TerminalForeground, fontSize = 12.sp)
+                    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        categories.forEach { category ->
+                            OutlinedButton(onClick = { libraryCategory = category }, modifier = Modifier.fillMaxWidth()) {
+                                Text(if (libraryCategory == category) "✓ $category" else category, color = TerminalForeground)
+                            }
+                        }
+                        Divider(color = Color(0xFF344653))
+                        commandGroups[libraryCategory].orEmpty().forEach { item ->
+                            OutlinedButton(onClick = { command = item; libraryExpanded = false }, modifier = Modifier.fillMaxWidth()) {
+                                Text(item, color = TerminalForeground, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
+                            }
+                        }
+                    }
+                    OutlinedButton(onClick = { libraryExpanded = false }, modifier = Modifier.fillMaxWidth()) { Text("Fechar") }
                 }
             }
         }

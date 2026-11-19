@@ -55,7 +55,7 @@ class ImportedScreenDiscoveryTest {
         assertEquals(listOf("HomeScreen", "SettingsScreen"), screens.map { it.name })
         assertTrue(screens.first().components.any { it.type == "Column" })
         assertTrue(screens.first().components.any { it.type == "Button" })
-        assertTrue(screens.first().components.any { it.type == "Text" && it.text == "×2" })
+        assertTrue(screens.first().components.any { it.type == "Text" && it.text == "Olá" })
         assertTrue(screens.last().components.any { it.type == "Row" })
     }
 

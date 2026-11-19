@@ -41,7 +41,7 @@ internal object ImportedComposeLayoutEditor {
         val encoded = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t") + "\""
         val updated = source.substring(0, target.start) + encoded + source.substring(target.end)
         require(updated.length <= MAX_SOURCE_LENGTH) { "Arquivo Kotlin excede o limite permitido." }
-        val temp = File(file.parentFile, file.name + ".geivia.tmp")
+        val temp = File(file.parentFile, file.name.removeSuffix(".kt") + ".geivia.tmp.kt")
         val backup = File(file.parentFile, file.name + ".geivia.bak")
         try {
             temp.writeText(updated, Charsets.UTF_8)
@@ -153,11 +153,11 @@ internal object ImportedComposeLayoutEditor {
         var triple = false
         var escaped = false
         while (i < limit) {
-            if (!inString && source.startsWith("//", i)) {
+            if (!inString && !triple && source.startsWith("//", i)) {
                 i = (source.indexOf('\n', i).takeIf { it >= 0 } ?: limit)
                 continue
             }
-            if (!inString && source.startsWith("/*", i)) {
+            if (!inString && !triple && source.startsWith("/*", i)) {
                 val end = source.indexOf("*/", i + 2)
                 i = if (end < 0) limit else end + 2
                 continue

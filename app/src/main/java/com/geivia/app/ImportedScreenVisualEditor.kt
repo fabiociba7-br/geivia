@@ -58,6 +58,8 @@ internal fun ImportedScreenVisualEditor(
     var widthDraft by remember(screen.sourcePath, screen.name, selectedComponentId) { mutableStateOf("") }
     var heightDraft by remember(screen.sourcePath, screen.name, selectedComponentId) { mutableStateOf("") }
     var status by remember(screen.sourcePath, screen.name) { mutableStateOf("Selecione um elemento para editar.") }
+    var latestBackupAvailable by remember(screen.sourcePath) { mutableStateOf(ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)) }
+    var previousBackupAvailable by remember(screen.sourcePath) { mutableStateOf(ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)) }
     var pendingChange by remember { mutableStateOf<(() -> Unit)?>(null) }
     fun requestChange(change: () -> Unit) { pendingChange = change }
     var dragDistance by remember(screen.sourcePath, screen.name) { mutableFloatStateOf(0f) }
@@ -256,6 +258,36 @@ internal fun ImportedScreenVisualEditor(
                                     }
                                 }
                             ) { Text("Mover para baixo") }
+                        }
+                    }
+                }
+            }
+            if (latestBackupAvailable || previousBackupAvailable) {
+                Card(colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("RECUPERAÇÃO DO ARQUIVO-FONTE", color = Color(0xFF1769AA), fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                        Text("Restaure uma cópia de segurança sem apagar os arquivos de backup.", color = Color(0xFF718397), fontSize = 11.sp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (latestBackupAvailable) OutlinedButton(onClick = {
+                                requestChange {
+                                    runCatching {
+                                        ImportedSourceRecovery.restore(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)
+                                        components = ImportedXmlLayoutEditor.inspect(File(projectRoot, screen.sourcePath))
+                                        status = "Última versão de segurança restaurada."
+                                        onSourceChanged()
+                                    }.onFailure { status = it.message ?: "Não foi possível restaurar a versão." }
+                                }
+                            }) { Text("Restaurar última") }
+                            if (previousBackupAvailable) OutlinedButton(onClick = {
+                                requestChange {
+                                    runCatching {
+                                        ImportedSourceRecovery.restore(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
+                                        components = ImportedXmlLayoutEditor.inspect(File(projectRoot, screen.sourcePath))
+                                        status = "Versão anterior restaurada."
+                                        onSourceChanged()
+                                    }.onFailure { status = it.message ?: "Não foi possível restaurar a versão." }
+                                }
+                            }) { Text("Restaurar anterior") }
                         }
                     }
                 }

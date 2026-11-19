@@ -79,23 +79,23 @@ internal object ImportedSourceHistory {
         val oldLines = historical.lines()
         val newLines = current.lines()
         val result = StringBuilder()
-        result.append("VERSÃO HISTÓRICA · ").append(formatTime(entry.timestamp)).append("\\n")
-        result.append("AÇÃO: ").append(entry.action).append("\\n")
-        result.append("ARQUIVO: ").append(entry.path).append("\\n\\n")
-        result.append("DIFF UNIFICADO · histórico (-) / atual (+)\\n")
+        result.append("VERSÃO HISTÓRICA · ").append(formatTime(entry.timestamp)).append("\n")
+        result.append("AÇÃO: ").append(entry.action).append("\n")
+        result.append("ARQUIVO: ").append(entry.path).append("\n\n")
+        result.append("DIFF UNIFICADO · histórico (-) / atual (+)\n")
 
         if (oldLines == newLines) {
-            result.append("Nenhuma diferença de texto encontrada.\\n")
+            result.append("Nenhuma diferença de texto encontrada.\n")
         } else if (oldLines.size > MAX_DIFF_INPUT_LINES || newLines.size > MAX_DIFF_INPUT_LINES) {
             result.append("Comparação detalhada indisponível: arquivo acima do limite de ")
-                .append(MAX_DIFF_INPUT_LINES).append(" linhas por versão.\\n")
+                .append(MAX_DIFF_INPUT_LINES).append(" linhas por versão.\n")
         } else {
             val operations = buildDiff(oldLines, newLines)
             appendDiffHunks(result, operations)
         }
 
-        result.append("\\nCONTEÚDO DA VERSÃO HISTÓRICA\\n").append(historical.take(MAX_PREVIEW_CHARS))
-        if (historical.length > MAX_PREVIEW_CHARS) result.append("\\n[Conteúdo truncado na prévia.]")
+        result.append("\nCONTEÚDO DA VERSÃO HISTÓRICA\n").append(historical.take(MAX_PREVIEW_CHARS))
+        if (historical.length > MAX_PREVIEW_CHARS) result.append("\n[Conteúdo truncado na prévia.]")
         return result.toString()
     }
 
@@ -159,7 +159,7 @@ internal object ImportedSourceHistory {
     private fun appendDiffHunks(output: StringBuilder, operations: List<DiffLine>) {
         val changed = operations.indices.filter { operations[it].kind != ' ' }
         if (changed.isEmpty()) {
-            output.append("Nenhuma diferença de texto encontrada.\\n")
+            output.append("Nenhuma diferença de texto encontrada.\n")
             return
         }
         val visibleChanges = changed.take(MAX_DIFF_LINES)
@@ -171,21 +171,19 @@ internal object ImportedSourceHistory {
         }
         val selected = included.sorted()
         var previous = -2
-        var emittedChanges = 0
         for (index in selected) {
-            if (index > previous + 1) output.append("...\\n")
+            if (index > previous + 1) output.append("...\n")
             val line = operations[index]
             val oldNumber = line.oldLine?.toString() ?: "-"
             val newNumber = line.newLine?.toString() ?: "-"
             output.append(line.kind).append(" [").append(oldNumber).append(" → ").append(newNumber).append("] ")
-                .append(line.text).append("\\n")
-            if (line.kind != ' ') emittedChanges++
+                .append(line.text).append("\n")
             previous = index
         }
         if (changed.size > visibleChanges.size) {
             output.append("[Prévia limitada às primeiras ").append(visibleChanges.size)
                 .append(" linhas alteradas; ").append(changed.size - visibleChanges.size)
-                .append(" linhas alteradas não foram exibidas.]\\n")
+                .append(" linhas alteradas não foram exibidas.]\n")
         }
     }
 

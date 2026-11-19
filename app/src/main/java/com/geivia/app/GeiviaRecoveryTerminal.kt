@@ -315,4 +315,37 @@ internal fun GeiviaRecoveryTerminal(
             }
         }
     }
+
+    if (libraryExpanded) {
+        val categories = listOf("Android/Gradle", "Git", "Arquivos", "Firebase", "Linux")
+        val commandGroups = mapOf(
+            "Android/Gradle" to listOf("./gradlew tasks", "./gradlew assembleDebug", "./gradlew assembleRelease", "./gradlew test", "./gradlew clean", "./gradlew --version"),
+            "Git" to listOf("git status", "git branch --show-current", "git log --oneline -10", "git diff", "git pull", "git remote -v"),
+            "Arquivos" to listOf("pwd", "ls -la", "find . -maxdepth 3 -type f", "du -sh .", "mkdir -p nome-da-pasta", "cat caminho/do/arquivo"),
+            "Firebase" to listOf("firebase --version", "firebase projects:list", "firebase use", "firebase deploy --only hosting", "firebase deploy --only firestore:rules"),
+            "Linux" to listOf("whoami", "uname -a", "df -h", "free -h", "ps aux", "clear")
+        )
+        Dialog(onDismissRequest = { libraryExpanded = false }) {
+            Surface(shape = RoundedCornerShape(14.dp), color = Color(0xFF17232D)) {
+                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Text("Biblioteca de comandos", color = TerminalAccent, fontSize = 18.sp)
+                    Text("Selecione uma categoria. Toque em um comando para inseri-lo no campo.", color = TerminalForeground, fontSize = 12.sp)
+                    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        categories.forEach { category ->
+                            OutlinedButton(onClick = { libraryCategory = category }, modifier = Modifier.fillMaxWidth()) {
+                                Text(if (libraryCategory == category) "✓ $category" else category, color = TerminalForeground)
+                            }
+                        }
+                        Divider(color = Color(0xFF344653))
+                        commandGroups[libraryCategory].orEmpty().forEach { item ->
+                            OutlinedButton(onClick = { command = item; libraryExpanded = false }, modifier = Modifier.fillMaxWidth()) {
+                                Text(item, color = TerminalForeground, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
+                            }
+                        }
+                    }
+                    OutlinedButton(onClick = { libraryExpanded = false }, modifier = Modifier.fillMaxWidth()) { Text("Fechar") }
+                }
+            }
+        }
+    }
 }

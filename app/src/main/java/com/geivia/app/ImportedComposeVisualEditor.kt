@@ -122,7 +122,8 @@ internal fun ImportedComposeVisualEditor(
                     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("RECUPERAÇÃO DO ARQUIVO-FONTE", color = Color(0xFF1769AA), fontWeight = FontWeight.Bold, fontSize = 10.sp)
                         Text("Restaure uma cópia de segurança sem apagar os arquivos de backup.", color = Color(0xFF718397), fontSize = 11.sp)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                             if (latestBackupAvailable) OutlinedButton(onClick = {
                                 backupPreview = runCatching {
                                     ImportedSourceRecovery.preview(sourceFile, projectRoot, ImportedSourceRecovery.Version.LATEST)
@@ -133,8 +134,8 @@ internal fun ImportedComposeVisualEditor(
                                     ImportedSourceRecovery.preview(sourceFile, projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
                                 }.fold({ "Versão anterior · ${sourceFile.name}\n\n" + it }, { "Não foi possível abrir a prévia: ${it.message}" })
                             }) { Text("Prévia da anterior") }
-                            if (latestBackupAvailable) OutlinedButton(onClick = {
-                                pendingChange = {
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                     runCatching {
                                         ImportedSourceRecovery.restore(sourceFile, projectRoot, ImportedSourceRecovery.Version.LATEST)
                                         texts = ImportedComposeLayoutEditor.inspect(sourceFile, screen.name)
@@ -152,7 +153,8 @@ internal fun ImportedComposeVisualEditor(
                                         onSourceChanged()
                                     }.onFailure { status = it.message ?: "Não foi possível restaurar a versão." }
                                 }
-                            }) { Text("Restaurar anterior") }
+                            }) { Text("Restaurar anterior") }                            }
+                        }
                         }
                     }
                 }

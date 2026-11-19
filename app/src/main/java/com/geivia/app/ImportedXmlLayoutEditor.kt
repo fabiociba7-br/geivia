@@ -26,6 +26,7 @@ internal object ImportedXmlLayoutEditor {
         val text: String?,
         val parentId: String?,
         val siblingIndex: Int,
+        val orientation: String?,
         val canReorder: Boolean
     )
 
@@ -45,6 +46,7 @@ internal object ImportedXmlLayoutEditor {
                         text = child.getAttributeNS(ANDROID_NS, "text").takeIf { it.isNotBlank() },
                         parentId = parentKey,
                         siblingIndex = index,
+                        orientation = parent.getAttributeNS(ANDROID_NS, "orientation").takeIf { it.isNotBlank() },
                         canReorder = parentCanReorder
                     )
                 }

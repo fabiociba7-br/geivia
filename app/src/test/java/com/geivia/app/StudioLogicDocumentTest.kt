@@ -201,14 +201,13 @@ class StudioLogicDocumentTest {
     }
 
     @Test
-    fun doesNotTreatMalformedVariableReferenceAsAValidReference() {
+    fun rejectsMalformedVariableReferences() {
         val document = StudioLogicDocument(
             variables = listOf(StudioVariableDefinition("userName", "Nome", "text", "Ana")),
             actions = listOf(
                 StudioActionDefinition("show", "on_click", "show_message", expression = "$" + "{userName")
             )
         )
-        assertTrue(document.validate().any { it.contains("não existe: userName") })
+        assertTrue(document.validate().any { it.contains("malformada") })
     }
-
 }

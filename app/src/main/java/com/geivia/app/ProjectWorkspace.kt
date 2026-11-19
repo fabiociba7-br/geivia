@@ -2,7 +2,6 @@ package com.geivia.app
 
 import android.content.Context
 import java.io.File
-import org.json.JSONObject
 
 internal data class ProjectWorkspaceInfo(
     val root: File,
@@ -15,7 +14,8 @@ internal data class ProjectWorkspaceInfo(
     val hasFirebaseConfig: Boolean,
     val firebaseProjectId: String?,
     val webEntry: File?,
-    val buildFiles: List<File>
+    val buildFiles: List<File>,
+    val metadata: ProjectMetadata
 ) {
     enum class Kind { ANDROID, WEB, FLUTTER, NODE, UNKNOWN }
 
@@ -37,7 +37,8 @@ internal data class ProjectWorkspaceInfo(
         private fun isProjectDirectory(dir: File): Boolean =
             PROJECT_MARKERS.any { File(dir, it).isFile } ||
                 File(dir, "src/main/AndroidManifest.xml").isFile ||
-                File(dir, "app/src/main/AndroidManifest.xml").isFile
+                File(dir, "app/src/main/AndroidManifest.xml").isFile ||
+                File(dir, "firebase.json").isFile || File(dir, ".firebaserc").isFile
 
         /**
          * Finds the real project root. If [rootDir] is already a project, it is returned. Otherwise
@@ -91,6 +92,7 @@ internal data class ProjectWorkspaceInfo(
             val gradle = has("settings.gradle") || has("settings.gradle.kts") ||
                 has("build.gradle") || has("build.gradle.kts") || has("gradlew")
             val flutter = has("pubspec.yaml") && has("lib/main.dart")
+            val hasAppGradleModule = rel.any { it == "app/build.gradle" || it == "app/build.gradle.kts" }
             val webEntry = listOf("index.html", "public/index.html", "dist/index.html", "build/index.html")
                 .map { File(root, it) }.firstOrNull { it.isFile }
                 ?: relevant.firstOrNull { it.name == "index.html" && it.parentFile?.name !in setOf("node_modules", "build") }
@@ -101,6 +103,7 @@ internal data class ProjectWorkspaceInfo(
                 flutter -> Kind.FLUTTER
                 manifest && gradle -> Kind.ANDROID
                 manifest -> Kind.ANDROID
+                gradle && hasAppGradleModule -> Kind.ANDROID
                 has("package.json") -> Kind.NODE
                 gradle -> Kind.UNKNOWN
                 webEntry != null -> Kind.WEB
@@ -111,18 +114,7 @@ internal data class ProjectWorkspaceInfo(
                 .mapNotNull { it.parentFile?.relativeTo(root)?.invariantSeparatorsPath }
                 .filter { it.isNotBlank() }
                 .distinct().take(100).toList()
-            val firebaseProjectId = relevant.firstOrNull { it.name == "google-services.json" }
-                ?.let { file ->
-                    runCatching {
-                        JSONObject(file.readText()).optJSONObject("project_info")
-                            ?.optString("project_id")?.takeIf { it.isNotBlank() }
-                    }.getOrNull()
-                } ?: relevant.firstOrNull { it.name == ".firebaserc" }?.let { file ->
-                    runCatching {
-                        JSONObject(file.readText()).optJSONObject("projects")
-                            ?.optString("default")?.takeIf { it.isNotBlank() }
-                    }.getOrNull()
-                }
+            val metadata = ProjectMetadata.analyze(root, relevant)
             val buildFiles = all.filter {
                 it.name in setOf("settings.gradle", "settings.gradle.kts", "build.gradle", "build.gradle.kts", "gradlew", "gradlew.bat")
             }.take(100)
@@ -135,9 +127,10 @@ internal data class ProjectWorkspaceInfo(
                 hasGradleWrapper = File(root, "gradlew").isFile,
                 hasManifest = manifest,
                 hasFirebaseConfig = has("firebase.json"),
-                firebaseProjectId = firebaseProjectId,
+                firebaseProjectId = metadata.firebaseProjectId,
                 webEntry = webEntry,
-                buildFiles = buildFiles
+                buildFiles = buildFiles,
+                metadata = metadata
             )
         }
     }

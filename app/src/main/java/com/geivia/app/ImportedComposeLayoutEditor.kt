@@ -40,7 +40,7 @@ internal object ImportedComposeLayoutEditor {
         val source = readSource(file)
         val target = inspect(file, functionName).firstOrNull { it.id == componentId }
             ?: throw IllegalArgumentException("Texto literal não encontrado na função selecionada.")
-        val encoded = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t") + "\""
+        val encoded = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"").replace("$", "\\$").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t") + "\""
         val updated = source.substring(0, target.start) + encoded + source.substring(target.end)
         require(updated.length <= MAX_SOURCE_LENGTH) { "Arquivo Kotlin excede o limite permitido." }
         val temp = File(file.parentFile, file.name.removeSuffix(".kt") + ".geivia.tmp.kt")

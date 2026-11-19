@@ -95,7 +95,7 @@ internal fun ImportedScreenVisualEditor(
                 onSourceChanged = onSourceChanged
             )
         } else {
-            Text("Selecione um componente. Segure e arraste para mudar sua ordem no LinearLayout.", color = Color(0xFF718397), fontSize = 12.sp)
+            Text("Selecione um componente e arraste na direção do LinearLayout para reposicionar. A alteração é gravada no XML original.", color = Color(0xFF718397), fontSize = 12.sp)
             Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFE8EDF3)), shape = RoundedCornerShape(20.dp)) {
                 Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("PRÉVIA EDITÁVEL · TOQUE E ARRASTE", color = Color(0xFF1769AA), fontWeight = FontWeight.Bold, fontSize = 10.sp)
@@ -131,7 +131,7 @@ internal fun ImportedScreenVisualEditor(
                                 onDragCancel = { dragDistance = 0f },
                                 onDrag = { change, dragAmount ->
                                     change.consume()
-                                    dragDistance += dragAmount.y
+                                    dragDistance += if (component.orientation == "horizontal") dragAmount.x else dragAmount.y
                                 }
                             )
                         },

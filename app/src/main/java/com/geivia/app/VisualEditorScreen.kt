@@ -81,14 +81,14 @@ internal fun VisualEditorScreen(
         importedProjectPath.takeIf { it.isNotBlank() }
             ?.let { runCatching { ProjectWorkspaceInfo.scan(java.io.File(it)) }.getOrNull() }
     }
-    val importedScreensState = produceState<List<ImportedScreen>>(emptyList(), importedProjectPath) {
-        value = withContext(Dispatchers.IO) {
+    var importedScreens by remember(importedProjectPath) { mutableStateOf(emptyList<ImportedScreen>()) }
+    LaunchedEffect(importedProjectPath) {
+        importedScreens = withContext(Dispatchers.IO) {
             importedProjectPath.takeIf { it.isNotBlank() }?.let { path ->
                 runCatching { ImportedScreenDiscovery.scan(java.io.File(path)) }.getOrDefault(emptyList())
             } ?: emptyList()
         }
     }
-    val importedScreens = importedScreensState.value
     val projectIdForStorage = importedProjectPath.takeIf { it.isNotBlank() }
         ?.let { "local_" + it.hashCode().toUInt().toString(16) }
         ?: cloudProjectId.ifBlank { "local" }
@@ -1261,9 +1261,9 @@ internal fun VisualEditorScreen(
                                 onBack = { importedEditorScreenKey = null },
                                 onOpenCode = { onProjectFiles(editingScreen.sourcePath) },
                                 onSourceChanged = {
-                                    importedScreensState.value = runCatching {
+                                    importedScreens = runCatching {
                                         ImportedScreenDiscovery.scan(java.io.File(importedProjectPath))
-                                    }.getOrDefault(importedScreensState.value)
+                                    }.getOrDefault(importedScreens)
                                 }
                             )
                         } else if (importedScreens.isEmpty()) {

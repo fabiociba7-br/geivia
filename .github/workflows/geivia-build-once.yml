@@ -56,10 +56,10 @@ jobs:
         if: inputs.build_release == true
         shell: bash
         env:
-          KEYSTORE_B64: ${{ secrets.GEIVIA_KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.GEIVIA_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.GEIVIA_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.GEIVIA_KEY_PASSWORD }}
+          KEYSTORE_B64: \${{ secrets.GEIVIA_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: \${{ secrets.GEIVIA_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: \${{ secrets.GEIVIA_KEY_ALIAS }}
+          KEY_PASSWORD: \${{ secrets.GEIVIA_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           test -n "$KEYSTORE_B64" || { echo "::error::Missing GEIVIA_KEYSTORE_BASE64"; exit 1; }
@@ -73,10 +73,10 @@ jobs:
       - name: Build signed release APK
         if: inputs.build_release == true
         env:
-          GEIVIA_KEYSTORE_FILE: ${{ runner.temp }}/geivia-signing/geivia-release.jks
-          GEIVIA_KEYSTORE_PASSWORD: ${{ secrets.GEIVIA_KEYSTORE_PASSWORD }}
-          GEIVIA_KEY_ALIAS: ${{ secrets.GEIVIA_KEY_ALIAS }}
-          GEIVIA_KEY_PASSWORD: ${{ secrets.GEIVIA_KEY_PASSWORD }}
+          GEIVIA_KEYSTORE_FILE: \${{ runner.temp }}/geivia-signing/geivia-release.jks
+          GEIVIA_KEYSTORE_PASSWORD: \${{ secrets.GEIVIA_KEYSTORE_PASSWORD }}
+          GEIVIA_KEY_ALIAS: \${{ secrets.GEIVIA_KEY_ALIAS }}
+          GEIVIA_KEY_PASSWORD: \${{ secrets.GEIVIA_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           gradle --no-daemon :app:assembleRelease

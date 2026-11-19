@@ -2,7 +2,6 @@ package com.geivia.app
 
 import java.io.File
 import java.io.FileInputStream
-import java.io.FileOutputStream
 import javax.xml.XMLConstants
 import javax.xml.parsers.DocumentBuilderFactory
 
@@ -19,6 +18,19 @@ internal object ImportedSourceRecovery {
     fun available(source: File, projectRoot: File, version: Version): Boolean {
         val backup = backupFile(source, projectRoot, version) ?: return false
         return backup.isFile && backup.length() in 1..MAX_SOURCE_BYTES
+    }
+
+    fun preview(source: File, projectRoot: File, version: Version): String {
+        val backup = backupFile(source, projectRoot, version)
+            ?: throw IllegalArgumentException("Arquivo-fonte fora da pasta do projeto ou caminho inválido.")
+        require(backup.isFile && backup.length() in 1..MAX_SOURCE_BYTES) {
+            "A versão selecionada não existe ou excede o limite permitido."
+        }
+        validateCandidate(backup)
+        val content = backup.readText(Charsets.UTF_8)
+        return if (content.length > MAX_PREVIEW_CHARS) {
+            content.take(MAX_PREVIEW_CHARS) + "\\n\\n/* Prévia limitada. O arquivo completo será usado na restauração. */"
+        } else content
     }
 
     fun restore(source: File, projectRoot: File, version: Version) {
@@ -91,4 +103,5 @@ internal object ImportedSourceRecovery {
     }
 
     private const val MAX_SOURCE_BYTES = 2L * 1024L * 1024L
+    private const val MAX_PREVIEW_CHARS = 16000
 }

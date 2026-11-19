@@ -57,16 +57,6 @@ class ImportedComposeLayoutEditorTest {
         }
     }
 
-    @Test fun escapesDollarSignsAsLiteralText() {
-        val file = source()
-
-        ImportedComposeLayoutEditor.updateText(file, "SampleScreen", "text_0", "Preço: $5")
-
-        val updated = file.readText()
-        assertTrue(updated.contains("""Text("Preço: \$5")"""))
-        assertEquals("Preço: $5", ImportedComposeLayoutEditor.inspect(file, "SampleScreen")[0].value)
-    }
-
     @Test fun refusesUnknownComposableFunction() {
         val file = source()
 

@@ -20,6 +20,7 @@ class ImportedComposeLayoutEditorTest {
                         Text("Título")
                         Text(text = "Salvar")
                         Text(text = dynamicLabel)
+                        Text("prefix" + dynamicSuffix)
                     }
                 }
             """.trimIndent()
@@ -44,6 +45,7 @@ class ImportedComposeLayoutEditorTest {
         assertTrue(updated.contains("""Text(text = "Confirmar")"""))
         assertTrue(updated.contains("""Text("Título")"""))
         assertTrue(updated.contains("Text(text = dynamicLabel)"))
+        assertTrue(updated.contains("""Text("prefix" + dynamicSuffix)"""))
         assertEquals("Confirmar", ImportedComposeLayoutEditor.inspect(file, "SampleScreen")[1].value)
     }
 

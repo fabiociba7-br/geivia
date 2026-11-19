@@ -129,16 +129,29 @@ internal object ImportedXmlLayoutEditor {
             }
             // Reparse the serialized result before committing it.
             parse(temp)
-            if (!temp.renameTo(file)) {
-                val backup = File(file.parentFile, file.name + ".geivia.bak")
-                if (backup.exists()) backup.delete()
-                require(file.renameTo(backup)) { "Não foi possível criar uma cópia de segurança do layout." }
-                if (!temp.renameTo(file)) {
-                    backup.renameTo(file)
-                    throw IllegalStateException("Não foi possível substituir o layout; o original foi restaurado.")
+            val backup = File(file.parentFile, file.name + ".geivia.bak")
+            val previousBackup = File(file.parentFile, file.name + ".geivia.bak.previous")
+            if (backup.exists()) {
+                if (previousBackup.exists()) require(previousBackup.delete()) {
+                    "Não foi possível atualizar o histórico de segurança."
                 }
-                backup.delete()
+                require(backup.renameTo(previousBackup)) {
+                    "Não foi possível preservar a cópia de segurança anterior."
+                }
             }
+            require(file.renameTo(backup)) {
+                if (previousBackup.exists()) previousBackup.renameTo(backup)
+                "Não foi possível criar uma cópia de segurança do layout."
+            }
+            if (!temp.renameTo(file)) {
+                val restored = backup.renameTo(file)
+                if (previousBackup.exists()) previousBackup.renameTo(backup)
+                throw IllegalStateException(
+                    if (restored) "Não foi possível substituir o layout; o original foi restaurado."
+                    else "Falha crítica: o layout não foi substituído. A cópia original permanece em ${backup.name}."
+                )
+            }
+            // Keep the last known-good source and one earlier version for recovery.
         } finally {
             if (temp.exists()) temp.delete()
         }

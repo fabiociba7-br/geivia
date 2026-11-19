@@ -34,7 +34,7 @@ internal object ImportedScreenDraftApplier {
             "O arquivo original foi alterado fora do GEIVIA. Descarte o rascunho e carregue a versão atual antes de continuar."
         }
         val document = parseXml(file)
-        changes.forEach { change ->
+        changes.filterNot { it is ImportedScreenChange.Move }.forEach { change ->
             when (change) {
                 is ImportedScreenChange.Text -> {
                     require(change.newValue.length <= MAX_TEXT_LENGTH) { "Texto excede o limite permitido." }
@@ -66,37 +66,10 @@ internal object ImportedScreenDraftApplier {
                     target.setAttributeNS(ANDROID_NS, "android:layout_width", change.newWidth)
                     target.setAttributeNS(ANDROID_NS, "android:layout_height", change.newHeight)
                 }
-                is ImportedScreenChange.Move -> {
-                    val target = findById(document, change.componentId)
-                        ?: error("Componente @id/${change.componentId} não encontrado.")
-                    val parent = target.parentNode as? Element
-                        ?: error("Componente sem contêiner válido.")
-                    require(parent.tagName.substringAfterLast('.') == "LinearLayout") {
-                        "Movimentação só é segura dentro de LinearLayout."
-                    }
-                    val actualParentId = viewId(parent) ?: "__root__"
-                    require(actualParentId == (change.parentId ?: "__root__")) {
-                        "O contêiner de @id/${change.componentId} mudou desde a criação do rascunho."
-                    }
-                    val siblings = elementChildren(parent)
-                    require(siblings.all { viewId(it) != null }) {
-                        "Reordenação exige IDs estáveis em todos os elementos irmãos."
-                    }
-                    require(change.newIndex in siblings.indices) { "Posição de destino inválida." }
-                    val oldIndex = siblings.indexOfFirst { it === target }
-                    require(oldIndex >= 0) { "Componente não pertence ao contêiner informado." }
-                    if (oldIndex != change.newIndex) {
-                        val reordered = siblings.toMutableList().apply {
-                            removeAt(oldIndex)
-                            add(change.newIndex, target)
-                        }
-                        reordered.forEach { parent.removeChild(it) }
-                        val anchor = reordered.lastOrNull()?.nextSibling
-                        reordered.forEach { child -> parent.insertBefore(child, anchor) }
-                    }
-                }
+                is ImportedScreenChange.Move -> error("Movimentação XML deve ser aplicada em lote.")
             }
         }
+        applyXmlMoves(document, changes.filterIsInstance<ImportedScreenChange.Move>())
         require(document.documentElement != null) { "Layout XML inválido." }
         commitXml(file, document)
     }
@@ -147,6 +120,50 @@ internal object ImportedScreenDraftApplier {
             replaceAtomically(file, temp)
         } finally {
             if (temp.exists()) temp.delete()
+        }
+    }
+
+    /**
+     * Resolve every destination against the same original sibling list.
+     * This avoids index drift when several components are moved in one batch.
+     */
+    private fun applyXmlMoves(document: Document, moves: List<ImportedScreenChange.Move>) {
+        moves.groupBy { it.parentId ?: "__root__" }.forEach { (parentId, group) ->
+            val parent = if (parentId == "__root__") {
+                document.documentElement
+            } else {
+                findById(document, parentId)
+                    ?: error("Contêiner @id/$parentId não encontrado.")
+            }
+            require(parent.tagName.substringAfterLast('.') == "LinearLayout") {
+                "Movimentação só é segura dentro de LinearLayout."
+            }
+            val siblings = elementChildren(parent)
+            require(siblings.all { viewId(it) != null }) {
+                "Reordenação exige IDs estáveis em todos os elementos irmãos."
+            }
+            val ids = siblings.map { viewId(it)!! }
+            require(ids.toSet().size == ids.size) { "Há IDs duplicados no contêiner; reordenação cancelada." }
+            require(group.map { it.componentId }.toSet().size == group.size) {
+                "O mesmo componente foi movido mais de uma vez no lote."
+            }
+            val slots = MutableList<Element?>(siblings.size) { null }
+            val movedIds = group.map { it.componentId }.toSet()
+            group.forEach { move ->
+                val oldIndex = ids.indexOf(move.componentId)
+                require(oldIndex >= 0) { "Componente @id/${move.componentId} não pertence ao contêiner informado." }
+                require(oldIndex == move.originalIndex) {
+                    "A posição original de @id/${move.componentId} mudou desde a criação do rascunho."
+                }
+                require(move.newIndex in siblings.indices) { "Posição de destino inválida." }
+                require(slots[move.newIndex] == null) { "Dois componentes não podem ocupar a mesma posição final." }
+                slots[move.newIndex] = siblings[oldIndex]
+            }
+            val remaining = siblings.filter { viewId(it) !in movedIds }.iterator()
+            val reordered = slots.map { it ?: remaining.next() }
+            require(!remaining.hasNext()) { "Não foi possível concluir a reordenação do contêiner." }
+            reordered.forEach { parent.removeChild(it) }
+            reordered.forEach { parent.appendChild(it) }
         }
     }
 

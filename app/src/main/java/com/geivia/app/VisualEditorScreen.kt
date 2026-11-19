@@ -376,6 +376,7 @@ internal fun VisualEditorScreen(
                     .put("id", item.id).put("type", item.type).put("text", item.text)
                     .put("fontSize", item.fontSize).put("padding", item.padding)
                     .put("alignment", item.alignment).put("parentId", item.parentId ?: JSONObject.NULL)
+                    .put("offsetX", item.offsetX).put("offsetY", item.offsetY)
                     .put("backgroundColor", item.backgroundColor).put("textColor", item.textColor)
                     .put("cornerRadius", item.cornerRadius).put("visible", item.visible))
             }

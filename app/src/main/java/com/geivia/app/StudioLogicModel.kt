@@ -83,6 +83,9 @@ internal data class StudioLogicDocument(
                 if (parameter.value.length > MAX_VALUE_LENGTH) errors += "Valor de parâmetro muito longo: ${parameter.key}"
                 if (parameter.type !in VARIABLE_TYPES) errors += "Tipo inválido no parâmetro ${parameter.key}"
                 if (action.enabled) {
+                    if (hasMalformedVariableReference(parameter.value)) {
+                        errors += "Referência de variável malformada no parâmetro ${parameter.key}"
+                    }
                     val parameterReference = VARIABLE_REFERENCE.matchEntire(parameter.value)
                     if (parameterReference != null) {
                         val referencedVariable = variableMap[parameterReference.groupValues[1]]
@@ -112,6 +115,9 @@ internal data class StudioLogicDocument(
                     }
                     "set_variable" -> if (action.target !in variableMap) errors += "Variável de destino inexistente: ${action.target}"
                     "show_message" -> if (action.expression.isBlank()) errors += "Mensagem da ação está vazia"
+                }
+                if (hasMalformedVariableReference(action.expression)) {
+                    errors += "Referência de variável malformada na ação ${action.id}"
                 }
             }
             if (action.enabled) {
@@ -162,10 +168,13 @@ internal data class StudioLogicDocument(
         const val MAX_TARGET_LENGTH = 256
 
         private val KEY_PATTERN = Regex("[A-Za-z_][A-Za-z0-9_]{0,63}")
-        private val VARIABLE_REFERENCE = Regex("\\$\\{([A-Za-z_][A-Za-z0-9_]{0,63})}")
+        private val VARIABLE_REFERENCE = Regex("\\$\\{([A-Za-z_][A-Za-z0-9_]{0,63})\\}")
         private val VARIABLE_TYPES = setOf("text", "number", "boolean", "json")
         private val ACTION_TRIGGERS = setOf("on_click", "on_screen_open", "on_value_change")
         private val ACTION_KINDS = setOf("navigate", "set_variable", "show_message")
+
+        private fun hasMalformedVariableReference(value: String): Boolean =
+            VARIABLE_REFERENCE.replace(value, "").contains("\${")
 
         fun fromJson(source: String): StudioLogicDocument {
             require(source.length <= MAX_DOCUMENT_LENGTH) { "Documento de lógica muito grande" }

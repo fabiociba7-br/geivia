@@ -1,6 +1,7 @@
 name: GEIVIA pull request verification
 
 on:
+  workflow_dispatch:
   pull_request:
     branches:
       - main

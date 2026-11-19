@@ -210,10 +210,12 @@ internal object ImportedScreenDraftApplier {
             setFeature("http://xml.org/sax/features/external-general-entities", false)
             setFeature("http://xml.org/sax/features/external-parameter-entities", false)
             setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)
-            setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "")
-            setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "")
         }
-        return FileInputStream(file).use { factory.newDocumentBuilder().parse(it) }
+        return FileInputStream(file).use { input ->
+            factory.newDocumentBuilder().apply {
+                setEntityResolver { _, _ -> org.xml.sax.InputSource(java.io.StringReader("")) }
+            }.parse(input)
+        }
     }
 
     private fun findById(document: Document, id: String): Element? {

@@ -61,6 +61,7 @@ internal fun ImportedScreenVisualEditor(
     var latestBackupAvailable by remember(screen.sourcePath) { mutableStateOf(ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)) }
     var previousBackupAvailable by remember(screen.sourcePath) { mutableStateOf(ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)) }
     var pendingChange by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var backupPreview by remember { mutableStateOf<String?>(null) }
     fun requestChange(change: () -> Unit) { pendingChange = change }
     var dragDistance by remember(screen.sourcePath, screen.name) { mutableFloatStateOf(0f) }
     var components by remember(screen.sourcePath, screen.name) {
@@ -277,7 +278,17 @@ internal fun ImportedScreenVisualEditor(
                     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("RECUPERAÇÃO DO ARQUIVO-FONTE", color = Color(0xFF1769AA), fontWeight = FontWeight.Bold, fontSize = 10.sp)
                         Text("Restaure uma cópia de segurança sem apagar os arquivos de backup.", color = Color(0xFF718397), fontSize = 11.sp)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            if (latestBackupAvailable) OutlinedButton(onClick = {
+                                backupPreview = runCatching {
+                                    ImportedSourceRecovery.preview(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)
+                                }.fold({ "Última versão · ${File(projectRoot, screen.sourcePath).name}\n\n" + it }, { "Não foi possível abrir a prévia: ${it.message}" })
+                            }) { Text("Prévia da última") }
+                            if (previousBackupAvailable) OutlinedButton(onClick = {
+                                backupPreview = runCatching {
+                                    ImportedSourceRecovery.preview(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
+                                }.fold({ "Versão anterior · ${File(projectRoot, screen.sourcePath).name}\n\n" + it }, { "Não foi possível abrir a prévia: ${it.message}" })
+                            }) { Text("Prévia da anterior") }
                             if (latestBackupAvailable) OutlinedButton(onClick = {
                                 requestChange {
                                     runCatching {
@@ -308,6 +319,23 @@ internal fun ImportedScreenVisualEditor(
             }
             Text(status, color = Color(0xFF718397), fontSize = 11.sp)
         }
+    }
+    backupPreview?.let { content ->
+        AlertDialog(
+            onDismissRequest = { backupPreview = null },
+            title = { Text("Prévia da cópia de segurança") },
+            text = {
+                Text(
+                    content,
+                    color = Color(0xFF17354D),
+                    fontSize = 10.sp,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                )
+            },
+            confirmButton = {
+                Button(onClick = { backupPreview = null }) { Text("Fechar prévia") }
+            }
+        )
     }
     pendingChange?.let { change ->
         AlertDialog(

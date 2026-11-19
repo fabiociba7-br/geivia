@@ -87,17 +87,13 @@ internal fun ImportedScreenVisualEditor(
         if (previewOnly) {
             ImportedScreenPreview(screen)
         } else if (screen.format != ImportedScreen.Format.ANDROID_XML) {
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF5E8))) {
-                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Tela Jetpack Compose", color = Color(0xFF80521B), fontWeight = FontWeight.Bold)
-                    Text(
-                        "O editor de código Compose ainda não possui um gravador estrutural seguro. Para não corromper o Kotlin, esta tela permanece em modo de leitura nesta etapa. A edição XML já está conectada ao arquivo-fonte.",
-                        color = Color(0xFF80521B), fontSize = 12.sp
-                    )
-                    OutlinedButton(onClick = onOpenCode) { Text("Editar código Kotlin") }
-                }
-            }
-            ImportedScreenPreview(screen)
+            ImportedComposeVisualEditor(
+                screen = screen,
+                projectRoot = projectRoot,
+                onBack = onBack,
+                onOpenCode = onOpenCode,
+                onSourceChanged = onSourceChanged
+            )
         } else {
             Text("Selecione um componente. Segure e arraste para mudar sua ordem no LinearLayout.", color = Color(0xFF718397), fontSize = 12.sp)
             Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFE8EDF3)), shape = RoundedCornerShape(20.dp)) {

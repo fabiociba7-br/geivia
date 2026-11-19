@@ -96,7 +96,7 @@ internal fun ImportedScreenVisualEditor(
                     OutlinedButton(onClick = onOpenCode) { Text("Editar código Kotlin") }
                 }
             }
-            ImportedScreenPreview(screen, projectRoot)
+            ImportedScreenPreview(screen)
         } else {
             Text("Selecione um componente. Segure e arraste para mudar sua ordem no LinearLayout.", color = Color(0xFF718397), fontSize = 12.sp)
             components.forEach { component ->

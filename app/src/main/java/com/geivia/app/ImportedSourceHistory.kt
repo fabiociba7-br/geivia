@@ -73,30 +73,116 @@ internal object ImportedSourceHistory {
         require(snapshot.isFile && snapshot.length() in 1..MAX_SNAPSHOT_BYTES) {
             "A cópia histórica não existe ou excede o limite permitido."
         }
+
         val historical = snapshot.readText(Charsets.UTF_8)
         val current = target.readText(Charsets.UTF_8)
         val oldLines = historical.lines()
         val newLines = current.lines()
         val result = StringBuilder()
-        result.append("VERSÃO HISTÓRICA · ").append(formatTime(entry.timestamp)).append("\n")
-        result.append("AÇÃO: ").append(entry.action).append("\n\n")
-        result.append("COMPARAÇÃO SIMPLES POR LINHA (até 240 diferenças)\n")
-        val count = maxOf(oldLines.size, newLines.size)
-        var differences = 0
-        for (index in 0 until count) {
-            val oldLine = oldLines.getOrNull(index)
-            val newLine = newLines.getOrNull(index)
-            if (oldLine != newLine && differences < MAX_DIFF_LINES) {
-                if (oldLine != null) result.append("- ").append(oldLine).append("\n")
-                if (newLine != null) result.append("+ ").append(newLine).append("\n")
-                differences++
+        result.append("VERSÃO HISTÓRICA · ").append(formatTime(entry.timestamp)).append("\\n")
+        result.append("AÇÃO: ").append(entry.action).append("\\n")
+        result.append("ARQUIVO: ").append(entry.path).append("\\n\\n")
+        result.append("DIFF UNIFICADO · histórico (-) / atual (+)\\n")
+
+        if (oldLines == newLines) {
+            result.append("Nenhuma diferença de texto encontrada.\\n")
+        } else if (oldLines.size > MAX_DIFF_INPUT_LINES || newLines.size > MAX_DIFF_INPUT_LINES) {
+            result.append("Comparação detalhada indisponível: arquivo acima do limite de ")
+                .append(MAX_DIFF_INPUT_LINES).append(" linhas por versão.\\n")
+        } else {
+            val operations = buildDiff(oldLines, newLines)
+            appendDiffHunks(result, operations)
+        }
+
+        result.append("\\nCONTEÚDO DA VERSÃO HISTÓRICA\\n").append(historical.take(MAX_PREVIEW_CHARS))
+        if (historical.length > MAX_PREVIEW_CHARS) result.append("\\n[Conteúdo truncado na prévia.]")
+        return result.toString()
+    }
+
+    private data class DiffLine(val kind: Char, val oldLine: Int?, val newLine: Int?, val text: String)
+
+    /** LCS-based line diff with a strict input bound to cap memory at roughly 5 MiB. */
+    private fun buildDiff(oldLines: List<String>, newLines: List<String>): List<DiffLine> {
+        var prefix = 0
+        while (prefix < oldLines.size && prefix < newLines.size && oldLines[prefix] == newLines[prefix]) prefix++
+        var suffix = 0
+        while (
+            suffix < oldLines.size - prefix &&
+            suffix < newLines.size - prefix &&
+            oldLines[oldLines.lastIndex - suffix] == newLines[newLines.lastIndex - suffix]
+        ) suffix++
+
+        val oldMiddle = oldLines.subList(prefix, oldLines.size - suffix)
+        val newMiddle = newLines.subList(prefix, newLines.size - suffix)
+        val rows = oldMiddle.size + 1
+        val cols = newMiddle.size + 1
+        val lcs = Array(rows) { IntArray(cols) }
+        for (i in oldMiddle.indices.reversed()) {
+            for (j in newMiddle.indices.reversed()) {
+                lcs[i][j] = if (oldMiddle[i] == newMiddle[j]) {
+                    lcs[i + 1][j + 1] + 1
+                } else {
+                    maxOf(lcs[i + 1][j], lcs[i][j + 1])
+                }
             }
         }
-        if (differences == 0) result.append("Nenhuma diferença de texto encontrada.\n")
-        if (differences >= MAX_DIFF_LINES) result.append("\n[Comparação limitada.]")
-        result.append("\n\nCONTEÚDO DA VERSÃO HISTÓRICA\n").append(historical.take(MAX_PREVIEW_CHARS))
-        if (historical.length > MAX_PREVIEW_CHARS) result.append("\n[Conteúdo truncado na prévia.]")
-        return result.toString()
+
+        val operations = ArrayList<DiffLine>(oldLines.size + newLines.size)
+        for (i in 0 until prefix) operations += DiffLine(' ', i + 1, i + 1, oldLines[i])
+        var i = 0
+        var j = 0
+        while (i < oldMiddle.size || j < newMiddle.size) {
+            when {
+                i < oldMiddle.size && j < newMiddle.size && oldMiddle[i] == newMiddle[j] -> {
+                    operations += DiffLine(' ', prefix + i + 1, prefix + j + 1, oldMiddle[i])
+                    i++
+                    j++
+                }
+                i < oldMiddle.size && (j >= newMiddle.size || lcs[i + 1][j] >= lcs[i][j + 1]) -> {
+                    operations += DiffLine('-', prefix + i + 1, null, oldMiddle[i])
+                    i++
+                }
+                else -> {
+                    operations += DiffLine('+', null, prefix + j + 1, newMiddle[j])
+                    j++
+                }
+            }
+        }
+        for (offset in suffix downTo 1) {
+            val oldIndex = oldLines.size - offset
+            val newIndex = newLines.size - offset
+            operations += DiffLine(' ', oldIndex + 1, newIndex + 1, oldLines[oldIndex])
+        }
+        return operations
+    }
+
+    private fun appendDiffHunks(output: StringBuilder, operations: List<DiffLine>) {
+        val changed = operations.indices.filter { operations[it].kind != ' ' }
+        if (changed.isEmpty()) {
+            output.append("Nenhuma diferença de texto encontrada.\\n")
+            return
+        }
+        val included = linkedSetOf<Int>()
+        changed.forEach { index ->
+            for (candidate in (index - DIFF_CONTEXT_LINES).coerceAtLeast(0)..(index + DIFF_CONTEXT_LINES).coerceAtMost(operations.lastIndex)) {
+                included += candidate
+            }
+        }
+        val selected = included.sorted()
+        var previous = -2
+        var emittedChanges = 0
+        for (index in selected) {
+            if (index > previous + 1) output.append("...\\n")
+            val line = operations[index]
+            val oldNumber = line.oldLine?.toString() ?: "-"
+            val newNumber = line.newLine?.toString() ?: "-"
+            output.append(line.kind).append(" [").append(oldNumber).append(" → ").append(newNumber).append("] ")
+                .append(line.text).append("\\n")
+            if (line.kind != ' ') emittedChanges++
+            previous = index
+        }
+        if (emittedChanges > MAX_DIFF_LINES) output.append("[Exibindo contexto de todas as diferenças; quantidade de linhas alteradas: ")
+            .append(emittedChanges).append(".]\\n")
     }
 
     fun restore(projectRoot: File, entry: Entry, source: File) {
@@ -208,4 +294,6 @@ internal object ImportedSourceHistory {
     private const val MAX_SNAPSHOT_BYTES = 2L * 1024L * 1024L
     private const val MAX_PREVIEW_CHARS = 16000
     private const val MAX_DIFF_LINES = 240
+    private const val MAX_DIFF_INPUT_LINES = 1200
+    private const val DIFF_CONTEXT_LINES = 3
 }

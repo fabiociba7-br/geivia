@@ -69,7 +69,7 @@ internal object ImportedSourceRecovery {
 
     private fun validateCandidate(file: File) {
         require(file.length() in 1..MAX_SOURCE_BYTES) { "A cópia selecionada está vazia ou excede o limite permitido." }
-        when (file.extension.substringBefore(".geivia").lowercase()) {
+        when (file.name.substringBefore(".geivia").substringAfterLast(".").lowercase()) {
             "xml" -> {
                 val factory = DocumentBuilderFactory.newInstance().apply {
                     isNamespaceAware = true

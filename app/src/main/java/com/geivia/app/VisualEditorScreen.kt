@@ -177,6 +177,7 @@ internal fun VisualEditorScreen(
     var workspacePanel by rememberSaveable(projectKey) {
         mutableStateOf(if (activeWorkspace != null) "imported" else "canvas")
     }
+    var importedEditorScreenKey by rememberSaveable(projectKey) { mutableStateOf<String?>(null) }
 
     // Importa uma primeira representação visual das telas Compose já existentes.
     // O parser é best-effort: ele não reescreve nem altera os arquivos Kotlin originais.
@@ -397,7 +398,6 @@ internal fun VisualEditorScreen(
         selectedId = elements.firstOrNull()?.id
         message = "Tela alterada"
     }
-
     fun addScreen() {
         if (screenRegistry.size >= StudioScreenDocument.MAX_SCREENS) {
             message = "Limite de telas atingido"
@@ -797,8 +797,7 @@ internal fun VisualEditorScreen(
                                 onSelect = {}
                             )
                         }
-                        if (previewMessage.isNotBlank()) {
-                            Surface(color = Color(0xFFEAF3FB), shape = RoundedCornerShape(10.dp)) {
+                        if (previewMessage.isNotBlank()) {                            Surface(color = Color(0xFFEAF3FB), shape = RoundedCornerShape(10.dp)) {
                                 Text(previewMessage, color = EditorInk, modifier = Modifier.fillMaxWidth().padding(12.dp), fontSize = 12.sp)
                             }
                         }
@@ -1197,8 +1196,7 @@ internal fun VisualEditorScreen(
                         val siblingIds = elements.filter { it.parentId == selected.parentId }.map { it.id }
                         val siblingPosition = siblingIds.indexOf(selected.id)
                         HorizontalDivider(color = Color(0xFFE7EDF3))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {                            OutlinedButton(
                                 onClick = {
                                     if (siblingPosition > 0) {
                                         checkpoint()
@@ -1253,11 +1251,22 @@ internal fun VisualEditorScreen(
             } else {
                 when (workspacePanel) {
                     "imported" -> {
-                        Text(
-                            "Estas telas foram identificadas diretamente nos arquivos do projeto. A leitura é vinculada ao código original; nesta etapa, a edição visual ainda não grava alterações de volta no Kotlin/XML.",
-                            color = EditorMuted, fontSize = 12.sp, lineHeight = 18.sp
-                        )
-                        if (importedScreensState.value.isEmpty()) {
+                        val editingScreen = importedScreens.firstOrNull {
+                            "${it.sourcePath}#${it.name}" == importedEditorScreenKey
+                        }
+                        if (editingScreen != null && importedProjectPath.isNotBlank()) {
+                            ImportedScreenVisualEditor(
+                                screen = editingScreen,
+                                projectRoot = java.io.File(importedProjectPath),
+                                onBack = { importedEditorScreenKey = null },
+                                onOpenCode = { onProjectFiles(editingScreen.sourcePath) },
+                                onSourceChanged = {
+                                    importedScreensState.value = runCatching {
+                                        ImportedScreenDiscovery.scan(java.io.File(importedProjectPath))
+                                    }.getOrDefault(importedScreensState.value)
+                                }
+                            )
+                        } else if (importedScreens.isEmpty()) {
                             Card(colors = CardDefaults.cardColors(containerColor = Color.White)) {
                                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text("Nenhuma tela reconhecida ainda", color = EditorInk, fontWeight = FontWeight.Bold)
@@ -1266,6 +1275,7 @@ internal fun VisualEditorScreen(
                                 }
                             }
                         } else {
+                            Text("Selecione uma tela para abrir o editor visual. As telas XML com IDs estáveis permitem editar texto e reordenar componentes com gravação no arquivo original.", color = EditorMuted, fontSize = 12.sp, lineHeight = 18.sp)
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text("${importedScreens.size} tela(s) encontradas", color = EditorInk, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.weight(1f))
@@ -1287,26 +1297,18 @@ internal fun VisualEditorScreen(
                                             Text("${screen.components.size} itens", color = EditorMuted, fontSize = 10.sp)
                                         }
                                         Text(screen.sourcePath, color = EditorMuted, fontSize = 10.sp)
-                                        Text("PRÉVIA DA TELA", color = EditorBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                         ImportedScreenPreview(screen)
-                                        Text("Elementos reconhecidos", color = EditorInk, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                                        if (screen.components.isEmpty()) {
-                                            Text("Nenhum componente reconhecido nesta tela.", color = EditorMuted, fontSize = 11.sp)
-                                        } else {
-                                            screen.components.forEach { component ->
-                                                Row(Modifier.fillMaxWidth().background(Color(0xFFF5F8FB), RoundedCornerShape(8.dp)).padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                                    Text(component.type, color = EditorInk, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                                                    component.id?.let { Text("@id/$it", color = EditorMuted, fontSize = 9.sp) }
-                                                    component.text?.let { Text(it, color = EditorMuted, fontSize = 9.sp, modifier = Modifier.padding(start = 6.dp)) }
-                                                }
-                                            }
+                                        Button(
+                                            onClick = { importedEditorScreenKey = "${screen.sourcePath}#${screen.name}" },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) { Text("Selecionar e editar visualmente") }
+                                        OutlinedButton(onClick = { onProjectFiles(screen.sourcePath) }, modifier = Modifier.fillMaxWidth()) {
+                                            Text("Abrir arquivo-fonte")
                                         }
-                                        OutlinedButton(onClick = { onProjectFiles(screen.sourcePath) }, modifier = Modifier.fillMaxWidth()) { Text("Editar arquivo-fonte") }
                                     }
                                 }
                             }
                         }
-                        Text("Importante: nenhuma alteração foi aplicada ao código original por esta leitura. A gravação visual sincronizada será habilitada por formato, com validação antes de salvar.", color = Color(0xFF8A5715), fontSize = 11.sp, lineHeight = 16.sp)
                     }
                     "components" -> {
                         Text("Adicione elementos à tela. Os componentes podem ser aninhados em seções, linhas, colunas e cartões.", color = EditorMuted, fontSize = 12.sp)
@@ -1597,8 +1599,7 @@ internal fun VisualEditorScreen(
                             val fileName = "GEIVIA_" + projectTitle.replace(Regex("[^A-Za-z0-9_-]"), "_") + ".zip"
                             projectExportLauncher.launch(fileName)
                             }
-                            }
-                        }, modifier = Modifier.fillMaxWidth()) {
+                            }                        }, modifier = Modifier.fillMaxWidth()) {
                             Icon(Icons.Default.Archive, null); Spacer(Modifier.width(7.dp)); Text("Exportar projeto Android (.ZIP)")
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

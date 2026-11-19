@@ -105,4 +105,50 @@ class ImportedScreenDraftApplierTest {
         )
         assertTrue(reverted.isEmpty())
     }
+
+    @Test fun resolvesMultipleXmlMovesAgainstTheSameOriginalSiblingOrder() {
+        val file = File(temp.root, "three.xml").apply {
+            writeText(
+                """<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android">
+                    <TextView android:id="@+id/first" android:text="1" />
+                    <TextView android:id="@+id/second" android:text="2" />
+                    <TextView android:id="@+id/third" android:text="3" />
+                </LinearLayout>""".trimIndent()
+            )
+        }
+        val fingerprint = ImportedScreenDraft.fingerprint(file)
+
+        ImportedScreenDraftApplier.applyXml(
+            file,
+            listOf(
+                ImportedScreenChange.Move("third", "__root__", 2, 0),
+                ImportedScreenChange.Move("first", "__root__", 0, 2)
+            ),
+            fingerprint
+        )
+
+        assertEquals(
+            listOf("third", "second", "first"),
+            ImportedXmlLayoutEditor.inspect(file).map { it.id }
+        )
+    }
+
+    @Test fun rejectsConflictingXmlMoveDestinationsWithoutChangingOriginal() {
+        val file = xml()
+        val original = file.readText()
+        val fingerprint = ImportedScreenDraft.fingerprint(file)
+
+        assertThrows(IllegalArgumentException::class.java) {
+            ImportedScreenDraftApplier.applyXml(
+                file,
+                listOf(
+                    ImportedScreenChange.Move("title", "__root__", 0, 0),
+                    ImportedScreenChange.Move("save", "__root__", 1, 0)
+                ),
+                fingerprint
+            )
+        }
+        assertEquals(original, file.readText())
+    }
+
 }

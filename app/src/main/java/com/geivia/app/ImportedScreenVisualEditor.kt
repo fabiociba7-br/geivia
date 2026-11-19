@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.weight
@@ -333,12 +336,14 @@ internal fun ImportedScreenVisualEditor(
             onDismissRequest = { backupPreview = null },
             title = { Text("Prévia da cópia de segurança") },
             text = {
-                Text(
-                    content,
-                    color = Color(0xFF17354D),
-                    fontSize = 10.sp,
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                )
+                Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
+                    Text(
+                        content,
+                        color = Color(0xFF17354D),
+                        fontSize = 10.sp,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
+                }
             },
             confirmButton = {
                 Button(onClick = { backupPreview = null }) { Text("Fechar prévia") }

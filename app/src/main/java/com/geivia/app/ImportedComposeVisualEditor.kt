@@ -114,7 +114,9 @@ internal fun ImportedComposeVisualEditor(
                                     latestBackupAvailable = ImportedSourceRecovery.available(sourceFile, projectRoot, ImportedSourceRecovery.Version.LATEST)
                                     previousBackupAvailable = ImportedSourceRecovery.available(sourceFile, projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
                                     status = "Texto atualizado no arquivo Kotlin original."
-                                    ImportedSourceHistory.record(projectRoot, File(projectRoot, screen.sourcePath), "Alteração de fonte", status)\n                                            historyEntries = ImportedSourceHistory.recent(projectRoot, File(projectRoot, screen.sourcePath))\n                                            onSourceChanged()
+                                    ImportedSourceHistory.record(projectRoot, File(projectRoot, screen.sourcePath), "Alteração de fonte", status)
+                                                historyEntries = ImportedSourceHistory.recent(projectRoot, File(projectRoot, screen.sourcePath))
+                                                onSourceChanged()
                                 }.onFailure { status = it.message ?: "Não foi possível salvar no Kotlin." }
                             }
                         }) { Text("Salvar no arquivo-fonte") }

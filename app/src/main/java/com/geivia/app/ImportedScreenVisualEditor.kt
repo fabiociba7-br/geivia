@@ -206,6 +206,8 @@ internal fun ImportedScreenVisualEditor(
                                     val file = File(projectRoot, screen.sourcePath)
                                     ImportedXmlLayoutEditor.updateDimensions(file, selected.id, widthDraft, heightDraft)
                                     components = ImportedXmlLayoutEditor.inspect(file)
+                                    latestBackupAvailable = ImportedSourceRecovery.available(file, projectRoot, ImportedSourceRecovery.Version.LATEST)
+                                    previousBackupAvailable = ImportedSourceRecovery.available(file, projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
                                     status = "Dimensões salvas no XML original."
                                     onSourceChanged()
                                 }.onFailure { status = it.message ?: "Dimensões inválidas." }

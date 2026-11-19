@@ -1182,6 +1182,21 @@ internal fun VisualEditorScreen(
                         )
                         Text("Arredondamento: ${selected.cornerRadius.toInt()} dp", color = EditorInk, fontSize = 12.sp)
                         Slider(value = selected.cornerRadius, onValueChange = { value -> updateSelected { it.copy(cornerRadius = value) } }, valueRange = 0f..32f, steps = 7)
+                        HorizontalDivider(color = Color(0xFFE7EDF3))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Posição no canvas", color = EditorInk, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                                Text("X: ${selected.offsetX.roundToInt()} dp · Y: ${selected.offsetY.roundToInt()} dp", color = EditorMuted, fontSize = 11.sp)
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    checkpoint()
+                                    updateSelected { it.copy(offsetX = 0f, offsetY = 0f) }
+                                    message = "Posição restaurada"
+                                },
+                                enabled = selected.offsetX != 0f || selected.offsetY != 0f
+                            ) { Text("Restaurar posição") }
+                        }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("Componente visível", color = EditorInk, modifier = Modifier.weight(1f))
                             Switch(checked = selected.visible, onCheckedChange = { value -> updateSelected { it.copy(visible = value) } })

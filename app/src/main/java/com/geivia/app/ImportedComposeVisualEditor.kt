@@ -106,6 +106,8 @@ internal fun ImportedComposeVisualEditor(
                                 runCatching {
                                     ImportedComposeLayoutEditor.updateText(sourceFile, screen.name, selected.id, draft)
                                     texts = ImportedComposeLayoutEditor.inspect(sourceFile, screen.name)
+                                    latestBackupAvailable = ImportedSourceRecovery.available(sourceFile, projectRoot, ImportedSourceRecovery.Version.LATEST)
+                                    previousBackupAvailable = ImportedSourceRecovery.available(sourceFile, projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
                                     status = "Texto atualizado no arquivo Kotlin original."
                                     onSourceChanged()
                                 }.onFailure { status = it.message ?: "Não foi possível salvar no Kotlin." }

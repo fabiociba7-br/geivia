@@ -51,13 +51,28 @@ internal object ImportedComposeLayoutEditor {
             require(inspectText(temp, functionName).any { it.id == componentId && it.value == value }) {
                 "A validação do Kotlin modificado falhou."
             }
-            if (backup.exists()) backup.delete()
-            require(file.renameTo(backup)) { "Não foi possível criar backup do arquivo Kotlin." }
-            if (!temp.renameTo(file)) {
-                backup.renameTo(file)
-                throw IllegalStateException("Não foi possível salvar o Kotlin; o original foi restaurado.")
+            val previousBackup = File(file.parentFile, file.name + ".geivia.bak.previous")
+            if (backup.exists()) {
+                if (previousBackup.exists()) require(previousBackup.delete()) {
+                    "Não foi possível atualizar o histórico de segurança."
+                }
+                require(backup.renameTo(previousBackup)) {
+                    "Não foi possível preservar a cópia de segurança anterior."
+                }
             }
-            backup.delete()
+            require(file.renameTo(backup)) {
+                if (previousBackup.exists()) previousBackup.renameTo(backup)
+                "Não foi possível criar backup do arquivo Kotlin."
+            }
+            if (!temp.renameTo(file)) {
+                val restored = backup.renameTo(file)
+                if (previousBackup.exists()) previousBackup.renameTo(backup)
+                throw IllegalStateException(
+                    if (restored) "Não foi possível salvar o Kotlin; o original foi restaurado."
+                    else "Falha crítica: o Kotlin não foi substituído. A cópia original permanece em ${backup.name}."
+                )
+            }
+            // Keep the last known-good source and one earlier version for recovery.
         } finally {
             if (temp.exists()) temp.delete()
         }

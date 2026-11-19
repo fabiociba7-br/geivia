@@ -32,7 +32,7 @@ internal object ImportedXmlLayoutEditor {
     fun inspect(layoutFile: File): List<Component> {
         val document = parse(layoutFile)
         val result = mutableListOf<Component>()
-        fun visit(parent: Element, parentId: String?) {
+        fun visit(parent: Element, parentKey: String) {
             val children = elementChildren(parent)
             children.forEachIndexed { index, child ->
                 val id = viewId(child)
@@ -42,12 +42,12 @@ internal object ImportedXmlLayoutEditor {
                         id = id,
                         tag = child.tagName.substringAfterLast('.'),
                         text = child.getAttributeNS(ANDROID_NS, "text").takeIf { it.isNotBlank() },
-                        parentId = parentId,
+                        parentId = parentKey,
                         siblingIndex = index,
-                        canReorder = parentTag == "LinearLayout" && parentId != null
+                        canReorder = parentTag == "LinearLayout"
                     )
                 }
-                visit(child, id ?: parentId)
+                visit(child, id ?: (parentKey + "/" + index))
             }
         }
         visit(document.documentElement, viewId(document.documentElement) ?: "__root__")

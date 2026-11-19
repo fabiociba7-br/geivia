@@ -59,6 +59,41 @@ class ImportedScreenDiscoveryTest {
         assertTrue(screens.last().components.any { it.type == "Row" })
     }
 
+    @Test fun refreshedXmlDiscoveryReflectsSavedSourceEdits() {
+        val root = temp.newFolder("xml-refresh")
+        val layout = File(root, "app/src/main/res/layout/screen.xml")
+        layout.parentFile!!.mkdirs()
+        layout.writeText(
+            """<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android">
+                <TextView android:id="@+id/title" android:text="Antes" />
+            </LinearLayout>"""
+        )
+
+        ImportedXmlLayoutEditor.updateText(layout, "title", "Depois")
+        val refreshed = ImportedScreenDiscovery.scan(root).single()
+
+        assertTrue(refreshed.components.any { it.type == "TextView" && it.text == "Depois" })
+    }
+
+    @Test fun refreshedComposeDiscoveryReflectsSavedSourceEdits() {
+        val root = temp.newFolder("compose-refresh")
+        val source = File(root, "app/src/main/java/example/Screen.kt")
+        source.parentFile!!.mkdirs()
+        source.writeText(
+            """package example
+                @Composable
+                fun SampleScreen() {
+                    Text("Antes")
+                }
+            """.trimIndent()
+        )
+
+        ImportedComposeLayoutEditor.updateText(source, "SampleScreen", "text_0", "Depois")
+        val refreshed = ImportedScreenDiscovery.scan(root).single()
+
+        assertTrue(refreshed.components.any { it.type == "Text" && it.text == "Depois" })
+    }
+
     @Test fun ignoresBuildAndDependencyDirectories() {
         val root = temp.newFolder("project")
         File(root, "app/src/main/res/layout/main.xml").apply {

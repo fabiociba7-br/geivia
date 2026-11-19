@@ -66,6 +66,7 @@ internal fun ImportedScreenVisualEditor(
     var pendingChange by remember { mutableStateOf<(() -> Unit)?>(null) }
     var backupPreview by remember { mutableStateOf<String?>(null) }
     var historyEntries by remember(screen.sourcePath) { mutableStateOf(ImportedSourceHistory.recent(projectRoot, File(projectRoot, screen.sourcePath))) }
+    var historyPreview by remember { mutableStateOf<String?>(null) }
     fun requestChange(change: () -> Unit) { pendingChange = change }
     var dragDistance by remember(screen.sourcePath, screen.name) { mutableFloatStateOf(0f) }
     var components by remember(screen.sourcePath, screen.name) {
@@ -351,10 +352,30 @@ internal fun ImportedScreenVisualEditor(
                         Text("Nenhuma alteração registrada nesta tela ainda.", color = Color(0xFF718397), fontSize = 11.sp)
                     } else {
                         historyEntries.forEach { entry ->
-                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(entry.action, color = Color(0xFF17354D), fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
                                 Text(ImportedSourceHistory.formatTime(entry.timestamp), color = Color(0xFF718397), fontSize = 10.sp)
                                 if (entry.detail.isNotBlank()) Text(entry.detail, color = Color(0xFF718397), fontSize = 10.sp, maxLines = 2)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedButton(enabled = entry.snapshot != null, onClick = {
+                                        historyPreview = runCatching {
+                                            ImportedSourceHistory.preview(projectRoot, entry, File(projectRoot, screen.sourcePath))
+                                        }.getOrElse { "Não foi possível comparar: ${it.message}" }
+                                    }) { Text("Comparar") }
+                                    OutlinedButton(enabled = entry.snapshot != null, onClick = {
+                                        pendingChange = {
+                                            runCatching {
+                                                ImportedSourceHistory.restore(projectRoot, entry, File(projectRoot, screen.sourcePath))
+                                                historyEntries = ImportedSourceHistory.recent(projectRoot, File(projectRoot, screen.sourcePath))
+                                                latestBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.LATEST)
+                                                previousBackupAvailable = ImportedSourceRecovery.available(File(projectRoot, screen.sourcePath), projectRoot, ImportedSourceRecovery.Version.PREVIOUS)
+                                                components = ImportedXmlLayoutEditor.inspect(File(projectRoot, screen.sourcePath))
+                                                status = "Versão do histórico restaurada."
+                                                onSourceChanged()
+                                            }.onFailure { status = it.message ?: "Não foi possível restaurar a entrada." }
+                                        }
+                                    }) { Text("Restaurar") }
+                                }
                             }
                         }
                     }
@@ -363,6 +384,18 @@ internal fun ImportedScreenVisualEditor(
             }
 
         }
+    }
+    historyPreview?.let { content ->
+        AlertDialog(
+            onDismissRequest = { historyPreview = null },
+            title = { Text("Comparação com o arquivo atual") },
+            text = {
+                Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
+                    Text(content, color = Color(0xFF17354D), fontSize = 10.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                }
+            },
+            confirmButton = { Button(onClick = { historyPreview = null }) { Text("Fechar comparação") } }
+        )
     }
     backupPreview?.let { content ->
         AlertDialog(

@@ -70,6 +70,20 @@ class ImportedXmlLayoutEditorTest {
         assertFalse(file.readText().isBlank())
     }
 
+    @Test fun disablesReorderingWhenAnySiblingLacksAStableId() {
+        val file = layout(
+            """<TextView android:id="@+id/first" android:text="1" />
+               <View android:layout_width="match_parent" />"""
+        )
+
+        val component = ImportedXmlLayoutEditor.inspect(file).single()
+
+        assertFalse(component.canReorder)
+        assertThrows(IllegalArgumentException::class.java) {
+            ImportedXmlLayoutEditor.moveSibling(file, "first", 0)
+        }
+    }
+
     @Test fun refusesTextUpdatesForComponentsWithoutTextAttribute() {
         val file = layout("""<ImageView android:id="@+id/logo" />""")
 

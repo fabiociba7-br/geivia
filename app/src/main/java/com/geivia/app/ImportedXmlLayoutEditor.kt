@@ -112,11 +112,14 @@ internal object ImportedXmlLayoutEditor {
             // Reparse the serialized result before committing it.
             parse(temp)
             if (!temp.renameTo(file)) {
-                FileOutputStream(file).use { output ->
-                    FileInputStream(temp).use { input -> input.copyTo(output) }
-                    output.fd.sync()
+                val backup = File(file.parentFile, file.name + ".geivia.bak")
+                if (backup.exists()) backup.delete()
+                require(file.renameTo(backup)) { "Não foi possível criar uma cópia de segurança do layout." }
+                if (!temp.renameTo(file)) {
+                    backup.renameTo(file)
+                    throw IllegalStateException("Não foi possível substituir o layout; o original foi restaurado.")
                 }
-                temp.delete()
+                backup.delete()
             }
         } finally {
             if (temp.exists()) temp.delete()

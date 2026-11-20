@@ -84,8 +84,11 @@ private fun StudioRuntimeNode(
     val isButton = type == "button"
     val background = studioRuntimeColor(element.backgroundColor, if (isButton) theme.primary else Color.White)
         .let { if (isButton && element.backgroundColor == "#FFFFFF") theme.primary else it }
-    val foreground = studioRuntimeColor(element.textColor, if (isButton) Color.White else theme.text)
-        .let { if (isButton && element.textColor == "#17354D") Color.White else it }
+    val foreground = when {
+        isButton && element.textColor == "#17354D" -> Color.White
+        element.textColor == "#17354D" -> theme.text
+        else -> studioRuntimeColor(element.textColor, theme.text)
+    }
     val shape = RoundedCornerShape(element.cornerRadius.coerceIn(0f, 48f).dp)
     val resolvedText = remember(element.text, values) {
         Regex("""\$\{([A-Za-z_][A-Za-z0-9_]*)\}""").replace(element.text) { values[it.groupValues[1]].orEmpty() }
@@ -111,7 +114,6 @@ private fun StudioRuntimeNode(
                 modifier = outerModifier,
                 color = if (selected) Color(0xFFEAF3FB) else background,
                 shape = shape,
-                border = if (selected) null else null
             ) {
                 Column(Modifier.fillMaxWidth().padding(padding), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (resolvedText.isNotBlank()) {
@@ -182,7 +184,7 @@ private fun StudioRuntimeNode(
                 value = if (element.text.startsWith("content://") || element.text.startsWith("file://")) {
                     withContext(Dispatchers.IO) {
                         runCatching {
-                            context.contentResolver.openInputStream(android.net.Uri.parse(element.text))?.use(BitmapFactory::decodeStream)
+                            context.contentResolver.openInputStream(android.net.Uri.parse(element.text))?.use { BitmapFactory.decodeStream(it) }
                         }.getOrNull()
                     }
                 } else null

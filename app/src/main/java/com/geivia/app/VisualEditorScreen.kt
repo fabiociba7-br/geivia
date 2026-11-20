@@ -1693,101 +1693,26 @@ private fun EditorCanvasNode(
     onActivate: (String, String, String) -> Unit = { _, _, _ -> },
     onSelect: (String) -> Unit
 ) {
-    if (!element.visible) return
-    val children = allElements.filter { it.parentId == element.id && it.visible }
-    val selected = element.id == selectedId
-    val defaultBackground = if (element.type == "button") primaryColor else Color.White
-    val defaultText = if (element.type == "button") Color.White else defaultTextColor
-    val componentBackground = if (element.type == "button" && element.backgroundColor == "#FFFFFF") primaryColor else editorColor(element.backgroundColor, defaultBackground)
-    val componentText = if (element.type == "button" && element.textColor == "#17354D") Color.White else editorColor(element.textColor, defaultText)
-    val container = element.type in setOf("section", "column", "row") || (element.type == "card" && children.isNotEmpty())
-    Surface(
-        modifier = Modifier.fillMaxWidth().clickable { onSelect(element.id); if (interactive) onActivate(element.id, "on_click", "") },
-        color = if (selected) Color(0xFFEAF3FB) else componentBackground,
-        shape = RoundedCornerShape(element.cornerRadius.dp),
-        border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) EditorBlue else Color(0xFFE3EAF1))
-    ) {
-        Column(Modifier.fillMaxWidth().padding(element.padding.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (container) {
-                if (element.type != "row" || element.text.isNotBlank()) {
-                    Text(element.text.ifBlank { if (element.type == "row") "Linha" else "Contêiner" }, color = componentText, fontWeight = FontWeight.SemiBold, fontSize = element.fontSize.sp)
-                }
-                if (children.isEmpty()) {
-                    Text("Adicione componentes a este contêiner", color = EditorMuted, fontSize = 10.sp)
-                } else if (element.type == "row") {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        children.forEach { child ->
-                            Box(Modifier.weight(1f)) { EditorCanvasNode(child, allElements, selectedId, primaryColor, defaultTextColor, interactive, onActivate, onSelect) }
-                        }
-                    }
-                } else {
-                    children.forEach { child -> EditorCanvasNode(child, allElements, selectedId, primaryColor, defaultTextColor, interactive, onActivate, onSelect) }
-                }
-            } else {
-                val align = when (element.alignment) {
-                    "center" -> TextAlign.Center
-                    "end" -> TextAlign.End
-                    else -> TextAlign.Start
-                }
-                when (element.type) {
-                    "button" -> Box(Modifier.fillMaxWidth(), contentAlignment = when (element.alignment) {
-                        "center" -> Alignment.Center
-                        "end" -> Alignment.CenterEnd
-                        else -> Alignment.CenterStart
-                    }) {
-                        Surface(color = componentBackground, shape = RoundedCornerShape(element.cornerRadius.dp)) {
-                            Text(element.text, color = componentText, fontWeight = FontWeight.SemiBold, fontSize = element.fontSize.sp, modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp))
-                        }
-                    }
-                    "card" -> Surface(color = componentBackground, shape = RoundedCornerShape(element.cornerRadius.dp), border = BorderStroke(1.dp, Color(0xFFDCE5EE))) {
-                        Text(element.text, color = componentText, modifier = Modifier.fillMaxWidth().padding(12.dp), fontWeight = FontWeight.Medium, fontSize = element.fontSize.sp, textAlign = align)
-                    }
-                    "input" -> {
-                        var inputValue by remember(element.id, interactive) { mutableStateOf("") }
-                        OutlinedTextField(
-                            value = inputValue,
-                            onValueChange = { value ->
-                                inputValue = value
-                                if (interactive) onActivate(element.id, "on_value_change", value)
-                            },
-                            readOnly = !interactive,
-                            enabled = interactive,
-                            label = { Text(element.text) },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-                    }
-                    "image" -> {
-                        val localContext = LocalContext.current
-                        val bitmap by produceState<android.graphics.Bitmap?>(initialValue = null, key1 = element.text) {
-                            value = if (element.text.startsWith("content://") || element.text.startsWith("file://")) {
-                                withContext(Dispatchers.IO) {
-                                    runCatching {
-                                        localContext.contentResolver.openInputStream(android.net.Uri.parse(element.text))?.use { stream ->
-                                            BitmapFactory.decodeStream(stream)
-                                        }
-                                    }.getOrNull()
-                                }
-                            } else null
-                        }
-                        Surface(color = Color(0xFFF0F4F8), shape = RoundedCornerShape(element.cornerRadius.dp), border = BorderStroke(1.dp, Color(0xFFDCE5EE))) {
-                            if (bitmap != null) {
-                                Image(bitmap = bitmap!!.asImageBitmap(), contentDescription = element.text, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp).padding(6.dp))
-                            } else {
-                                Column(Modifier.fillMaxWidth().heightIn(min = 88.dp).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                                    Icon(Icons.Default.Image, null, tint = EditorMuted, modifier = Modifier.size(28.dp))
-                                    Text(element.text, color = EditorMuted, fontSize = 10.sp, maxLines = 2)
-                                }
-                            }
-                        }
-                    }
-                    "divider" -> HorizontalDivider(color = Color(0xFFDCE5EE))
-                    "spacer" -> Spacer(Modifier.fillMaxWidth().height(element.padding.coerceAtLeast(8f).dp))
-                    else -> Text(element.text, color = componentText, fontSize = element.fontSize.sp, textAlign = align, modifier = Modifier.fillMaxWidth())
-                }
-            }
+    val includedIds = mutableSetOf(element.id)
+    var changed = true
+    while (changed) {
+        changed = false
+        allElements.forEach { candidate ->
+            if (candidate.parentId in includedIds && includedIds.add(candidate.id)) changed = true
         }
     }
+    val subtree = allElements.filter { it.id in includedIds }.map {
+        if (it.id == element.id) it.copy(parentId = null) else it
+    }
+    StudioScreenRuntime(
+        elements = subtree,
+        theme = StudioRuntimeTheme(primary = primaryColor, text = defaultTextColor),
+        runtimeValues = emptyMap(),
+        interactive = interactive,
+        onAction = onActivate,
+        selectedId = selectedId,
+        onSelect = onSelect
+    )
 }
 
 @Composable

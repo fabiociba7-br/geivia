@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -96,7 +97,11 @@ private fun StudioRuntimeNode(
     val outerModifier = Modifier
         .fillMaxWidthIf(element.fillMaxWidth)
         .then(if (element.heightDp != null) Modifier.height(element.heightDp.coerceAtLeast(0f).dp) else Modifier)
-        .then(if (interactive) Modifier else Modifier.clickable { onSelect(element.id) })
+        .then(
+            if (interactive && type in setOf("section", "column", "row")) Modifier.clickable(enabled = element.enabled) { activate() }
+            else if (!interactive) Modifier.clickable { onSelect(element.id) }
+            else Modifier
+        )
         .then(if (selected) Modifier.border(2.dp, theme.primary, shape) else Modifier)
     val padding = element.padding.coerceIn(0f, 64f).dp
 
@@ -122,7 +127,13 @@ private fun StudioRuntimeNode(
                         }
                     } else {
                         children.forEach { child ->
-                            StudioRuntimeNode(child, all, theme, values, interactive, onAction, selectedId, onSelect)
+                            if (child.weight != null) {
+                                Box(Modifier.weight(child.weight.coerceIn(0.01f, 100f))) {
+                                    StudioRuntimeNode(child, all, theme, values, interactive, onAction, selectedId, onSelect)
+                                }
+                            } else {
+                                StudioRuntimeNode(child, all, theme, values, interactive, onAction, selectedId, onSelect)
+                            }
                         }
                     }
                 }

@@ -100,6 +100,10 @@ internal object ImportedScreenDiscovery {
                 val insideButton = composeButton.findAll(block).any { button -> it.range.first in button.range }
                 if (!insideButton) visualItems += it.range.first to ImportedScreenComponent("Text", text = unescape(it.groupValues[1]))
             }
+            val textCount = composeText.findAll(block).count()
+            if (textCount > 1) {
+                visualItems += Int.MAX_VALUE to ImportedScreenComponent("Text", text = "×$textCount")
+            }
             composeField.findAll(block).forEach {
                 visualItems += it.range.first to ImportedScreenComponent("TextField", text = "Campo de entrada")
             }

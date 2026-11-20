@@ -241,7 +241,7 @@ dependencies {
                     }
                     appendLine(indent + "}")
                 }
-                    appendLine(indent + "Text(resolve(" + text + ", \"\\"), " + widthModifier + heightModifier + ".clickable(enabled = " + element.enabled + ") { runActions(" + quote(element.id) + ", \"on_click\", \"\") }.background(" + background + ", RoundedCornerShape(" + radius + ".dp)).padding(" + (padding + 4f) + ".dp), color = " + foreground + ", fontSize = " + size + ".sp, textAlign = " + alignment + ")")
+                    appendLine(indent + "Text(resolve(" + text + ", \"\"), " + widthModifier + heightModifier + ".clickable(enabled = " + element.enabled + ") { runActions(" + quote(element.id) + ", \"on_click\", \"\") }.background(" + background + ", RoundedCornerShape(" + radius + ".dp)).padding(" + (padding + 4f) + ".dp), color = " + foreground + ", fontSize = " + size + ".sp, textAlign = " + alignment + ")")
                 "outlined_button", "outlinedbutton" -> appendLine(indent + "OutlinedButton(onClick = { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, enabled = " + element.enabled + ", shape = RoundedCornerShape(" + radius + ".dp), modifier = " + widthModifier + heightModifier + ".padding(" + padding + ".dp)) { Text(resolve(" + text + ", \"\"), fontSize = " + size + ".sp) }")
                 "card" -> {
                     appendLine(indent + "Card(" + widthModifier + heightModifier + ".clickable(enabled = " + element.enabled + ") { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, shape = RoundedCornerShape(" + radius + ".dp), colors = CardDefaults.cardColors(containerColor = " + background + ")) {")

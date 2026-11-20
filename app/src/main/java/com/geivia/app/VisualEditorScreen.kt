@@ -785,46 +785,58 @@ internal fun VisualEditorScreen(
                 Modifier.fillMaxSize().padding(padding).padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                val previewScreen = screenRegistry.firstOrNull { it.id == previewScreenId } ?: screenRegistry.first()
+                val previewElements = if (previewScreenId == activeScreenId) elements.toList()
+                    else decodeElements(prefs.getString("${schemaPrefix}_${previewScreenId}", null) ?: if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_${previewScreenId}", null) else null)
+                val runtimeTheme = StudioRuntimeTheme(
+                    primary = editorColor(themePrimary, EditorBlue),
+                    background = editorColor(themeBackground, Color(0xFFF3F6FA)),
+                    text = editorColor(themeText, EditorInk)
+                )
                 Surface(
                     modifier = Modifier.weight(1f).fillMaxWidth(),
-                    color = Color.White,
-                    shape = RoundedCornerShape(18.dp),
-                    border = BorderStroke(1.dp, Color(0xFFDCE5EE))
+                    color = Color(0xFFE7ECF2),
+                    shape = RoundedCornerShape(32.dp),
+                    border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                    shadowElevation = 4.dp
                 ) {
-                    Column(
-                        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        val previewScreen = screenRegistry.firstOrNull { it.id == previewScreenId } ?: screenRegistry.first()
-                        val previewElements = if (previewScreenId == activeScreenId) elements.toList()
-                            else decodeElements(prefs.getString("${schemaPrefix}_${previewScreenId}", null) ?: if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_${previewScreenId}", null) else null)
-                        val displayElements = previewElements.map { item ->
-                            val resolvedText = Regex("""\$\{([A-Za-z_][A-Za-z0-9_]*)\}""").replace(item.text) { match ->
-                                runtimeValues[match.groupValues[1]].orEmpty()
+                    Column(Modifier.fillMaxSize().padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(Modifier.width(88.dp).height(5.dp).background(Color(0xFF8B98A8), RoundedCornerShape(8.dp)))
+                        Spacer(Modifier.height(8.dp))
+                        Surface(
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                            color = runtimeTheme.background,
+                            shape = RoundedCornerShape(22.dp)
+                        ) {
+                            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("9:41", color = runtimeTheme.text, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                                    Spacer(Modifier.weight(1f))
+                                    Text("●  ●  ▰", color = runtimeTheme.text.copy(alpha = .7f), fontSize = 9.sp)
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(previewScreen.name, color = runtimeTheme.text, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                    Spacer(Modifier.weight(1f))
+                                    Text("PRÉVIA DO STUDIO", color = runtimeTheme.primary, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                                }
+                                StudioScreenRuntime(
+                                    elements = previewElements,
+                                    theme = runtimeTheme,
+                                    runtimeValues = runtimeValues,
+                                    interactive = true,
+                                    onAction = { id, trigger, value -> executePreviewActions(id, trigger, value) },
+                                    selectedId = null,
+                                    onSelect = {}
+                                )
+                                if (previewMessage.isNotBlank()) {
+                                    Surface(color = runtimeTheme.primary.copy(alpha = .10f), shape = RoundedCornerShape(10.dp)) {
+                                        Text(previewMessage, color = runtimeTheme.text, modifier = Modifier.fillMaxWidth().padding(12.dp), fontSize = 12.sp)
+                                    }
+                                }
                             }
-                            item.copy(text = resolvedText)
                         }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(previewScreen.name, color = EditorInk, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            Spacer(Modifier.weight(1f))
-                            Text("PRÉVIA", color = EditorBlue, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                        }
-                        displayElements.filter { it.parentId == null && it.visible }.forEach { element ->
-                            EditorCanvasNode(
-                                element = element,
-                                allElements = displayElements,
-                                selectedId = null,
-                                primaryColor = editorColor(themePrimary, EditorBlue),
-                                defaultTextColor = editorColor(themeText, EditorInk),
-                                interactive = true,
-                                onActivate = { id, trigger, value -> executePreviewActions(id, trigger, value) },
-                                onSelect = {}
-                            )
-                        }
-                        if (previewMessage.isNotBlank()) {                            Surface(color = Color(0xFFEAF3FB), shape = RoundedCornerShape(10.dp)) {
-                                Text(previewMessage, color = EditorInk, modifier = Modifier.fillMaxWidth().padding(12.dp), fontSize = 12.sp)
-                            }
-                        }
+                        Spacer(Modifier.height(8.dp))
+                        Box(Modifier.width(42.dp).height(4.dp).background(Color(0xFF8B98A8), RoundedCornerShape(8.dp)))
                     }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -876,9 +888,19 @@ internal fun VisualEditorScreen(
                                     Text("Toque em + para adicionar componentes", color = EditorMuted, fontSize = 11.sp, textAlign = TextAlign.Center)
                                 }
                             } else {
-                                elements.filter { it.parentId == null && it.visible }.forEach { element ->
-                                    EditorCanvasNode(element, elements, selectedId, editorColor(themePrimary, EditorBlue), editorColor(themeText, EditorInk)) { selectedId = it }
-                                }
+                                StudioScreenRuntime(
+                                    elements = elements,
+                                    theme = StudioRuntimeTheme(
+                                        primary = editorColor(themePrimary, EditorBlue),
+                                        background = editorColor(themeBackground, Color(0xFFF3F6FA)),
+                                        text = editorColor(themeText, EditorInk)
+                                    ),
+                                    runtimeValues = emptyMap(),
+                                    interactive = false,
+                                    onAction = { _, _, _ -> },
+                                    selectedId = selectedId,
+                                    onSelect = { selectedId = it }
+                                )
                             }
                         }
                     }

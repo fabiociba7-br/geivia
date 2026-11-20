@@ -227,13 +227,13 @@ private fun StudioRuntimeNode(
             }
         }
         else -> Surface(
-            modifier = outerModifier.clickable(enabled = interactive && element.enabled, onClick = activate).padding(padding),
+            modifier = outerModifier.clickable(enabled = interactive && element.enabled, onClick = activate),
             color = background,
             shape = shape
         ) {
             Text(
                 resolvedText,
-                modifier = Modifier.then(if (element.fillMaxWidth) Modifier.fillMaxWidth() else Modifier.wrapContentWidth()).padding(4.dp),
+                modifier = Modifier.then(if (element.fillMaxWidth) Modifier.fillMaxWidth() else Modifier.wrapContentWidth()).padding(padding + 4.dp),
                 color = foreground,
                 fontSize = element.fontSize.sp,
                 textAlign = when (element.alignment) { "center" -> TextAlign.Center; "end" -> TextAlign.End; else -> TextAlign.Start }

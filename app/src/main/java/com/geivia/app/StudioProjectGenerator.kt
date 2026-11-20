@@ -46,7 +46,7 @@ internal object StudioProjectGenerator {
                 "androidx.compose.foundation.Image", "androidx.compose.foundation.background", "androidx.compose.foundation.clickable", "androidx.compose.ui.draw.clip", "androidx.compose.foundation.layout.*",
                 "androidx.compose.foundation.rememberScrollState", "androidx.compose.foundation.shape.RoundedCornerShape",
                 "androidx.compose.foundation.verticalScroll", "androidx.compose.material3.*",
-                "androidx.compose.runtime.*", "androidx.compose.ui.Modifier", "androidx.compose.ui.graphics.Color",
+                "androidx.compose.runtime.*", "androidx.compose.ui.Alignment", "androidx.compose.ui.Modifier", "androidx.compose.ui.graphics.Color",
                 "androidx.compose.ui.graphics.asImageBitmap", "androidx.compose.ui.layout.ContentScale", "androidx.compose.ui.focus.onFocusChanged",
                 "androidx.compose.ui.platform.LocalContext", "androidx.compose.ui.text.style.TextAlign",
                 "androidx.compose.ui.unit.dp", "androidx.compose.ui.unit.sp", "kotlinx.coroutines.Dispatchers",

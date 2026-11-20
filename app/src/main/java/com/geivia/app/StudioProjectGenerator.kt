@@ -268,7 +268,7 @@ dependencies {
                         appendLine(indent + "}")
                         appendLine(indent + "if (imageBitmap_" + suffix + " != null) Image(bitmap = imageBitmap_" + suffix + "!!.asImageBitmap(), contentDescription = null, contentScale = ContentScale." + (element.contentScale.equals("crop", true) ? "Crop" : "Fit") + ", modifier = " + widthModifier + heightModifier + ".padding(" + padding + ".dp).clip(RoundedCornerShape(" + radius + ".dp)).clickable(enabled = " + element.enabled + ") { runActions(" + quote(element.id) + ", \"on_click\", \"\") }) else Text(" + quote("Imagem não disponível: " + element.text) + ", color = Color.Gray)")
                     } else {
-                        appendLine(indent + "Text(resolve(" + quote("[Imagem: " + element.text + "]") + ", \"\"), Modifier.padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, color = Color.Gray)")
+                        appendLine(indent + "Text(resolve(" + quote("[Imagem: " + element.text + "]") + ", \"\"), Modifier.clickable(enabled = " + element.enabled + ") { runActions(" + quote(element.id) + ", \"on_click\", \"\") }.padding(" + padding + ".dp), color = Color.Gray)")
                     }
                 }
                 "switch", "checkbox" -> {

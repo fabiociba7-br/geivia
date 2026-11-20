@@ -48,7 +48,9 @@ class StudioElementSchemaTest {
             StudioGeneratedElement("t", "text", "Título", 20f, 8f, "start", null, "#FFFFFF", "#17354D", 8f, true),
             StudioGeneratedElement("b", "button", "Continuar", 16f, 12f, "center", null, "#FFFFFF", "#17354D", 10f, true),
             StudioGeneratedElement("o", "outlined_button", "Cancelar", 16f, 12f, "center", null, "#FFFFFF", "#17354D", 10f, true),
-            StudioGeneratedElement("f", "textfield", "E-mail", 16f, 12f, "start", null, "#FFFFFF", "#17354D", 10f, true, placeholder = "seu@email.com")
+            StudioGeneratedElement("f", "textfield", "E-mail", 16f, 12f, "start", null, "#FFFFFF", "#17354D", 10f, true, placeholder = "seu@email.com"),
+            StudioGeneratedElement("s", "switch", "Ativar", 16f, 8f, "start", null, "#FFFFFF", "#17354D", 8f, true),
+            StudioGeneratedElement("c", "checkbox", "Aceito", 16f, 8f, "start", null, "#FFFFFF", "#17354D", 8f, true)
         )
         val generated = StudioProjectGenerator.files(
             packageName = "com.example.preview",
@@ -64,6 +66,9 @@ class StudioElementSchemaTest {
         assertTrue(generated.contains("Button("))
         assertTrue(generated.contains("OutlinedButton("))
         assertTrue(generated.contains("OutlinedTextField("))
+        assertTrue(generated.contains("Switch("))
+        assertTrue(generated.contains("Checkbox("))
+        assertTrue(generated.contains("Alignment.CenterVertically"))
         assertTrue(generated.contains("singleLine = true"))
     }
 }

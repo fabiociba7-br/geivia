@@ -48,7 +48,7 @@ internal fun StudioScreenRuntime(
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val roots = remember(elements) { elements.filter { it.parentId == null && it.visible } }
+    val roots = elements.filter { it.parentId == null && it.visible }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         roots.forEach { root ->
             StudioRuntimeNode(
@@ -78,7 +78,7 @@ private fun StudioRuntimeNode(
 ) {
     if (!element.visible) return
     val context = LocalContext.current
-    val children = remember(all, element.id) { all.filter { it.parentId == element.id && it.visible } }
+    val children = all.filter { it.parentId == element.id && it.visible }
     val selected = !interactive && element.id == selectedId
     val type = element.type.lowercase()
     val isButton = type == "button"

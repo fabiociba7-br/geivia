@@ -63,10 +63,13 @@ internal fun VisualEditorScreen(
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE) }
     val cloudProjectId = prefs.getString("selected_project_id", null).orEmpty()
     val importedProjectPath = ProjectWorkspaceInfo.activeRoot(context)?.absolutePath.orEmpty()
-    val activeWorkspace = remember(importedProjectPath) {
-        importedProjectPath.takeIf { it.isNotBlank() }
-            ?.let { runCatching { ProjectWorkspaceInfo.scan(java.io.File(it)) }.getOrNull() }
+    val activeWorkspaceState = produceState<ProjectWorkspaceInfo?>(null, importedProjectPath) {
+        value = withContext(Dispatchers.IO) {
+            importedProjectPath.takeIf { it.isNotBlank() }
+                ?.let { runCatching { ProjectWorkspaceInfo.scan(java.io.File(it)) }.getOrNull() }
+        }
     }
+    val activeWorkspace = activeWorkspaceState.value
     var importedScreens by remember(importedProjectPath) { mutableStateOf(emptyList<ImportedScreen>()) }
     LaunchedEffect(importedProjectPath) {
         importedScreens = withContext(Dispatchers.IO) {
@@ -141,6 +144,10 @@ internal fun VisualEditorScreen(
         mutableStateOf(if (activeWorkspace != null) "imported" else "canvas")
     }
     var importedEditorScreenKey by rememberSaveable(projectKey) { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(activeWorkspace) {
+        if (activeWorkspace != null && workspacePanel == "canvas") workspacePanel = "imported"
+    }
 
     // Importa uma primeira representação visual das telas Compose já existentes.
     // O parser é best-effort: ele não reescreve nem altera os arquivos Kotlin originais.

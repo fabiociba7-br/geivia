@@ -43,7 +43,7 @@ internal object StudioProjectGenerator {
             appendLine()
             listOf(
                 "android.os.Bundle", "android.graphics.BitmapFactory", "androidx.activity.ComponentActivity", "androidx.activity.compose.setContent",
-                "androidx.compose.foundation.Image", "androidx.compose.foundation.background", "androidx.compose.foundation.clickable", "androidx.compose.foundation.layout.*",
+                "androidx.compose.foundation.Image", "androidx.compose.foundation.background", "androidx.compose.foundation.clickable", "androidx.compose.ui.draw.clip", "androidx.compose.foundation.layout.*",
                 "androidx.compose.foundation.rememberScrollState", "androidx.compose.foundation.shape.RoundedCornerShape",
                 "androidx.compose.foundation.verticalScroll", "androidx.compose.material3.*",
                 "androidx.compose.runtime.*", "androidx.compose.ui.Modifier", "androidx.compose.ui.graphics.Color",
@@ -101,6 +101,7 @@ internal object StudioProjectGenerator {
             }
             appendLine("        }")
             appendLine("    }")
+            appendLine("    // Action contract shared with Studio preview: on_click, on_value_change, on_screen_open; payload is the new field value.")
             appendLine("    fun runActions(componentId: String, trigger: String, value: String = \"\") {")
             appendLine("        if (trigger != \"on_screen_open\") navigationCount = 0")
             appendLine("        when (componentId + \"|\" + trigger) {")
@@ -213,11 +214,11 @@ dependencies {
         val text = quote(element.text)
         val size = element.fontSize.coerceIn(8f, 48f)
         val padding = element.padding.coerceIn(0f, 64f)
-        val radius = element.cornerRadius.coerceIn(0f, 40f)
-        val foreground = if (element.type == "button" && element.textColor == "#17354D") color("#FFFFFF", "Color.White")
+        val radius = element.cornerRadius.coerceIn(0f, 48f)
+        val foreground = if (element.type.equals("button", true) && element.textColor == "#17354D") color("#FFFFFF", "Color.White")
             else if (element.textColor == "#17354D") color(defaultTextColor, "Color(0xFF17354D)")
             else color(element.textColor, "Color(0xFF17354D)")
-        val background = if (element.type == "button" && element.backgroundColor == "#FFFFFF") color(primaryColor, "Color(0xFF1769AA)")
+        val background = if (element.type.equals("button", true) && element.backgroundColor == "#FFFFFF") color(primaryColor, "Color(0xFF1769AA)")
             else color(element.backgroundColor, "Color(0xFFFFFFFF)")
         val children = all.filter { it.parentId == element.id && it.visible }
         return buildString {
@@ -228,7 +229,7 @@ dependencies {
                     val isRow = element.type == "row"
                     val layout = if (isRow) "Row" else "Column"
                     val arrangement = if (isRow) "horizontalArrangement" else "verticalArrangement"
-                    appendLine(indent + layout + "(" + widthModifier + heightModifier + ".padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, " + arrangement + " = Arrangement.spacedBy(8.dp)) {")
+                    appendLine(indent + layout + "(" + widthModifier + heightModifier + ".background(" + background + ", RoundedCornerShape(" + radius + ".dp)).padding(" + padding + ".dp).clickable(enabled = " + element.enabled + ") { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, " + arrangement + " = Arrangement.spacedBy(8.dp)) {")
                     if (element.text.isNotBlank()) appendLine(indent + "    Text(resolve(" + text + ", \"\"), fontSize = " + size + ".sp, color = " + foreground + ")")
                     children.forEach { child ->
                         if (isRow || child.weight != null) {
@@ -243,7 +244,7 @@ dependencies {
                 "button" -> appendLine(indent + "Button(onClick = { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, enabled = " + element.enabled + ", shape = RoundedCornerShape(" + radius + ".dp), colors = ButtonDefaults.buttonColors(containerColor = " + background + "), modifier = " + widthModifier + heightModifier + ".padding(" + padding + ".dp)) { Text(resolve(" + text + ", \"\"), color = " + foreground + ", fontSize = " + size + ".sp) }")
                 "outlined_button", "outlinedbutton" -> appendLine(indent + "OutlinedButton(onClick = { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, enabled = " + element.enabled + ", shape = RoundedCornerShape(" + radius + ".dp), modifier = " + widthModifier + heightModifier + ".padding(" + padding + ".dp)) { Text(resolve(" + text + ", \"\"), fontSize = " + size + ".sp) }")
                 "card" -> {
-                    appendLine(indent + "Card(" + widthModifier + heightModifier + ".padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, shape = RoundedCornerShape(" + radius + ".dp), colors = CardDefaults.cardColors(containerColor = " + background + ")) {")
+                    appendLine(indent + "Card(" + widthModifier + heightModifier + ".padding(" + padding + ".dp).clickable(enabled = " + element.enabled + ") { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, shape = RoundedCornerShape(" + radius + ".dp), colors = CardDefaults.cardColors(containerColor = " + background + ")) {")
                     if (children.isEmpty()) appendLine(indent + "    Text(resolve(" + text + ", \"\"), Modifier.padding(12.dp), color = " + foreground + ", fontSize = " + size + ".sp)")
                     else children.forEach { append(render(it, all, depth + 1, primaryColor, defaultTextColor)) }
                     appendLine(indent + "}")
@@ -261,7 +262,7 @@ dependencies {
                         appendLine(indent + "val imageBitmap_" + suffix + " by produceState<android.graphics.Bitmap?>(initialValue = null, key1 = " + quote(assetName) + ") {")
                         appendLine(indent + "    value = withContext(Dispatchers.IO) { runCatching { imageContext_" + suffix + ".assets.open(" + quote(assetName) + ").use { BitmapFactory.decodeStream(it) } }.getOrNull() }")
                         appendLine(indent + "}")
-                        appendLine(indent + "if (imageBitmap_" + suffix + " != null) Image(bitmap = imageBitmap_" + suffix + "!!.asImageBitmap(), contentDescription = null, contentScale = ContentScale." + (element.contentScale.equals("crop", true) ? "Crop" : "Fit") + ", modifier = " + widthModifier + heightModifier + ".padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }) else Text(" + quote("Imagem não disponível: " + element.text) + ", color = Color.Gray)")
+                        appendLine(indent + "if (imageBitmap_" + suffix + " != null) Image(bitmap = imageBitmap_" + suffix + "!!.asImageBitmap(), contentDescription = null, contentScale = ContentScale." + (element.contentScale.equals("crop", true) ? "Crop" : "Fit") + ", modifier = " + widthModifier + heightModifier + ".padding(" + padding + ".dp).clip(RoundedCornerShape(" + radius + ".dp)).clickable(enabled = " + element.enabled + ") { runActions(" + quote(element.id) + ", \"on_click\", \"\") }) else Text(" + quote("Imagem não disponível: " + element.text) + ", color = Color.Gray)")
                     } else {
                         appendLine(indent + "Text(resolve(" + quote("[Imagem: " + element.text + "]") + ", \"\"), Modifier.padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, color = Color.Gray)")
                     }

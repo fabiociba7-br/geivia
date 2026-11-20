@@ -1,8 +1,7 @@
 package com.geivia.app
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -15,14 +14,14 @@ class StudioElementSchemaTest {
 
         assertEquals("legacy", decoded.id)
         assertEquals("Olá", decoded.text)
-        assertEquals(16f, decoded.fontSize)
+        assertEquals(16f, decoded.fontSize, 0.001f)
         assertEquals(12f, decoded.padding)
         assertTrue(decoded.fillMaxWidth)
         assertTrue(decoded.enabled)
         assertEquals("fit", decoded.contentScale)
-        assertEquals(null, decoded.weight)
-        assertEquals(null, decoded.heightDp)
-        assertEquals(null, decoded.placeholder)
+        assertNull(decoded.weight)
+        assertNull(decoded.heightDp)
+        assertNull(decoded.placeholder)
     }
 
     @Test

@@ -36,7 +36,7 @@ O perfil padrão será Base + Java + Node.js + Python + Build + Firebase. Google
 
 ## Instalação e atualização
 
-A tela **Configurar GEIVIA**, exibida antes das perguntas sobre contas e projetos, prepara o ambiente em etapas:
+A tela **Configurar GEIVIA**, exibida antes das perguntas sobre contas e projetos, prepara o ambiente em etapas. Antes de instalar pacotes, a rotina executa uma recuperação estrita do dpkg: tenta concluir configurações pendentes, usa `apt-get -f install -y` para reparar dependências se a primeira configuração falhar, repete a configuração e verifica `dpkg --audit`. Nenhuma falha do dpkg é ignorada. A mesma verificação é repetida imediatamente antes da etapa de pacotes básicos, para cobrir transações interrompidas entre etapas ou por encerramento do app. O checkpoint da recuperação foi versionado como `dpkg_recovery_v2`, fazendo instalações anteriores executarem a nova rotina uma vez:
 1. verifica se o Debian ARM64 já está instalado e executa o teste básico do shell;
 2. recupera transações dpkg interrompidas;
 3. atualiza os índices do Debian;

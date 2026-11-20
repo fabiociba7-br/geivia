@@ -244,9 +244,11 @@ dependencies {
                 "button" -> appendLine(indent + "Button(onClick = { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, enabled = " + element.enabled + ", shape = RoundedCornerShape(" + radius + ".dp), colors = ButtonDefaults.buttonColors(containerColor = " + background + "), modifier = " + widthModifier + heightModifier + ".padding(" + padding + ".dp)) { Text(resolve(" + text + ", \"\"), color = " + foreground + ", fontSize = " + size + ".sp) }")
                 "outlined_button", "outlinedbutton" -> appendLine(indent + "OutlinedButton(onClick = { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, enabled = " + element.enabled + ", shape = RoundedCornerShape(" + radius + ".dp), modifier = " + widthModifier + heightModifier + ".padding(" + padding + ".dp)) { Text(resolve(" + text + ", \"\"), fontSize = " + size + ".sp) }")
                 "card" -> {
-                    appendLine(indent + "Card(" + widthModifier + heightModifier + ".padding(" + padding + ".dp).clickable(enabled = " + element.enabled + ") { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, shape = RoundedCornerShape(" + radius + ".dp), colors = CardDefaults.cardColors(containerColor = " + background + ")) {")
-                    if (children.isEmpty()) appendLine(indent + "    Text(resolve(" + text + ", \"\"), Modifier.padding(12.dp), color = " + foreground + ", fontSize = " + size + ".sp)")
-                    else children.forEach { append(render(it, all, depth + 1, primaryColor, defaultTextColor)) }
+                    appendLine(indent + "Card(" + widthModifier + heightModifier + ".clickable(enabled = " + element.enabled + ") { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, shape = RoundedCornerShape(" + radius + ".dp), colors = CardDefaults.cardColors(containerColor = " + background + ")) {")
+                    appendLine(indent + "    Column(Modifier.fillMaxWidth().padding(" + padding + ".dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {")
+                    if (children.isEmpty()) appendLine(indent + "        Text(resolve(" + text + ", \"\"), color = " + foreground + ", fontSize = " + size + ".sp)")
+                    else children.forEach { append(render(it, all, depth + 2, primaryColor, defaultTextColor)) }
+                    appendLine(indent + "    }")
                     appendLine(indent + "}")
                 }
                 "input", "textfield", "field", "edittext", "outlinedtextfield" -> {

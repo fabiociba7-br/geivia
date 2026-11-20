@@ -231,8 +231,9 @@ dependencies {
                     appendLine(indent + layout + "(" + widthModifier + heightModifier + ".padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, " + arrangement + " = Arrangement.spacedBy(8.dp)) {")
                     if (element.text.isNotBlank()) appendLine(indent + "    Text(resolve(" + text + ", \"\"), fontSize = " + size + ".sp, color = " + foreground + ")")
                     children.forEach { child ->
-                        if (child.weight != null) {
-                            appendLine(indent + "    Box(Modifier.weight(" + child.weight.coerceIn(0.01f, 100f) + "f)) {")
+                        if (isRow || child.weight != null) {
+                            val childWeight = child.weight ?: 1f
+                            appendLine(indent + "    Box(Modifier.weight(" + childWeight.coerceIn(0.01f, 100f) + "f)) {")
                             append(render(child, all, depth + 2, primaryColor, defaultTextColor))
                             appendLine(indent + "    }")
                         } else append(render(child, all, depth + 1, primaryColor, defaultTextColor))

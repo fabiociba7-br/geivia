@@ -41,6 +41,10 @@ O GEIVIA Studio é uma plataforma visual para criar aplicativos Android nativos.
 - O Studio gera um projeto Android nativo inicial com Kotlin, Jetpack Compose, Manifest e arquivos Gradle, exportável em ZIP pelo seletor de arquivos do Android.
 - O pacote ZIP também contém o esquema versionado do GEIVIA, o manifesto de assets e os arquivos locais selecionados, copiados para app/src/main/assets. URLs externas são registradas, mas não baixadas automaticamente.
 - O projeto Android gerado inclui runtime para ações declarativas de toque, abertura de tela e alteração de valor: navegação, alteração de variáveis e mensagens. A navegação aplica os parâmetros padrão da tela de destino e os valores informados pela ação; um limite protege contra ciclos automáticos sem bloquear novas interações do usuário.
+- O editor e a Prévia do Studio compartilham o renderer `StudioScreenRuntime`, que interpreta a mesma árvore hierárquica de componentes, estilos e estados básicos; a prévia interativa dispara `on_click` e `on_value_change`, enquanto o editor mantém seleção sem executar ações.
+- O schema de componentes aceita propriedades opcionais de peso, largura, altura, habilitação, placeholder e ajuste de imagem. A leitura de documentos antigos aplica defaults seguros e a serialização preserva o schema ampliado.
+- Telas importadas usam o mesmo renderer sobre os elementos reconhecidos pelo parser e exibem aviso explícito de reconstrução não nativa. A prévia de projeto Android lista miniaturas de telas-fonte quando disponíveis e não inventa interfaces quando a análise não reconhece elementos.
+- A prévia nativa in-app continua indisponível: exige compilação e execução real do projeto em ambiente Android suportado; o painel não dispara builds remotos nem operações de infraestrutura.
 - Por decisão do proprietário, os workflows GitHub Actions foram removidos de main e da branch de desenvolvimento. Não há builds nem validações automáticas; a verificação será manual quando solicitada.
 
 ## Próximas etapas de desenvolvimento

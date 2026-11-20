@@ -192,7 +192,7 @@ private fun StudioRuntimeNode(
                     bitmap!!.asImageBitmap(),
                     contentDescription = element.text,
                     contentScale = if (element.contentScale.equals("crop", true)) ContentScale.Crop else ContentScale.Fit,
-                    modifier = outerModifier.padding(padding).clip(shape)
+                    modifier = outerModifier.clickable(enabled = interactive && element.enabled, onClick = activate).padding(padding).clip(shape)
                 )
             } else {
                 Surface(outerModifier.padding(padding), shape, color = Color(0xFFF0F4F8)) {
@@ -217,13 +217,19 @@ private fun StudioRuntimeNode(
                 })
             }
         }
-        else -> Text(
-            resolvedText,
+        else -> Surface(
             modifier = outerModifier.clickable(enabled = interactive && element.enabled, onClick = activate).padding(padding),
-            color = foreground,
-            fontSize = element.fontSize.sp,
-            textAlign = when (element.alignment) { "center" -> TextAlign.Center; "end" -> TextAlign.End; else -> TextAlign.Start }
-        )
+            color = background,
+            shape = shape
+        ) {
+            Text(
+                resolvedText,
+                modifier = Modifier.fillMaxWidth().padding(4.dp),
+                color = foreground,
+                fontSize = element.fontSize.sp,
+                textAlign = when (element.alignment) { "center" -> TextAlign.Center; "end" -> TextAlign.End; else -> TextAlign.Start }
+            )
+        }
     }
 }
 

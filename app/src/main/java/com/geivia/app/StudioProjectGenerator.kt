@@ -47,7 +47,7 @@ internal object StudioProjectGenerator {
                 "androidx.compose.foundation.rememberScrollState", "androidx.compose.foundation.shape.RoundedCornerShape",
                 "androidx.compose.foundation.verticalScroll", "androidx.compose.material3.*",
                 "androidx.compose.runtime.*", "androidx.compose.ui.Modifier", "androidx.compose.ui.graphics.Color",
-                "androidx.compose.ui.graphics.asImageBitmap", "androidx.compose.ui.layout.ContentScale",
+                "androidx.compose.ui.graphics.asImageBitmap", "androidx.compose.ui.layout.ContentScale", "androidx.compose.ui.focus.onFocusChanged",
                 "androidx.compose.ui.platform.LocalContext", "androidx.compose.ui.text.style.TextAlign",
                 "androidx.compose.ui.unit.dp", "androidx.compose.ui.unit.sp", "kotlinx.coroutines.Dispatchers",
                 "kotlinx.coroutines.withContext"
@@ -253,8 +253,10 @@ dependencies {
                 }
                 "input", "textfield", "field", "edittext", "outlinedtextfield" -> {
                     val inputName = "input_" + identifier(element.id)
+                    val focusName = "focused_" + identifier(element.id)
                     appendLine(indent + "var " + inputName + " by remember { mutableStateOf(\"\") }")
-                    appendLine(indent + "OutlinedTextField(value = " + inputName + ", onValueChange = { " + inputName + " = it; runActions(" + quote(element.id) + ", \"on_value_change\", it) }, enabled = " + element.enabled + ", label = { Text(resolve(" + text + ", \"\")) }, placeholder = { Text(" + quote(element.placeholder.orEmpty()) + ") }, modifier = " + widthModifier + heightModifier + ".padding(" + padding + ".dp), singleLine = true)")
+                    appendLine(indent + "var " + focusName + " by remember { mutableStateOf(false) }")
+                    appendLine(indent + "OutlinedTextField(value = " + inputName + ", onValueChange = { " + inputName + " = it; runActions(" + quote(element.id) + ", \"on_value_change\", it) }, enabled = " + element.enabled + ", label = { Text(resolve(" + text + ", \"\")) }, placeholder = { Text(" + quote(element.placeholder.orEmpty()) + ") }, modifier = " + widthModifier + heightModifier + ".padding(" + padding + ".dp).onFocusChanged { focus -> if (focus.isFocused && !" + focusName + ") runActions(" + quote(element.id) + ", \"on_click\", \"\"); " + focusName + " = focus.isFocused }, singleLine = true)")
                 }
                 "image" -> {
                     if (element.text.startsWith("asset://")) {

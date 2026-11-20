@@ -291,7 +291,7 @@ dependencies {
                         "end" -> "TextAlign.End"
                         else -> "TextAlign.Start"
                     }
-appendLine(indent + "Text(resolve(" + text + ", \\"\\"), " + widthModifier + heightModifier + ".background(" + background + ", RoundedCornerShape(" + radius + ".dp)).padding(" + padding + ".dp).clickable(enabled = " + element.enabled + ") { runActions(" + quote(element.id) + ", \\"on_click\\", \\"\\") }, color = " + foreground + ", fontSize = " + size + ".sp, textAlign = " + alignment + ")")
+                    appendLine(indent + "Text(resolve(" + text + ", \"\\"), " + widthModifier + heightModifier + ".clickable(enabled = " + element.enabled + ") { runActions(" + quote(element.id) + ", \"on_click\", \"\") }.background(" + background + ", RoundedCornerShape(" + radius + ".dp)).padding(" + (padding + 4f) + ".dp), color = " + foreground + ", fontSize = " + size + ".sp, textAlign = " + alignment + ")")
                 }
             }
         }

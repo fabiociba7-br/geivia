@@ -50,7 +50,7 @@ internal fun StudioScreenRuntime(
     modifier: Modifier = Modifier
 ) {
     val roots = elements.filter { it.parentId == null && it.visible }
-    Column(modifier.background(theme.background), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier.fillMaxWidth().background(theme.background), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         roots.forEach { root ->
             StudioRuntimeNode(
                 element = root,

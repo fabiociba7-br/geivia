@@ -41,20 +41,6 @@ import kotlin.math.roundToInt
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-internal data class StudioElement(
-    val id: String = UUID.randomUUID().toString(),
-    val type: String,
-    val text: String,
-    val fontSize: Float = 16f,
-    val padding: Float = 12f,
-    val alignment: String = "start",
-    val parentId: String? = null,
-    val backgroundColor: String = "#FFFFFF",
-    val textColor: String = "#17354D",
-    val cornerRadius: Float = 10f,
-    val visible: Boolean = true
-)
-
 private val EditorBlue = Color(0xFF1769AA)
 private val EditorInk = Color(0xFF17354D)
 private val EditorMuted = Color(0xFF718397)
@@ -77,10 +63,13 @@ internal fun VisualEditorScreen(
     val prefs = remember { context.getSharedPreferences("geivia_onboarding", Context.MODE_PRIVATE) }
     val cloudProjectId = prefs.getString("selected_project_id", null).orEmpty()
     val importedProjectPath = ProjectWorkspaceInfo.activeRoot(context)?.absolutePath.orEmpty()
-    val activeWorkspace = remember(importedProjectPath) {
-        importedProjectPath.takeIf { it.isNotBlank() }
-            ?.let { runCatching { ProjectWorkspaceInfo.scan(java.io.File(it)) }.getOrNull() }
+    val activeWorkspaceState = produceState<ProjectWorkspaceInfo?>(null, importedProjectPath) {
+        value = withContext(Dispatchers.IO) {
+            importedProjectPath.takeIf { it.isNotBlank() }
+                ?.let { runCatching { ProjectWorkspaceInfo.scan(java.io.File(it)) }.getOrNull() }
+        }
     }
+    val activeWorkspace = activeWorkspaceState.value
     var importedScreens by remember(importedProjectPath) { mutableStateOf(emptyList<ImportedScreen>()) }
     LaunchedEffect(importedProjectPath) {
         importedScreens = withContext(Dispatchers.IO) {
@@ -132,30 +121,7 @@ internal fun VisualEditorScreen(
     var parameterTypeInput by remember(projectKey) { mutableStateOf("text") }
     var parameterRequiredInput by remember(projectKey) { mutableStateOf(false) }
 
-    fun decodeElements(saved: String?): List<StudioElement> {
-        if (saved.isNullOrBlank()) return emptyList()
-        return runCatching {
-            val array = JSONArray(saved)
-            (0 until array.length()).map { index ->
-                val item = array.getJSONObject(index)
-                StudioElement(
-                    id = item.optString("id", UUID.randomUUID().toString()),
-                    type = item.optString("type", "text"),
-                    text = item.optString("text", ""),
-                    fontSize = item.optDouble("fontSize", 16.0).toFloat().coerceIn(12f, 32f),
-                    padding = item.optDouble("padding", 12.0).toFloat().coerceIn(4f, 28f),
-                    alignment = item.optString("alignment", "start").let {
-                        if (it in listOf("start", "center", "end")) it else "start"
-                    },
-                    parentId = item.optString("parentId").takeIf { it.isNotBlank() },
-                    backgroundColor = item.optString("backgroundColor", "#FFFFFF"),
-                    textColor = item.optString("textColor", "#17354D"),
-                    cornerRadius = item.optDouble("cornerRadius", 10.0).toFloat().coerceIn(0f, 32f),
-                    visible = item.optBoolean("visible", true)
-                )
-            }
-        }.getOrDefault(emptyList())
-    }
+    fun decodeElements(saved: String?): List<StudioElement> = StudioElementJsonCodec.decodeList(saved)
 
     val elements = remember(projectKey) {
         mutableStateListOf<StudioElement>().apply {
@@ -179,6 +145,10 @@ internal fun VisualEditorScreen(
     }
     var importedEditorScreenKey by rememberSaveable(projectKey) { mutableStateOf<String?>(null) }
 
+    LaunchedEffect(activeWorkspace) {
+        if (activeWorkspace != null && workspacePanel == "canvas") workspacePanel = "imported"
+    }
+
     // Importa uma primeira representação visual das telas Compose já existentes.
     // O parser é best-effort: ele não reescreve nem altera os arquivos Kotlin originais.
     LaunchedEffect(importedProjectPath, projectKey) {
@@ -192,7 +162,14 @@ internal fun VisualEditorScreen(
         }
         val parsed = withContext(Dispatchers.IO) {
             ComposeToStudioParser.persistToStudio(context, java.io.File(importedProjectPath))
-        } ?: return@LaunchedEffect
+        }
+        if (parsed == null) {
+            // Never leave the default sample element looking like a reconstruction of the imported app.
+            elements.clear()
+            selectedId = null
+            workspacePanel = "imported"
+            return@LaunchedEffect
+        }
         screenRegistry.clear()
         screenRegistry.addAll(parsed.screens)
         activeScreenId = parsed.startScreenId
@@ -325,24 +302,10 @@ internal fun VisualEditorScreen(
         message = "Componente adicionado"
     }
     fun saveSchema() {
-        val array = JSONArray()
-        elements.forEach { element ->
-            array.put(JSONObject()
-                .put("id", element.id)
-                .put("type", element.type)
-                .put("text", element.text)
-                .put("fontSize", element.fontSize.toDouble())
-                .put("padding", element.padding.toDouble())
-                .put("alignment", element.alignment)
-                .put("parentId", element.parentId ?: "")
-                .put("backgroundColor", element.backgroundColor)
-                .put("textColor", element.textColor)
-                .put("cornerRadius", element.cornerRadius.toDouble())
-                .put("visible", element.visible))
-        }
+        val encodedElements = StudioElementJsonCodec.encodeList(elements)
         val registry = StudioScreenDocument(screens = screenRegistry.toList(), startScreenId = startScreenId)
         prefs.edit()
-            .putString("${schemaPrefix}_${activeScreenId}", array.toString())
+            .putString("${schemaPrefix}_${activeScreenId}", encodedElements)
             .putString(screenRegistryPrefKey, registry.toJson())
             .putBoolean("studio_project_migrated_$projectKey", true)
             .putBoolean("studio_legacy_data_migrated", true)
@@ -371,7 +334,13 @@ internal fun VisualEditorScreen(
                     .put("fontSize", item.fontSize).put("padding", item.padding)
                     .put("alignment", item.alignment).put("parentId", item.parentId ?: JSONObject.NULL)
                     .put("backgroundColor", item.backgroundColor).put("textColor", item.textColor)
-                    .put("cornerRadius", item.cornerRadius).put("visible", item.visible))
+                    .put("cornerRadius", item.cornerRadius).put("visible", item.visible)
+                    .put("weight", item.weight?.toDouble() ?: JSONObject.NULL)
+                    .put("fillMaxWidth", item.fillMaxWidth)
+                    .put("heightDp", item.heightDp?.toDouble() ?: JSONObject.NULL)
+                    .put("enabled", item.enabled)
+                    .put("placeholder", item.placeholder ?: "")
+                    .put("contentScale", item.contentScale))
             }
             val inputParameters = JSONArray()
             screen.inputParameters.forEach { parameter ->
@@ -761,46 +730,58 @@ internal fun VisualEditorScreen(
                 Modifier.fillMaxSize().padding(padding).padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                val previewScreen = screenRegistry.firstOrNull { it.id == previewScreenId } ?: screenRegistry.first()
+                val previewElements = if (previewScreenId == activeScreenId) elements.toList()
+                    else decodeElements(prefs.getString("${schemaPrefix}_${previewScreenId}", null) ?: if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_${previewScreenId}", null) else null)
+                val runtimeTheme = StudioRuntimeTheme(
+                    primary = editorColor(themePrimary, EditorBlue),
+                    background = editorColor(themeBackground, Color(0xFFF3F6FA)),
+                    text = editorColor(themeText, EditorInk)
+                )
                 Surface(
                     modifier = Modifier.weight(1f).fillMaxWidth(),
-                    color = Color.White,
-                    shape = RoundedCornerShape(18.dp),
-                    border = BorderStroke(1.dp, Color(0xFFDCE5EE))
+                    color = Color(0xFFE7ECF2),
+                    shape = RoundedCornerShape(32.dp),
+                    border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                    shadowElevation = 4.dp
                 ) {
-                    Column(
-                        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        val previewScreen = screenRegistry.firstOrNull { it.id == previewScreenId } ?: screenRegistry.first()
-                        val previewElements = if (previewScreenId == activeScreenId) elements.toList()
-                            else decodeElements(prefs.getString("${schemaPrefix}_${previewScreenId}", null) ?: if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_${previewScreenId}", null) else null)
-                        val displayElements = previewElements.map { item ->
-                            val resolvedText = Regex("""\$\{([A-Za-z_][A-Za-z0-9_]*)\}""").replace(item.text) { match ->
-                                runtimeValues[match.groupValues[1]].orEmpty()
+                    Column(Modifier.fillMaxSize().padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(Modifier.width(88.dp).height(5.dp).background(Color(0xFF8B98A8), RoundedCornerShape(8.dp)))
+                        Spacer(Modifier.height(8.dp))
+                        Surface(
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                            color = runtimeTheme.background,
+                            shape = RoundedCornerShape(22.dp)
+                        ) {
+                            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("9:41", color = runtimeTheme.text, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                                    Spacer(Modifier.weight(1f))
+                                    Text("●  ●  ▰", color = runtimeTheme.text.copy(alpha = .7f), fontSize = 9.sp)
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(previewScreen.name, color = runtimeTheme.text, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                    Spacer(Modifier.weight(1f))
+                                    Text("PRÉVIA DO STUDIO", color = runtimeTheme.primary, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                                }
+                                StudioScreenRuntime(
+                                    elements = previewElements,
+                                    theme = runtimeTheme,
+                                    runtimeValues = runtimeValues,
+                                    interactive = true,
+                                    onAction = { id, trigger, value -> executePreviewActions(id, trigger, value) },
+                                    selectedId = null,
+                                    onSelect = {}
+                                )
+                                if (previewMessage.isNotBlank()) {
+                                    Surface(color = runtimeTheme.primary.copy(alpha = .10f), shape = RoundedCornerShape(10.dp)) {
+                                        Text(previewMessage, color = runtimeTheme.text, modifier = Modifier.fillMaxWidth().padding(12.dp), fontSize = 12.sp)
+                                    }
+                                }
                             }
-                            item.copy(text = resolvedText)
                         }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(previewScreen.name, color = EditorInk, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            Spacer(Modifier.weight(1f))
-                            Text("PRÉVIA", color = EditorBlue, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                        }
-                        displayElements.filter { it.parentId == null && it.visible }.forEach { element ->
-                            EditorCanvasNode(
-                                element = element,
-                                allElements = displayElements,
-                                selectedId = null,
-                                primaryColor = editorColor(themePrimary, EditorBlue),
-                                defaultTextColor = editorColor(themeText, EditorInk),
-                                interactive = true,
-                                onActivate = { id, trigger, value -> executePreviewActions(id, trigger, value) },
-                                onSelect = {}
-                            )
-                        }
-                        if (previewMessage.isNotBlank()) {                            Surface(color = Color(0xFFEAF3FB), shape = RoundedCornerShape(10.dp)) {
-                                Text(previewMessage, color = EditorInk, modifier = Modifier.fillMaxWidth().padding(12.dp), fontSize = 12.sp)
-                            }
-                        }
+                        Spacer(Modifier.height(8.dp))
+                        Box(Modifier.width(42.dp).height(4.dp).background(Color(0xFF8B98A8), RoundedCornerShape(8.dp)))
                     }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -852,9 +833,19 @@ internal fun VisualEditorScreen(
                                     Text("Toque em + para adicionar componentes", color = EditorMuted, fontSize = 11.sp, textAlign = TextAlign.Center)
                                 }
                             } else {
-                                elements.filter { it.parentId == null && it.visible }.forEach { element ->
-                                    EditorCanvasNode(element, elements, selectedId, editorColor(themePrimary, EditorBlue), editorColor(themeText, EditorInk)) { selectedId = it }
-                                }
+                                StudioScreenRuntime(
+                                    elements = elements,
+                                    theme = StudioRuntimeTheme(
+                                        primary = editorColor(themePrimary, EditorBlue),
+                                        background = editorColor(themeBackground, Color(0xFFF3F6FA)),
+                                        text = editorColor(themeText, EditorInk)
+                                    ),
+                                    runtimeValues = emptyMap(),
+                                    interactive = false,
+                                    onAction = { _, _, _ -> },
+                                    selectedId = selectedId,
+                                    onSelect = { selectedId = it }
+                                )
                             }
                         }
                     }
@@ -1276,7 +1267,10 @@ internal fun VisualEditorScreen(
                                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text("Nenhuma tela reconhecida ainda", color = EditorInk, fontWeight = FontWeight.Bold)
                                     Text("O GEIVIA procura layouts em res/layout*/ e funções @Composable em arquivos Kotlin dentro de src/main/. Confira se o projeto Android foi importado pela pasta raiz correta.", color = EditorMuted, fontSize = 12.sp)
-                                    OutlinedButton(onClick = { onProjectFiles(null) }, modifier = Modifier.fillMaxWidth()) { Text("Abrir arquivos e código") }
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Button(onClick = { workspacePanel = "canvas"; message = "Crie uma representação visual manual; nenhuma tela nativa foi reconhecida." }, modifier = Modifier.weight(1f)) { Text("Criar representação visual") }
+                                        OutlinedButton(onClick = { onProjectFiles(null) }, modifier = Modifier.weight(1f)) { Text("Arquivos e código") }
+                                    }
                                 }
                             }
                         } else {
@@ -1561,7 +1555,7 @@ internal fun VisualEditorScreen(
                                     else decodeElements(prefs.getString("${schemaPrefix}_${screen.id}", null) ?: if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_${screen.id}", null) else null)
                                 screen.id to sourceElements.map { item ->
                                     val generatedText = if (item.type == "image") localAssetNames[item.text]?.let { "asset://$it" } ?: item.text else item.text
-                                    StudioGeneratedElement(item.id, item.type, generatedText, item.fontSize, item.padding, item.alignment, item.parentId, item.backgroundColor, item.textColor, item.cornerRadius, item.visible)
+                                    StudioGeneratedElement(item.id, item.type, generatedText, item.fontSize, item.padding, item.alignment, item.parentId, item.backgroundColor, item.textColor, item.cornerRadius, item.visible, item.weight, item.fillMaxWidth, item.heightDp, item.enabled, item.placeholder, item.contentScale)
                                 }
                             }
                             val logicDocument = readLogicDocument()
@@ -1647,101 +1641,26 @@ private fun EditorCanvasNode(
     onActivate: (String, String, String) -> Unit = { _, _, _ -> },
     onSelect: (String) -> Unit
 ) {
-    if (!element.visible) return
-    val children = allElements.filter { it.parentId == element.id && it.visible }
-    val selected = element.id == selectedId
-    val defaultBackground = if (element.type == "button") primaryColor else Color.White
-    val defaultText = if (element.type == "button") Color.White else defaultTextColor
-    val componentBackground = if (element.type == "button" && element.backgroundColor == "#FFFFFF") primaryColor else editorColor(element.backgroundColor, defaultBackground)
-    val componentText = if (element.type == "button" && element.textColor == "#17354D") Color.White else editorColor(element.textColor, defaultText)
-    val container = element.type in setOf("section", "column", "row") || (element.type == "card" && children.isNotEmpty())
-    Surface(
-        modifier = Modifier.fillMaxWidth().clickable { onSelect(element.id); if (interactive) onActivate(element.id, "on_click", "") },
-        color = if (selected) Color(0xFFEAF3FB) else componentBackground,
-        shape = RoundedCornerShape(element.cornerRadius.dp),
-        border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) EditorBlue else Color(0xFFE3EAF1))
-    ) {
-        Column(Modifier.fillMaxWidth().padding(element.padding.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (container) {
-                if (element.type != "row" || element.text.isNotBlank()) {
-                    Text(element.text.ifBlank { if (element.type == "row") "Linha" else "Contêiner" }, color = componentText, fontWeight = FontWeight.SemiBold, fontSize = element.fontSize.sp)
-                }
-                if (children.isEmpty()) {
-                    Text("Adicione componentes a este contêiner", color = EditorMuted, fontSize = 10.sp)
-                } else if (element.type == "row") {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        children.forEach { child ->
-                            Box(Modifier.weight(1f)) { EditorCanvasNode(child, allElements, selectedId, primaryColor, defaultTextColor, interactive, onActivate, onSelect) }
-                        }
-                    }
-                } else {
-                    children.forEach { child -> EditorCanvasNode(child, allElements, selectedId, primaryColor, defaultTextColor, interactive, onActivate, onSelect) }
-                }
-            } else {
-                val align = when (element.alignment) {
-                    "center" -> TextAlign.Center
-                    "end" -> TextAlign.End
-                    else -> TextAlign.Start
-                }
-                when (element.type) {
-                    "button" -> Box(Modifier.fillMaxWidth(), contentAlignment = when (element.alignment) {
-                        "center" -> Alignment.Center
-                        "end" -> Alignment.CenterEnd
-                        else -> Alignment.CenterStart
-                    }) {
-                        Surface(color = componentBackground, shape = RoundedCornerShape(element.cornerRadius.dp)) {
-                            Text(element.text, color = componentText, fontWeight = FontWeight.SemiBold, fontSize = element.fontSize.sp, modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp))
-                        }
-                    }
-                    "card" -> Surface(color = componentBackground, shape = RoundedCornerShape(element.cornerRadius.dp), border = BorderStroke(1.dp, Color(0xFFDCE5EE))) {
-                        Text(element.text, color = componentText, modifier = Modifier.fillMaxWidth().padding(12.dp), fontWeight = FontWeight.Medium, fontSize = element.fontSize.sp, textAlign = align)
-                    }
-                    "input" -> {
-                        var inputValue by remember(element.id, interactive) { mutableStateOf("") }
-                        OutlinedTextField(
-                            value = inputValue,
-                            onValueChange = { value ->
-                                inputValue = value
-                                if (interactive) onActivate(element.id, "on_value_change", value)
-                            },
-                            readOnly = !interactive,
-                            enabled = interactive,
-                            label = { Text(element.text) },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-                    }
-                    "image" -> {
-                        val localContext = LocalContext.current
-                        val bitmap by produceState<android.graphics.Bitmap?>(initialValue = null, key1 = element.text) {
-                            value = if (element.text.startsWith("content://") || element.text.startsWith("file://")) {
-                                withContext(Dispatchers.IO) {
-                                    runCatching {
-                                        localContext.contentResolver.openInputStream(android.net.Uri.parse(element.text))?.use { stream ->
-                                            BitmapFactory.decodeStream(stream)
-                                        }
-                                    }.getOrNull()
-                                }
-                            } else null
-                        }
-                        Surface(color = Color(0xFFF0F4F8), shape = RoundedCornerShape(element.cornerRadius.dp), border = BorderStroke(1.dp, Color(0xFFDCE5EE))) {
-                            if (bitmap != null) {
-                                Image(bitmap = bitmap!!.asImageBitmap(), contentDescription = element.text, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp).padding(6.dp))
-                            } else {
-                                Column(Modifier.fillMaxWidth().heightIn(min = 88.dp).padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                                    Icon(Icons.Default.Image, null, tint = EditorMuted, modifier = Modifier.size(28.dp))
-                                    Text(element.text, color = EditorMuted, fontSize = 10.sp, maxLines = 2)
-                                }
-                            }
-                        }
-                    }
-                    "divider" -> HorizontalDivider(color = Color(0xFFDCE5EE))
-                    "spacer" -> Spacer(Modifier.fillMaxWidth().height(element.padding.coerceAtLeast(8f).dp))
-                    else -> Text(element.text, color = componentText, fontSize = element.fontSize.sp, textAlign = align, modifier = Modifier.fillMaxWidth())
-                }
-            }
+    val includedIds = mutableSetOf(element.id)
+    var changed = true
+    while (changed) {
+        changed = false
+        allElements.forEach { candidate ->
+            if (candidate.parentId in includedIds && includedIds.add(candidate.id)) changed = true
         }
     }
+    val subtree = allElements.filter { it.id in includedIds }.map {
+        if (it.id == element.id) it.copy(parentId = null) else it
+    }
+    StudioScreenRuntime(
+        elements = subtree,
+        theme = StudioRuntimeTheme(primary = primaryColor, text = defaultTextColor),
+        runtimeValues = emptyMap(),
+        interactive = interactive,
+        onAction = onActivate,
+        selectedId = selectedId,
+        onSelect = onSelect
+    )
 }
 
 @Composable

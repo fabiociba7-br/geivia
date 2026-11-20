@@ -67,13 +67,7 @@ internal object ComposeToStudioParser {
             StudioScreenDocument(parsed.screens, parsed.startScreenId).toJson()
         ).apply()
         parsed.elementsByScreen.forEach { (screenId, items) ->
-            val array = org.json.JSONArray()
-            items.forEach { item ->
-                array.put(org.json.JSONObject()
-                    .put("id", item.id).put("type", item.type).put("text", item.text)
-                    .put("fontSize", item.fontSize).put("padding", item.padding)
-                    .put("alignment", item.alignment).put("visible", item.visible))
-            }
+            val array = org.json.JSONArray(StudioElementJsonCodec.encodeList(items))
             prefs.edit().putString("geivia_studio_schema_v1_${projectKey}_$screenId", array.toString()).apply()
         }
         return parsed

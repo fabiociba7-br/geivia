@@ -98,13 +98,21 @@ internal fun ProjectPreviewScreen(
                 if (workspace.kind == ProjectWorkspaceInfo.Kind.ANDROID) {
                     Text("Telas-fonte identificadas: ${screensState.value.size}", style = MaterialTheme.typography.bodySmall)
                     Text(
-                        "Para mostrar o jogo exatamente como aparece no aparelho, o GEIVIA precisa compilar e executar o próprio aplicativo. Uma reconstrução por leitura de textos não representa corretamente mesas, cartas, imagens, animações ou posicionamento.",
+                        "Prévia nativa indisponível nesta tela. Para mostrar o aplicativo exatamente como aparece no aparelho, o GEIVIA precisa compilar e executar o próprio projeto. Uma reconstrução por leitura de textos não representa corretamente layouts complexos, imagens, animações ou posicionamento.",
                         style = MaterialTheme.typography.bodySmall
                     )
                     Text(
-                        "Esta tela não vai inventar um layout aproximado e apresentá-lo como se fosse o jogo real. A prévia fiel será feita executando o projeto compilado dentro do fluxo do GEIVIA.",
+                        "As miniaturas abaixo são prévias reconstruídas das telas-fonte identificadas. Elas não executam o app, não reproduzem estado, animações ou integrações nativas.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
+                    )
+                    OutlinedButton(onClick = onTerminal, modifier = Modifier.fillMaxWidth()) {
+                        Text("Preparar build de prévia")
+                    }
+                    Text(
+                        "O botão abre o terminal existente do GEIVIA. Prepare e execute o comando de build manualmente no diretório do projeto; esta tela não dispara compilação nem operações remotas.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else if (workspace.webEntry != null) {
                     Text("Página de entrada: ${workspace.webEntry.relativeTo(workspace.root).invariantSeparatorsPath}", style = MaterialTheme.typography.bodySmall)
@@ -141,6 +149,44 @@ internal fun ProjectPreviewScreen(
                     }
                 }
             )
+        } else if (workspace.kind == ProjectWorkspaceInfo.Kind.ANDROID) {
+            if (screensState.value.isEmpty()) {
+                Card(Modifier.fillMaxWidth().padding(12.dp)) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Nenhuma tela reconstruível encontrada", style = MaterialTheme.typography.titleSmall)
+                        Text("O GEIVIA não vai inventar uma interface para representar o aplicativo. Abra o editor visual para criar uma representação manual ou consulte os arquivos-fonte.", style = MaterialTheme.typography.bodySmall)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = onEditor, modifier = Modifier.weight(1f)) { Text("Editor visual") }
+                            OutlinedButton(onClick = onCodeEditor, modifier = Modifier.weight(1f)) { Text("Arquivos") }
+                        }
+                    }
+                }
+            } else {
+                LazyColumn(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    item {
+                        Text("PRÉVIAS RECONSTRUÍDAS DO CÓDIGO", style = MaterialTheme.typography.labelMedium)
+                        Text("Leitura parcial do código-fonte; não é execução nativa.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    items(screensState.value, key = { it.sourcePath + "#" + it.name }) { screen ->
+                        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text(screen.name, style = MaterialTheme.typography.titleSmall)
+                            ImportedScreenPreview(screen)
+                        }
+                    }
+                    item {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("ARQUIVOS DO PROJETO", style = MaterialTheme.typography.labelMedium)
+                            TextButton(onClick = { showFiles = !showFiles }) { Text(if (showFiles) "Ocultar" else "Mostrar") }
+                        }
+                    }
+                    if (showFiles) {
+                        items(workspace.relativeFiles, key = { "file_$it" }) { filePath ->
+                            Text(filePath, Modifier.fillMaxWidth().padding(vertical = 5.dp), style = MaterialTheme.typography.bodySmall)
+                            HorizontalDivider()
+                        }
+                    }
+                }
+            }
         } else {
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
@@ -151,8 +197,8 @@ internal fun ProjectPreviewScreen(
             }
             if (showFiles) {
                 LazyColumn(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp)) {
-                    items(workspace.relativeFiles, key = { it }) { path ->
-                        Text(path, Modifier.fillMaxWidth().padding(vertical = 5.dp), style = MaterialTheme.typography.bodySmall)
+                    items(workspace.relativeFiles, key = { it }) { filePath ->
+                        Text(filePath, Modifier.fillMaxWidth().padding(vertical = 5.dp), style = MaterialTheme.typography.bodySmall)
                         HorizontalDivider()
                     }
                 }

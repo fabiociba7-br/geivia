@@ -226,7 +226,7 @@ dependencies {
             val heightModifier = element.heightDp?.let { ".height(" + it.coerceIn(0f, 2000f) + ".dp)" }.orEmpty()
             when (element.type.lowercase()) {
                 "section", "column", "row" -> {
-                    val isRow = element.type == "row"
+                    val isRow = element.type.equals("row", true)
                     val layout = if (isRow) "Row" else "Column"
                     val arrangement = if (isRow) "horizontalArrangement" else "verticalArrangement"
                     appendLine(indent + layout + "(" + widthModifier + heightModifier + ".background(" + background + ", RoundedCornerShape(" + radius + ".dp)).padding(" + padding + ".dp).clickable(enabled = " + element.enabled + ") { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, " + arrangement + " = Arrangement.spacedBy(8.dp)) {")
@@ -287,7 +287,7 @@ dependencies {
                         "end" -> "TextAlign.End"
                         else -> "TextAlign.Start"
                     }
-                    appendLine(indent + "Text(resolve(" + text + ", \"\"), Modifier.fillMaxWidth().padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, color = " + foreground + ", fontSize = " + size + ".sp, textAlign = " + alignment + ")")
+appendLine(indent + "Text(resolve(" + text + ", \\"\\"), " + widthModifier + heightModifier + ".background(" + background + ", RoundedCornerShape(" + radius + ".dp)).padding(" + padding + ".dp).clickable(enabled = " + element.enabled + ") { runActions(" + quote(element.id) + ", \\"on_click\\", \\"\\") }, color = " + foreground + ", fontSize = " + size + ".sp, textAlign = " + alignment + ")")
                 }
             }
         }

@@ -110,7 +110,7 @@ internal fun ProjectPreviewScreen(
                         Text("Preparar build de prévia")
                     }
                     Text(
-                        "O botão abre o terminal existente do GEIVIA para preparar o comando no ambiente do projeto. Nenhuma compilação é iniciada automaticamente; execute o comando manualmente. Esta tela não dispara operações remotas.",
+                        "O botão abre o terminal existente do GEIVIA. Prepare e execute o comando de build manualmente no diretório do projeto; esta tela não dispara compilação nem operações remotas.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

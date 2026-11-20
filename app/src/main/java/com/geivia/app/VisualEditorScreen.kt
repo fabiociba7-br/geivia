@@ -52,7 +52,13 @@ internal data class StudioElement(
     val backgroundColor: String = "#FFFFFF",
     val textColor: String = "#17354D",
     val cornerRadius: Float = 10f,
-    val visible: Boolean = true
+    val visible: Boolean = true,
+    val weight: Float? = null,
+    val fillMaxWidth: Boolean = true,
+    val heightDp: Float? = null,
+    val enabled: Boolean = true,
+    val placeholder: String? = null,
+    val contentScale: String = "fit"
 )
 
 private val EditorBlue = Color(0xFF1769AA)
@@ -151,7 +157,13 @@ internal fun VisualEditorScreen(
                     backgroundColor = item.optString("backgroundColor", "#FFFFFF"),
                     textColor = item.optString("textColor", "#17354D"),
                     cornerRadius = item.optDouble("cornerRadius", 10.0).toFloat().coerceIn(0f, 32f),
-                    visible = item.optBoolean("visible", true)
+                    visible = item.optBoolean("visible", true),
+                    weight = if (item.has("weight") && !item.isNull("weight")) item.optDouble("weight").toFloat().coerceIn(0.01f, 100f) else null,
+                    fillMaxWidth = item.optBoolean("fillMaxWidth", true),
+                    heightDp = if (item.has("heightDp") && !item.isNull("heightDp")) item.optDouble("heightDp").toFloat().coerceIn(0f, 2000f) else null,
+                    enabled = item.optBoolean("enabled", true),
+                    placeholder = item.optString("placeholder").takeIf { it.isNotBlank() },
+                    contentScale = item.optString("contentScale", "fit").let { if (it in setOf("fit", "crop")) it else "fit" }
                 )
             }
         }.getOrDefault(emptyList())
@@ -338,7 +350,13 @@ internal fun VisualEditorScreen(
                 .put("backgroundColor", element.backgroundColor)
                 .put("textColor", element.textColor)
                 .put("cornerRadius", element.cornerRadius.toDouble())
-                .put("visible", element.visible))
+                .put("visible", element.visible)
+                .put("weight", element.weight?.toDouble() ?: JSONObject.NULL)
+                .put("fillMaxWidth", element.fillMaxWidth)
+                .put("heightDp", element.heightDp?.toDouble() ?: JSONObject.NULL)
+                .put("enabled", element.enabled)
+                .put("placeholder", element.placeholder ?: "")
+                .put("contentScale", element.contentScale))
         }
         val registry = StudioScreenDocument(screens = screenRegistry.toList(), startScreenId = startScreenId)
         prefs.edit()
@@ -371,7 +389,13 @@ internal fun VisualEditorScreen(
                     .put("fontSize", item.fontSize).put("padding", item.padding)
                     .put("alignment", item.alignment).put("parentId", item.parentId ?: JSONObject.NULL)
                     .put("backgroundColor", item.backgroundColor).put("textColor", item.textColor)
-                    .put("cornerRadius", item.cornerRadius).put("visible", item.visible))
+                    .put("cornerRadius", item.cornerRadius).put("visible", item.visible)
+                    .put("weight", item.weight?.toDouble() ?: JSONObject.NULL)
+                    .put("fillMaxWidth", item.fillMaxWidth)
+                    .put("heightDp", item.heightDp?.toDouble() ?: JSONObject.NULL)
+                    .put("enabled", item.enabled)
+                    .put("placeholder", item.placeholder ?: "")
+                    .put("contentScale", item.contentScale))
             }
             val inputParameters = JSONArray()
             screen.inputParameters.forEach { parameter ->
@@ -1561,7 +1585,7 @@ internal fun VisualEditorScreen(
                                     else decodeElements(prefs.getString("${schemaPrefix}_${screen.id}", null) ?: if (allowLegacyProjectData) prefs.getString("${EDITOR_SCHEMA_KEY}_${screen.id}", null) else null)
                                 screen.id to sourceElements.map { item ->
                                     val generatedText = if (item.type == "image") localAssetNames[item.text]?.let { "asset://$it" } ?: item.text else item.text
-                                    StudioGeneratedElement(item.id, item.type, generatedText, item.fontSize, item.padding, item.alignment, item.parentId, item.backgroundColor, item.textColor, item.cornerRadius, item.visible)
+                                    StudioGeneratedElement(item.id, item.type, generatedText, item.fontSize, item.padding, item.alignment, item.parentId, item.backgroundColor, item.textColor, item.cornerRadius, item.visible, item.weight, item.fillMaxWidth, item.heightDp, item.enabled, item.placeholder, item.contentScale)
                                 }
                             }
                             val logicDocument = readLogicDocument()

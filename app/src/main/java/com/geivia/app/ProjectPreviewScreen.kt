@@ -167,7 +167,7 @@ internal fun ProjectPreviewScreen(
                         Text("PRÉVIAS RECONSTRUÍDAS DO CÓDIGO", style = MaterialTheme.typography.labelMedium)
                         Text("Leitura parcial do código-fonte; não é execução nativa.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    items(screensState.value, key = { it.name }) { screen ->
+                    items(screensState.value, key = { it.sourcePath + "#" + it.name }) { screen ->
                         Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                             Text(screen.name, style = MaterialTheme.typography.titleSmall)
                             ImportedScreenPreview(screen)

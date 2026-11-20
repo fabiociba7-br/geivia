@@ -41,24 +41,40 @@ internal class LinuxRuntimeController(context: Context) {
      * on some Android/PRoot combinations.
      */
     suspend fun installAndVerifyDebian(onOutput: (String) -> Unit): List<Int> {
-        val results = mutableListOf<Int>()
-        val stages = listOf(
-            Triple("Instalando Debian ARM64", LinuxRuntimeCommands.installDebian(), 30 * 60 * 1000L),
-            Triple("Verificando shell e arquivos essenciais do Debian", LinuxRuntimeCommands.testDebianBase(), 60 * 1000L)
-        )
-        for ((label, args, timeoutMs) in stages) {
-            onOutput("\n[GEIVIA] $label…\n")
-            onOutput("[GEIVIA] Executando: ${args.joinToString(" ")}\\n")
-            val code = execute(args, timeoutMs, onOutput)
-            results += code
-            onOutput("\n[GEIVIA] Etapa concluída com código $code.\n")
-            check(code == 0) {
-                if (code == -124) "$label excedeu o tempo limite de ${timeoutMs / 1000} segundos. O processo foi interrompido; consulte o diagnóstico."
-                else "$label falhou (código $code). Consulte a saída acima; a próxima etapa não foi executada."
-            }
+        // Reuse a healthy Debian installation instead of calling "install debian"
+        // again (the installer correctly exits with code 1 when it already exists).
+        onOutput("\\n[GEIVIA] Verificando se o Debian ARM64 já está instalado…\\n")
+        val existingCheck = execute(LinuxRuntimeCommands.testDebianBase(), 60_000L, onOutput)
+        if (existingCheck == 0) {
+            onOutput("\\n[GEIVIA] Debian existente validado; instalação ignorada.\\n")
+            return listOf(0)
         }
-        onOutput("\n[GEIVIA] Debian instalado e verificado com sucesso.\n")
-        return results
+        onOutput("\\n[GEIVIA] Debian não passou na verificação inicial (código $existingCheck). Tentando preparar a distribuição…\\n")
+        val installCode = execute(LinuxRuntimeCommands.installDebian(), 30 * 60 * 1000L, onOutput)
+        onOutput("\\n[GEIVIA] Instalação/verificação de presença concluída com código $installCode.\\n")
+        if (installCode != 0) {
+            // Some PRoot installers report "already installed" as an error. Re-check
+            // the guest before surfacing failure; never delete or reinstall its data.
+            val outputCapture = StringBuilder()
+            val verifyCode = execute(LinuxRuntimeCommands.testDebianBase(), 60_000L) { chunk ->
+                outputCapture.append(chunk)
+                onOutput(chunk)
+            }
+            if (verifyCode == 0) {
+                onOutput("\\n[GEIVIA] A distribuição já existia e foi validada; prosseguindo sem reinstalar.\\n")
+                return listOf(0, 0)
+            }
+            error("Debian já existe ou a instalação não pôde ser concluída (código $installCode); a validação do ambiente também falhou (código $verifyCode). Nenhum dado foi removido. Consulte a saída para diagnóstico.")
+        }
+        onOutput("\\n[GEIVIA] Verificando shell e arquivos essenciais do Debian…\\n")
+        val verifyCode = execute(LinuxRuntimeCommands.testDebianBase(), 60_000L, onOutput)
+        onOutput("\\n[GEIVIA] Verificação do Debian concluída com código $verifyCode.\\n")
+        check(verifyCode == 0) {
+            if (verifyCode == -124) "A verificação do Debian excedeu o tempo limite. Nenhum dado foi removido."
+            else "O Debian foi encontrado, mas não passou na verificação básica (código $verifyCode). Nenhum dado foi removido."
+        }
+        onOutput("\\n[GEIVIA] Debian instalado e verificado com sucesso.\\n")
+        return listOf(installCode, verifyCode)
     }
 
     fun startDebianShell(rows: Int = 50, cols: Int = 80): ProotLauncher.Session = synchronized(this) {

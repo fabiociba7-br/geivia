@@ -288,10 +288,10 @@ internal fun VisualEditorScreen(
         message = "Componente adicionado"
     }
     fun saveSchema() {
-        val array = JSONArray(StudioElementJsonCodec.encodeList(elements))
+        val encodedElements = StudioElementJsonCodec.encodeList(elements)
         val registry = StudioScreenDocument(screens = screenRegistry.toList(), startScreenId = startScreenId)
         prefs.edit()
-            .putString("${schemaPrefix}_${activeScreenId}", array.toString())
+            .putString("${schemaPrefix}_${activeScreenId}", encodedElements)
             .putString(screenRegistryPrefKey, registry.toJson())
             .putBoolean("studio_project_migrated_$projectKey", true)
             .putBoolean("studio_legacy_data_migrated", true)

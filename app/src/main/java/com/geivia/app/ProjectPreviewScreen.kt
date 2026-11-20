@@ -106,11 +106,11 @@ internal fun ProjectPreviewScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
                     )
-                    OutlinedButton(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth()) {
-                        Text("Preparar build de prévia · indisponível")
+                    OutlinedButton(onClick = onTerminal, modifier = Modifier.fillMaxWidth()) {
+                        Text("Preparar build de prévia")
                     }
                     Text(
-                        "Motivo: este fluxo ainda não possui uma integração segura de build e execução nativa vinculada a esta tela. Use Terminal e Ferramentas para operações manuais; nenhuma compilação é iniciada aqui.",
+                        "O botão abre o terminal existente do GEIVIA para preparar o comando no ambiente do projeto. Nenhuma compilação é iniciada automaticamente; execute o comando manualmente. Esta tela não dispara operações remotas.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

@@ -1260,7 +1260,10 @@ internal fun VisualEditorScreen(
                                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text("Nenhuma tela reconhecida ainda", color = EditorInk, fontWeight = FontWeight.Bold)
                                     Text("O GEIVIA procura layouts em res/layout*/ e funções @Composable em arquivos Kotlin dentro de src/main/. Confira se o projeto Android foi importado pela pasta raiz correta.", color = EditorMuted, fontSize = 12.sp)
-                                    OutlinedButton(onClick = { onProjectFiles(null) }, modifier = Modifier.fillMaxWidth()) { Text("Abrir arquivos e código") }
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Button(onClick = { workspacePanel = "canvas" }, modifier = Modifier.weight(1f)) { Text("Editor visual") }
+                                        OutlinedButton(onClick = { onProjectFiles(null) }, modifier = Modifier.weight(1f)) { Text("Arquivos e código") }
+                                    }
                                 }
                             }
                         } else {

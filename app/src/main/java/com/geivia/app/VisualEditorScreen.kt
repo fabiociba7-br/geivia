@@ -162,7 +162,14 @@ internal fun VisualEditorScreen(
         }
         val parsed = withContext(Dispatchers.IO) {
             ComposeToStudioParser.persistToStudio(context, java.io.File(importedProjectPath))
-        } ?: return@LaunchedEffect
+        }
+        if (parsed == null) {
+            // Never leave the default sample element looking like a reconstruction of the imported app.
+            elements.clear()
+            selectedId = null
+            workspacePanel = "imported"
+            return@LaunchedEffect
+        }
         screenRegistry.clear()
         screenRegistry.addAll(parsed.screens)
         activeScreenId = parsed.startScreenId
@@ -1261,7 +1268,7 @@ internal fun VisualEditorScreen(
                                     Text("Nenhuma tela reconhecida ainda", color = EditorInk, fontWeight = FontWeight.Bold)
                                     Text("O GEIVIA procura layouts em res/layout*/ e funções @Composable em arquivos Kotlin dentro de src/main/. Confira se o projeto Android foi importado pela pasta raiz correta.", color = EditorMuted, fontSize = 12.sp)
                                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Button(onClick = { workspacePanel = "canvas" }, modifier = Modifier.weight(1f)) { Text("Editor visual") }
+                                        Button(onClick = { workspacePanel = "canvas"; message = "Crie uma representação visual manual; nenhuma tela nativa foi reconhecida." }, modifier = Modifier.weight(1f)) { Text("Criar representação visual") }
                                         OutlinedButton(onClick = { onProjectFiles(null) }, modifier = Modifier.weight(1f)) { Text("Arquivos e código") }
                                     }
                                 }

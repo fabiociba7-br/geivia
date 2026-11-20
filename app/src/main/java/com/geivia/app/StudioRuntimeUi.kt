@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -165,6 +166,7 @@ private fun StudioRuntimeNode(
         }
         "textfield", "input", "field", "edittext", "outlinedtextfield" -> {
             var input by remember(element.id) { mutableStateOf(values[element.id].orEmpty()) }
+            var wasFocused by remember(element.id) { mutableStateOf(false) }
             OutlinedTextField(
                 value = input,
                 onValueChange = { next ->
@@ -176,7 +178,12 @@ private fun StudioRuntimeNode(
                 singleLine = true,
                 label = { Text(resolvedText.ifBlank { element.placeholder ?: "Campo de entrada" }) },
                 placeholder = element.placeholder?.let { { Text(it) } },
-                modifier = outerModifier.padding(padding)
+                modifier = outerModifier.padding(padding).onFocusChanged { focus ->
+                    if (focus.isFocused && !wasFocused && interactive && element.enabled) {
+                        onAction(element.id, "on_click", "")
+                    }
+                    wasFocused = focus.isFocused
+                }
             )
         }
         "image", "imageview" -> {
@@ -226,7 +233,7 @@ private fun StudioRuntimeNode(
         ) {
             Text(
                 resolvedText,
-                modifier = Modifier.fillMaxWidth().padding(4.dp),
+                modifier = Modifier.then(if (element.fillMaxWidth) Modifier.fillMaxWidth() else Modifier.wrapContentWidth()).padding(4.dp),
                 color = foreground,
                 fontSize = element.fontSize.sp,
                 textAlign = when (element.alignment) { "center" -> TextAlign.Center; "end" -> TextAlign.End; else -> TextAlign.Start }

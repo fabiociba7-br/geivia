@@ -230,13 +230,19 @@ dependencies {
                     val arrangement = if (isRow) "horizontalArrangement" else "verticalArrangement"
                     appendLine(indent + layout + "(" + widthModifier + heightModifier + ".padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, " + arrangement + " = Arrangement.spacedBy(8.dp)) {")
                     if (element.text.isNotBlank()) appendLine(indent + "    Text(resolve(" + text + ", \"\"), fontSize = " + size + ".sp, color = " + foreground + ")")
-                    children.forEach { append(render(it, all, depth + 1, primaryColor, defaultTextColor)) }
+                    children.forEach { child ->
+                        if (child.weight != null) {
+                            appendLine(indent + "    Box(Modifier.weight(" + child.weight.coerceIn(0.01f, 100f) + "f)) {")
+                            append(render(child, all, depth + 2, primaryColor, defaultTextColor))
+                            appendLine(indent + "    }")
+                        } else append(render(child, all, depth + 1, primaryColor, defaultTextColor))
+                    }
                     appendLine(indent + "}")
                 }
                 "button" -> appendLine(indent + "Button(onClick = { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, enabled = " + element.enabled + ", shape = RoundedCornerShape(" + radius + ".dp), colors = ButtonDefaults.buttonColors(containerColor = " + background + "), modifier = " + widthModifier + heightModifier + ".padding(" + padding + ".dp)) { Text(resolve(" + text + ", \"\"), color = " + foreground + ", fontSize = " + size + ".sp) }")
                 "outlined_button", "outlinedbutton" -> appendLine(indent + "OutlinedButton(onClick = { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, enabled = " + element.enabled + ", shape = RoundedCornerShape(" + radius + ".dp), modifier = " + widthModifier + heightModifier + ".padding(" + padding + ".dp)) { Text(resolve(" + text + ", \"\"), fontSize = " + size + ".sp) }")
                 "card" -> {
-                    appendLine(indent + "Card(Modifier.fillMaxWidth().padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, shape = RoundedCornerShape(" + radius + ".dp), colors = CardDefaults.cardColors(containerColor = " + background + ")) {")
+                    appendLine(indent + "Card(" + widthModifier + heightModifier + ".padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, shape = RoundedCornerShape(" + radius + ".dp), colors = CardDefaults.cardColors(containerColor = " + background + ")) {")
                     if (children.isEmpty()) appendLine(indent + "    Text(resolve(" + text + ", \"\"), Modifier.padding(12.dp), color = " + foreground + ", fontSize = " + size + ".sp)")
                     else children.forEach { append(render(it, all, depth + 1, primaryColor, defaultTextColor)) }
                     appendLine(indent + "}")
@@ -258,6 +264,18 @@ dependencies {
                     } else {
                         appendLine(indent + "Text(resolve(" + quote("[Imagem: " + element.text + "]") + ", \"\"), Modifier.padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, color = Color.Gray)")
                     }
+                }
+                "switch", "checkbox" -> {
+                    val checkedName = "checked_" + identifier(element.id)
+                    appendLine(indent + "var " + checkedName + " by remember { mutableStateOf(false) }")
+                    appendLine(indent + "Row(" + widthModifier + ".padding(" + padding + ".dp), verticalAlignment = Alignment.CenterVertically) {")
+                    appendLine(indent + "    Text(resolve(" + text + ", \"\"), Modifier.weight(1f), color = " + foreground + ")")
+                    if (element.type.lowercase() == "switch") {
+                        appendLine(indent + "    Switch(checked = " + checkedName + ", enabled = " + element.enabled + ", onCheckedChange = { " + checkedName + " = it; runActions(" + quote(element.id) + ", \"on_value_change\", it.toString()) })")
+                    } else {
+                        appendLine(indent + "    Checkbox(checked = " + checkedName + ", enabled = " + element.enabled + ", onCheckedChange = { " + checkedName + " = it; runActions(" + quote(element.id) + ", \"on_value_change\", it.toString()) })")
+                    }
+                    appendLine(indent + "}")
                 }
                 "divider" -> appendLine(indent + "HorizontalDivider(Modifier.padding(vertical = " + padding + ".dp))")
                 "spacer" -> appendLine(indent + "Spacer(Modifier.height(" + (element.heightDp ?: padding.coerceAtLeast(8f)) + ".dp))")

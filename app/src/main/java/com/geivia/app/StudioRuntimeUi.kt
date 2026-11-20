@@ -116,12 +116,12 @@ private fun StudioRuntimeNode(
                 color = if (selected) Color(0xFFEAF3FB) else background,
                 shape = shape,
             ) {
-                Column(Modifier.fillMaxWidth().padding(padding), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.then(if (element.fillMaxWidth) Modifier.fillMaxWidth() else Modifier.wrapContentWidth()).padding(padding), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (resolvedText.isNotBlank()) {
                         Text(resolvedText, color = foreground, fontSize = element.fontSize.sp, fontWeight = FontWeight.SemiBold)
                     }
                     if (type == "row") {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.then(if (element.fillMaxWidth) Modifier.fillMaxWidth() else Modifier.wrapContentWidth()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                             children.forEach { child ->
                                 Box(Modifier.weight((child.weight ?: 1f).coerceAtLeast(0.01f))) {
                                     StudioRuntimeNode(child, all, theme, values, interactive, onAction, selectedId, onSelect)
@@ -147,7 +147,7 @@ private fun StudioRuntimeNode(
             shape = shape,
             colors = CardDefaults.cardColors(containerColor = if (selected) Color(0xFFEAF3FB) else background)
         ) {
-            Column(Modifier.fillMaxWidth().padding(padding), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.then(if (element.fillMaxWidth) Modifier.fillMaxWidth() else Modifier.wrapContentWidth()).padding(padding), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (children.isEmpty()) Text(resolvedText, color = foreground, fontSize = element.fontSize.sp)
                 else children.forEach { StudioRuntimeNode(it, all, theme, values, interactive, onAction, selectedId, onSelect) }
             }
@@ -205,7 +205,7 @@ private fun StudioRuntimeNode(
                 )
             } else {
                 Surface(outerModifier.padding(padding), shape, color = Color(0xFFF0F4F8)) {
-                    Box(Modifier.fillMaxWidth().height(element.heightDp?.dp ?: 92.dp), contentAlignment = Alignment.Center) {
+                    Box(Modifier.then(if (element.fillMaxWidth) Modifier.fillMaxWidth() else Modifier.wrapContentWidth()).height(element.heightDp?.dp ?: 92.dp), contentAlignment = Alignment.Center) {
                         Text(if (element.text.isBlank()) "Imagem não disponível" else element.text, color = theme.text.copy(alpha = .65f), fontSize = 11.sp)
                     }
                 }

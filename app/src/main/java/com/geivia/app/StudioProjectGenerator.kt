@@ -11,7 +11,13 @@ internal data class StudioGeneratedElement(
     val backgroundColor: String,
     val textColor: String,
     val cornerRadius: Float,
-    val visible: Boolean
+    val visible: Boolean,
+    val weight: Float? = null,
+    val fillMaxWidth: Boolean = true,
+    val heightDp: Float? = null,
+    val enabled: Boolean = true,
+    val placeholder: String? = null,
+    val contentScale: String = "fit"
 )
 
 internal object StudioProjectGenerator {
@@ -215,27 +221,30 @@ dependencies {
             else color(element.backgroundColor, "Color(0xFFFFFFFF)")
         val children = all.filter { it.parentId == element.id && it.visible }
         return buildString {
-            when (element.type) {
+            val widthModifier = if (element.fillMaxWidth) "Modifier.fillMaxWidth()" else "Modifier"
+            val heightModifier = element.heightDp?.let { ".height(" + it.coerceIn(0f, 2000f) + ".dp)" }.orEmpty()
+            when (element.type.lowercase()) {
                 "section", "column", "row" -> {
                     val isRow = element.type == "row"
                     val layout = if (isRow) "Row" else "Column"
                     val arrangement = if (isRow) "horizontalArrangement" else "verticalArrangement"
-                    appendLine(indent + layout + "(Modifier.fillMaxWidth().padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, " + arrangement + " = Arrangement.spacedBy(8.dp)) {")
+                    appendLine(indent + layout + "(" + widthModifier + heightModifier + ".padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, " + arrangement + " = Arrangement.spacedBy(8.dp)) {")
                     if (element.text.isNotBlank()) appendLine(indent + "    Text(resolve(" + text + ", \"\"), fontSize = " + size + ".sp, color = " + foreground + ")")
                     children.forEach { append(render(it, all, depth + 1, primaryColor, defaultTextColor)) }
                     appendLine(indent + "}")
                 }
-                "button" -> appendLine(indent + "Button(onClick = { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, shape = RoundedCornerShape(" + radius + ".dp), colors = ButtonDefaults.buttonColors(containerColor = " + background + "), modifier = Modifier.padding(" + padding + ".dp)) { Text(resolve(" + text + ", \"\"), color = " + foreground + ", fontSize = " + size + ".sp) }")
+                "button" -> appendLine(indent + "Button(onClick = { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, enabled = " + element.enabled + ", shape = RoundedCornerShape(" + radius + ".dp), colors = ButtonDefaults.buttonColors(containerColor = " + background + "), modifier = " + widthModifier + heightModifier + ".padding(" + padding + ".dp)) { Text(resolve(" + text + ", \"\"), color = " + foreground + ", fontSize = " + size + ".sp) }")
+                "outlined_button", "outlinedbutton" -> appendLine(indent + "OutlinedButton(onClick = { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, enabled = " + element.enabled + ", shape = RoundedCornerShape(" + radius + ".dp), modifier = " + widthModifier + heightModifier + ".padding(" + padding + ".dp)) { Text(resolve(" + text + ", \"\"), fontSize = " + size + ".sp) }")
                 "card" -> {
                     appendLine(indent + "Card(Modifier.fillMaxWidth().padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, shape = RoundedCornerShape(" + radius + ".dp), colors = CardDefaults.cardColors(containerColor = " + background + ")) {")
                     if (children.isEmpty()) appendLine(indent + "    Text(resolve(" + text + ", \"\"), Modifier.padding(12.dp), color = " + foreground + ", fontSize = " + size + ".sp)")
                     else children.forEach { append(render(it, all, depth + 1, primaryColor, defaultTextColor)) }
                     appendLine(indent + "}")
                 }
-                "input" -> {
+                "input", "textfield", "field", "edittext", "outlinedtextfield" -> {
                     val inputName = "input_" + identifier(element.id)
                     appendLine(indent + "var " + inputName + " by remember { mutableStateOf(\"\") }")
-                    appendLine(indent + "OutlinedTextField(value = " + inputName + ", onValueChange = { " + inputName + " = it; runActions(" + quote(element.id) + ", \"on_value_change\", it) }, label = { Text(resolve(" + text + ", \"\")) }, modifier = Modifier.fillMaxWidth().padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, singleLine = true)")
+                    appendLine(indent + "OutlinedTextField(value = " + inputName + ", onValueChange = { " + inputName + " = it; runActions(" + quote(element.id) + ", \"on_value_change\", it) }, enabled = " + element.enabled + ", label = { Text(resolve(" + text + ", \"\")) }, placeholder = { Text(" + quote(element.placeholder.orEmpty()) + ") }, modifier = " + widthModifier + heightModifier + ".padding(" + padding + ".dp), singleLine = true)")
                 }
                 "image" -> {
                     if (element.text.startsWith("asset://")) {
@@ -245,13 +254,13 @@ dependencies {
                         appendLine(indent + "val imageBitmap_" + suffix + " by produceState<android.graphics.Bitmap?>(initialValue = null, key1 = " + quote(assetName) + ") {")
                         appendLine(indent + "    value = withContext(Dispatchers.IO) { runCatching { imageContext_" + suffix + ".assets.open(" + quote(assetName) + ").use { BitmapFactory.decodeStream(it) } }.getOrNull() }")
                         appendLine(indent + "}")
-                        appendLine(indent + "if (imageBitmap_" + suffix + " != null) Image(bitmap = imageBitmap_" + suffix + "!!.asImageBitmap(), contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxWidth().padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }) else Text(" + quote("Imagem não disponível: " + element.text) + ", color = Color.Gray)")
+                        appendLine(indent + "if (imageBitmap_" + suffix + " != null) Image(bitmap = imageBitmap_" + suffix + "!!.asImageBitmap(), contentDescription = null, contentScale = ContentScale." + (element.contentScale.equals("crop", true) ? "Crop" : "Fit") + ", modifier = " + widthModifier + heightModifier + ".padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }) else Text(" + quote("Imagem não disponível: " + element.text) + ", color = Color.Gray)")
                     } else {
                         appendLine(indent + "Text(resolve(" + quote("[Imagem: " + element.text + "]") + ", \"\"), Modifier.padding(" + padding + ".dp).clickable { runActions(" + quote(element.id) + ", \"on_click\", \"\") }, color = Color.Gray)")
                     }
                 }
                 "divider" -> appendLine(indent + "HorizontalDivider(Modifier.padding(vertical = " + padding + ".dp))")
-                "spacer" -> appendLine(indent + "Spacer(Modifier.height(" + padding.coerceAtLeast(8f) + ".dp))")
+                "spacer" -> appendLine(indent + "Spacer(Modifier.height(" + (element.heightDp ?: padding.coerceAtLeast(8f)) + ".dp))")
                 else -> {
                     val alignment = when (element.alignment) {
                         "center" -> "TextAlign.Center"

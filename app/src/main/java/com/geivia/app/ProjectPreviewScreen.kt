@@ -98,7 +98,7 @@ internal fun ProjectPreviewScreen(
                 if (workspace.kind == ProjectWorkspaceInfo.Kind.ANDROID) {
                     Text("Telas-fonte identificadas: ${screensState.value.size}", style = MaterialTheme.typography.bodySmall)
                     Text(
-                        "Para mostrar o jogo exatamente como aparece no aparelho, o GEIVIA precisa compilar e executar o próprio aplicativo. Uma reconstrução por leitura de textos não representa corretamente mesas, cartas, imagens, animações ou posicionamento.",
+                        "Prévia nativa indisponível nesta tela. Para mostrar o aplicativo exatamente como aparece no aparelho, o GEIVIA precisa compilar e executar o próprio projeto. Uma reconstrução por leitura de textos não representa corretamente layouts complexos, imagens, animações ou posicionamento.",
                         style = MaterialTheme.typography.bodySmall
                     )
                     Text(
